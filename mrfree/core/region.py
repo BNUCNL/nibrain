@@ -1,5 +1,4 @@
 # region class
-import re
 from .attributes import GeometryAttribute, ScalarAttribute, ConnectionAttribute
 
 
@@ -31,18 +30,19 @@ class Region(object):
             source: source of region, type: string.
             space: space of region, type:string
         """
-        self.name = name
-        self.layer = layer
-        self.source = source
-        self.space = space
+        self._name = name
+        self._layer = layer
+        self._source = source
+        self._space = space
 
-        self.xform = None
-        self.anat_coords = None
-        self.ga = None
-        self.sa = None
-        self.ca = None
+        self._xform = None
+        self._anat_coords = None
+        self._ga = None
+        self._sa = None
+        self._ca = None
 
-    def get_name(self):
+    @property
+    def name(self):
         """
         Get name of region.
 
@@ -50,9 +50,10 @@ class Region(object):
         ------
             Name of region.
         """
-        return self.name
+        return self._name
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
         """
         Set name of region, input should be string.
 
@@ -60,62 +61,69 @@ class Region(object):
         ----------
             name: name of region, type: string.
         """
-        if not isinstance(name, str):
-            raise ValueError("Input 'name' should be string.")
-        self.name = name
+        assert isinstance(name, str), "Input 'name' should be string."
+        self._name = name
 
-    def get_layer(self):
-        return self.layer
+    @property
+    def layer(self):
+        return self._layer
 
-    def set_layer(self, layer):
+    @layer.setter
+    def layer(self, layer):
         layer = str(layer)
-        if not re.findall('[1-6]', layer):
-            raise ValueError("Input 'layer' should contain at least one number.")
-        self.layer = layer
+        self._layer = layer
 
-    def get_source(self):
-        return self.source
+    @property
+    def source(self):
+        return self._source
 
-    def set_source(self, source):
-        if not isinstance(source, str):
-            raise ValueError("Input 'source' should be string.")
-        self.source = source
+    @source.setter
+    def source(self, source):
+        assert isinstance(source, str), "Input 'source' should be string."
+        self._source = source
 
-    def get_xform(self):
-        return self.xform
+    @property
+    def xform(self):
+        return self._xform
 
-    def set_xform(self, xform):
+    @xform.setter
+    def xform(self, xform):
+        assert xform.shape == (4, 4), "Shape of xform should be (4, 4)"
         self.xform = xform
 
-    def get_anat_coords(self):
-        return self.anat_coords
+    @property
+    def anat_coords(self):
+        return self._anat_coords
 
-    def set_anat_coords(self, anat_coords):
-        if anat_coords.shape[1] != 3:
-            raise ValueError("The shape of input should be [N, 3].")
-        self.anat_coords = anat_coords
+    @anat_coords.setter
+    def anat_coords(self, anat_coords):
+        assert anat_coords.shape[1] == 3, "The shape of input should be (N, 3)."
+        self._anat_coords = anat_coords
 
-    def get_ga(self):
-        return self.ga
+    @property
+    def ga(self):
+        return self._ga
 
-    def set_ga(self, ga):
-        if not isinstance(ga, GeometryAttribute):
-            raise ValueError("Input 'ga' should be an instance of GeometryAttribute.")
-        self.ga = ga
+    @ga.setter
+    def ga(self, ga):
+        assert isinstance(ga, GeometryAttribute), "Input 'ga' should be an instance of GeometryAttribute."
+        self._ga = ga
 
-    def get_sa(self):
-        return self.sa
+    @property
+    def sa(self):
+        return self._sa
 
-    def set_sa(self, sa):
-        if not isinstance(ga, ScalarAttribute):
-            raise ValueError("Input 'sa' should be an instance of ScalarAttribute.")
-        self.sa = sa
+    @sa.setter
+    def sa(self, sa):
+        assert isinstance(sa, ScalarAttribute), "Input 'sa' should be an instance of ScalarAttribute."
+        self._sa = sa
 
-    def get_ca(self):
-        return self.ca
+    @property
+    def ca(self):
+        return self._ca
 
-    def set_ca(self, ca):
-        if not isinstance(ga, ConnectionAttribute):
-            raise ValueError("Input 'ca' should be an instance of ConnectionAttribute.")
-        self.ca = ca
+    @ca.setter
+    def ca(self, ca):
+        assert isinstance(ca, ConnectionAttribute), "Input 'ca' should be an instance of ConnectionAttribute."
+        self._ca = ca
 
