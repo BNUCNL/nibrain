@@ -15,9 +15,9 @@ class Region(object):
 
         xform: transform matrix of region
         anat_coords: coords of region, should be N*3 array.
-        ga: geometry attributes.
-        sa: scalar attributes.
-        ca: connection attributes.
+        ga: geometry attributes, should be an instance of class GeometryAttribute.
+        sa: scalar attributes, should be an instance of class ScalarAttribute.
+        ca: connection attributes, should be an instance of class ConnectionAttribute.
     """
     def __init__(self, name, layer=None, source=None, space=None):
         """
@@ -28,18 +28,12 @@ class Region(object):
             name: name of region, type: string.
             layer: layer number of region, type: string.
             source: source of region, type: string.
-            space: space of region, type:string
+            space: space of where this region exists, type:string
         """
-        self._name = name
-        self._layer = layer
-        self._source = source
-        self._space = space
-
-        self._xform = None
-        self._anat_coords = None
-        self._ga = None
-        self._sa = None
-        self._ca = None
+        self.name = name
+        self.layer = layer
+        self.source = source
+        self.space = space
 
     @property
     def name(self):
@@ -70,8 +64,7 @@ class Region(object):
 
     @layer.setter
     def layer(self, layer):
-        layer = str(layer)
-        self._layer = layer
+        self._layer = str(layer)
 
     @property
     def source(self):
@@ -89,7 +82,7 @@ class Region(object):
     @xform.setter
     def xform(self, xform):
         assert xform.shape == (4, 4), "Shape of xform should be (4, 4)"
-        self.xform = xform
+        self._xform = xform
 
     @property
     def anat_coords(self):
