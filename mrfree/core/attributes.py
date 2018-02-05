@@ -27,11 +27,59 @@ class ScalarAttribute(object):
 
     def __getattr__(self, item):
         if item not in self.__dict__:
-            print('{} not exist.'.format(item))
             return None
 
     def __getitem__(self, item):
         return self.get(item)
+
+    def __add__(self, other):
+        sa_ins = ScalarAttribute()
+        same_indices = np.unique([i for i in self.name if i in other.name])
+        for i, idname in enumerate(same_indices):
+            try:
+                sa_ins.set(idname, self.get(idname) + other.get(idname))        
+            except ValueError:
+                raise Exception('{} mismatched'.format(idname))
+        return sa_ins
+
+    def __sub__(self, other):
+        sa_ins = ScalarAttribute()
+        same_indices = np.unique([i for i in self.name if i in other.name])
+        for i, idname in enumerate(same_indices):
+            try:
+                sa_ins.set(idname, self.get(idname) - other.get(idname))
+            except ValueError:
+                raise Exception('{} mismatched'.format(idname))
+        return sa_ins
+
+    def __mul__(self, other):
+        sa_ins = ScalarAttribute()
+        same_indices = np.unique([i for i in self.name if i in other.name])
+        for i, idname in enumerate(same_indices):
+            try:
+                sa_ins.set(idname, self.get(idname) * other.get(idname))
+            except ValueError:
+                raise Exception('{} mismatched'.format(idname))
+        return sa_ins
+
+    def __div__(self, other):
+        sa_ins = ScalarAttribute()
+        same_indices = np.unique([i for i in self.name if i in other.name])
+        for i, idname in enumerate(same_indices):
+            try:
+                sa_ins.set(idname, self.get(idname) / other.get(idname))
+            except ValueError:
+                raise Exception('{} mismatched'.format(idname))
+        return sa_ins
+    
+    def __abs__(self):
+        self.data = np.abs(self.data)
+
+    def __neg__(self):
+        self.data = -1.0*self.data
+
+    def __pos_(self):
+        self.data = np.abs(self.data)
 
     def set(self, name, data):
         """
@@ -45,14 +93,17 @@ class ScalarAttribute(object):
             name = [name]
         assert isinstance(name, list), "Name should be a string or list."
         assert isinstance(data, np.ndarray), "Convert data into np.ndarray before using it."
+        if (len(np.unique(name)) == 1)&(len(name)<data.shape[1]):
+            name = [name[0]]*data.shape[1]
+        else:
+            assert len(name)==data.shape[1], "Mismatch between name and data."    
         if data.ndim == 1:
             data = data[...,np.newaxis]
-        assert len(name) == data.shape[1], "Mismatch between name and data."
         if (self.name is None) | (self.data is None):
             self.name = name
             self.data = data
         else: 
-            self.concatenate(name, data) 
+            self.append(name, data) 
 
     def get(self, name):
         """
@@ -80,7 +131,7 @@ class ScalarAttribute(object):
             print('Set data firstly.')
             return None            
 
-    def concatenate(self, name = None, data = None):
+    def append(self, name = None, data = None):
         """
         A method to add scalar data in.
 
@@ -93,7 +144,7 @@ class ScalarAttribute(object):
             if data.ndim == 1:
                 data = data[...,np.newaxis]
             assert data.shape[0] == self.data.shape[0], "Array length mismatched."
-            assert (self.name is not None) & (self.data is not None), "Please set name and data before concatenating it."
+            assert (self.name is not None) & (self.data is not None), "Please set name and data before appending it."
             if isinstance(name, str):
                 name = [name]
             assert len(name) == data.shape[1], "Mismatch between name and data."
