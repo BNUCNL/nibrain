@@ -61,38 +61,47 @@ class GeometryAttribute(object):
         self._vertex_id = vertex_id
 
     def get(self, key):
+        """
+        Get property of Geometry by key.
+
+        Parameters
+        ----------
+            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+
+        Return
+        ------
+            Value of properties.
+        """
         if key == "name":
-            return self._name
+            return self.name
         elif key == "vertex_coords":
-            return self._vertex_coords
+            return self.vertex_coords
         elif key == "vertex_faces":
-            return self._vertex_faces
+            return self.vertex_faces
         elif key == "vertex_id":
-            return self._vertex_id
+            return self.vertex_id
         else:
-            raise ValueError("Input should be in ['vertex_coords', 'vertex_faces', vertex_id'].")
+            raise ValueError("Input should be one of ['name', 'vertex_coords', 'vertex_faces', 'vertex_id'].")
 
     def set(self, key, value):
+        """
+        Set value to the property of Geometry by key.
+
+        Parameters
+        ----------
+            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            value: value of properties that what to set.
+        """
         if key == "name":
-            assert isinstance(value, str), "Input 'name' should be string."
-            assert value in self._surface_type, "Name should be in {0}".format(self._surface_type)
-            self._name = value
-
+            self.name = value
         elif key == "vertex_coords":
-            assert value.ndim == 2, "Input should be 2-dim."
-            assert value.shape[1] == 3, "The shape of input should be (N, 3)."
-            self._vertex_coords = value
-
+            self.vertex_coords = value
         elif key == "vertex_faces":
-            assert value.ndim == 2, "Input should be 2-dim."
-            assert value.shape[1] == 3, "The shape of input should be (N, 3)."
-            self._vertex_faces = value
-
+            self.vertex_faces = value
         elif key == "vertex_id":
-            assert isinstance(value, list) or isinstance(value, np.ndarray), "Input should be list or numpy array"
-            self._vertex_id = value
+            self.vertex_id = value
         else:
-            raise ValueError("Input should be one of ['name', 'vertex_coords', 'vertex_faces', vertex_id'].")
+            raise ValueError("Input should be one of ['name', 'vertex_coords', 'vertex_faces', 'vertex_id'].")
 
 
 class ConnectionAttribute(object):
@@ -123,6 +132,41 @@ class ConnectionAttribute(object):
     @tract.setter
     def tract(self, tract):
         self._tract = tract
+
+    def get(self, key):
+        """
+        Get property of Geometry by key.
+
+        Parameters
+        ----------
+            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+
+        Return
+        ------
+            Value of properties.
+        """
+        if key == "region":
+            return self.region
+        elif key == "tract":
+            return self.tract
+        else:
+            raise ValueError("Input should be one of ['region', 'tract'].")
+
+    def set(self, key, value):
+        """
+        Set value to the property of Geometry by key.
+
+        Parameters
+        ----------
+            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            value: value of properties that what to set.
+        """
+        if key == "region":
+            self.region = value
+        elif key == "tract":
+            self.tract = value
+        else:
+            raise ValueError("Input should be one of ['region', 'tract'].")
 
     def append(self, ca):
         """
