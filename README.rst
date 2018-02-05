@@ -15,9 +15,9 @@ In MRfree we aim to:
 
 2. Integrate region and tract analysis.
 
-3. Integrate surface and volume analysis.
+3. Integrate structural and functional analysis.
 
-4. Integrate structural and functional analysis.
+4. Integrate surface and volume analysis.
 
 5. Integrate voxel(vertex) and ROI analysis.
 
