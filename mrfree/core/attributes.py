@@ -78,7 +78,7 @@ class ScalarAttribute(object):
     def __neg__(self):
         self.data = -1.0*self.data
 
-    def __pos_(self):
+    def __pos__(self):
         self.data = np.abs(self.data)
 
     def set(self, name, data):
