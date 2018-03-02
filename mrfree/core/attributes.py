@@ -263,10 +263,13 @@ class ScalarAttribute(object):
         Args:
             name: Identity of data.
         """
-        assert name in self.name, "Name mismatched."
-        indices = [i for i, x in enumerate(self.name) if x == name]
-        self.name = [x for i, x in enumerate(self.name) if i not in indices]
-        self.data = np.delete(self.data, indices, axis=1)
+        if isinstance(name, str):
+            name = [name]
+        for na in name:
+            assert na in self.name, "Name mismatched."
+            indices = [i for i, x in enumerate(self.name) if x == na]
+            self.name = [x for i, x in enumerate(self.name) if i not in indices]
+            self.data = np.delete(self.data, indices, axis=1)
         
 
 class ConnectionAttribute(object):
