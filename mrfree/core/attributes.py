@@ -196,17 +196,14 @@ class ScalarAttribute(object):
             name = [name]
         assert isinstance(name, list), "Name should be a string or list."
         assert isinstance(data, np.ndarray), "Convert data into np.ndarray before using it."
+	if data.ndim == 1:
+            data = data[...,np.newaxis]
         if (len(np.unique(name)) == 1)&(len(name)<data.shape[1]):
             name = [name[0]]*data.shape[1]
         else:
-            assert len(name)==data.shape[1], "Mismatch between name and data."    
-        if data.ndim == 1:
-            data = data[...,np.newaxis]
-        if (self.name is None) | (self.data is None):
-            self.name = name
-            self.data = data
-        else: 
-            self.append(name, data) 
+            assert len(name)==data.shape[1], "Mismatch between name and data." 
+        self.name = name
+        self.data = data
 
     def get(self, name):
         """
