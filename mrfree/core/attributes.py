@@ -5,24 +5,24 @@
 import numpy as np
 
 
-class GeometryAttribute(object):
-    def __init__(self, name, vertex_coords=None, vertex_faces=None, vertex_id=None):
+class Geometry(object):
+    def __init__(self, name, coords=None, faces=None, index=None):
         """
-        Init GeometryAttribute.
+        Init Geometry.
 
         Parameters
         ----------
             name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-            vertex_coords: coords of vertexes, should be N*3 array.
-            vertex_faces: faces of vertexes, should be M*3 array.
-            vertex_id: vertexes id in this geometry, should be K*1 array.
+            coords: coords of vertexes, should be N*3 array.
+            faces: faces of vertexes, should be M*3 array.
+            index: vertexes index in this geometry, should be K*1 array.
         """
         self._surface_type = ['white', 'pial', 'inflated', 'sphere']
 
         self.name = name
-        self.vertex_coords = vertex_coords
-        self.vertex_faces = vertex_faces
-        self.vertex_id = vertex_id
+        self.coords = coords
+        self.faces = faces
+        self.index = index
 
     @property
     def name(self):
@@ -35,33 +35,33 @@ class GeometryAttribute(object):
         self._name = name
 
     @property
-    def vertex_coords(self):
-        return self._vertex_coords
+    def coords(self):
+        return self._coords
 
-    @vertex_coords.setter
-    def vertex_coords(self, vertex_coords):
-        assert vertex_coords.ndim == 2, "Input should be 2-dim."
-        assert vertex_coords.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._vertex_coords = vertex_coords
-
-    @property
-    def vertex_faces(self):
-        return self._vertex_faces
-
-    @vertex_faces.setter
-    def vertex_faces(self, vertex_faces):
-        assert vertex_faces.ndim == 2, "Input should be 2-dim."
-        assert vertex_faces.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._vertex_faces = vertex_faces
+    @coords.setter
+    def coords(self, coords):
+        assert coords.ndim == 2, "Input should be 2-dim."
+        assert coords.shape[1] == 3, "The shape of input should be (N, 3)."
+        self._coords = coords
 
     @property
-    def vertex_id(self):
-        return self._vertex_id
+    def faces(self):
+        return self._faces
 
-    @vertex_id.setter
-    def vertex_id(self, vertex_id):
-        assert isinstance(vertex_id, list) or isinstance(vertex_id, np.ndarray), "Input should be list or numpy array"
-        self._vertex_id = vertex_id
+    @faces.setter
+    def faces(self, faces):
+        assert faces.ndim == 2, "Input should be 2-dim."
+        assert faces.shape[1] == 3, "The shape of input should be (N, 3)."
+        self._faces = faces
+
+    @property
+    def index(self):
+        return self._index
+
+    @index.setter
+    def index(self, index):
+        assert isinstance(index, list) or isinstance(index, np.ndarray), "Input should be list or numpy array"
+        self._index = index
 
     def get(self, key):
         """
@@ -69,7 +69,7 @@ class GeometryAttribute(object):
 
         Parameters
         ----------
-            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            key: name of properties of Geometry, should be one of ['coords', 'faces', index']
 
         Return
         ------
@@ -77,14 +77,14 @@ class GeometryAttribute(object):
         """
         if key == "name":
             return self.name
-        elif key == "vertex_coords":
-            return self.vertex_coords
-        elif key == "vertex_faces":
-            return self.vertex_faces
-        elif key == "vertex_id":
-            return self.vertex_id
+        elif key == "coords":
+            return self.coords
+        elif key == "faces":
+            return self.faces
+        elif key == "index":
+            return self.index
         else:
-            raise ValueError("Input should be one of ['name', 'vertex_coords', 'vertex_faces', 'vertex_id'].")
+            raise ValueError("Input should be one of ['name', 'coords', 'faces', 'index'].")
 
     def set(self, key, value):
         """
@@ -92,24 +92,24 @@ class GeometryAttribute(object):
 
         Parameters
         ----------
-            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            key: name of properties of Geometry, should be one of ['coords', 'faces', index']
             value: value of properties that what to set.
         """
         if key == "name":
             self.name = value
-        elif key == "vertex_coords":
-            self.vertex_coords = value
-        elif key == "vertex_faces":
-            self.vertex_faces = value
-        elif key == "vertex_id":
-            self.vertex_id = value
+        elif key == "coords":
+            self.coords = value
+        elif key == "faces":
+            self.faces = value
+        elif key == "index":
+            self.index = value
         else:
-            raise ValueError("Input should be one of ['name', 'vertex_coords', 'vertex_faces', 'vertex_id'].")
+            raise ValueError("Input should be one of ['name', 'coords', 'faces', 'index'].")
 
 
-class ScalarAttribute(object):
+class Scalar(object):
     """
-    Class of ScalarAttribute.
+    Class of Scalar.
 
     Attributes:
         name: A string or list as identity of scalar data.
@@ -136,7 +136,7 @@ class ScalarAttribute(object):
         return self.get(item)
 
     def __add__(self, other):
-        sa_ins = ScalarAttribute()
+        sa_ins = Scalar()
         same_indices = np.unique([i for i in self.name if i in other.name])
         for i, idname in enumerate(same_indices):
             try:
@@ -146,7 +146,7 @@ class ScalarAttribute(object):
         return sa_ins
 
     def __sub__(self, other):
-        sa_ins = ScalarAttribute()
+        sa_ins = Scalar()
         same_indices = np.unique([i for i in self.name if i in other.name])
         for i, idname in enumerate(same_indices):
             try:
@@ -156,7 +156,7 @@ class ScalarAttribute(object):
         return sa_ins
 
     def __mul__(self, other):
-        sa_ins = ScalarAttribute()
+        sa_ins = Scalar()
         same_indices = np.unique([i for i in self.name if i in other.name])
         for i, idname in enumerate(same_indices):
             try:
@@ -166,7 +166,7 @@ class ScalarAttribute(object):
         return sa_ins
 
     def __div__(self, other):
-        sa_ins = ScalarAttribute()
+        sa_ins = Scalar()
         same_indices = np.unique([i for i in self.name if i in other.name])
         for i, idname in enumerate(same_indices):
             try:
@@ -269,10 +269,10 @@ class ScalarAttribute(object):
         self.data = np.delete(self.data, indices, axis=1)
         
 
-class ConnectionAttribute(object):
+class Connection(object):
     def __init__(self, region=None, tract=None):
         """
-        Init ConnectionAttribute.
+        Init Connection.
 
         Parameters
         ----------
@@ -304,7 +304,7 @@ class ConnectionAttribute(object):
 
         Parameters
         ----------
-            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            key: name of properties of Connection, should be one of ['coords', 'faces', index']
 
         Return
         ------
@@ -323,7 +323,7 @@ class ConnectionAttribute(object):
 
         Parameters
         ----------
-            key: name of properties of GeometryAttribute, should be one of ['vertex_coords', 'vertex_faces', vertex_id']
+            key: name of properties of Connection, should be one of ['coords', 'faces', index']
             value: value of properties that what to set.
         """
         if key == "region":
@@ -335,11 +335,11 @@ class ConnectionAttribute(object):
 
     def append(self, ca):
         """
-        Merge another ConnectionAttribute class.
+        Merge another Connection class.
 
         Parameters
         ----------
-            ca: an instance of ConnectionAttribute class.
+            ca: an instance of Connection class.
         """
         self.region.append(ca.region)
         self.tract.append(ca.tract)

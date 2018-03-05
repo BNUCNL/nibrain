@@ -1,5 +1,5 @@
 # region class
-from .attributes import GeometryAttribute, ScalarAttribute, ConnectionAttribute
+from mrfree.core.attributes import Geometry, Scalar, Connection
 
 
 class Region(object):
@@ -11,15 +11,15 @@ class Region(object):
         name: name of region, type: string.
         layer: layer number of region, type: string.
         source: source of region, type: string.
-        space: space of region, type:string
+        space: space of region, type: string
 
         xform: transform matrix of region
         anat_coords: coords of region, should be N*3 array.
-        ga: geometry attributes, should be an instance of class GeometryAttribute.
-        sa: scalar attributes, should be an instance of class ScalarAttribute.
-        ca: connection attributes, should be an instance of class ConnectionAttribute.
+        geometry: geometry attributes, should be an instance of class Geometry.
+        scalar: scalar attributes, should be an instance of class Scalar.
+        connection: connection attributes, should be an instance of class Connection.
     """
-    def __init__(self, name, layer=None, source=None, space=None):
+    def __init__(self, name, layer='4', source=None, space='native'):
         """
         Init Region for further usage.
 
@@ -28,7 +28,7 @@ class Region(object):
             name: name of region, type: string.
             layer: layer number of region, type: string.
             source: source of region, type: string.
-            space: space of where this region exists, type:string
+            space: space of where this region exists, type: string
         """
         self.name = name
         self.layer = layer
@@ -94,29 +94,29 @@ class Region(object):
         self._anat_coords = anat_coords
 
     @property
-    def ga(self):
-        return self._ga
+    def geometry(self):
+        return self._geometry
 
-    @ga.setter
-    def ga(self, ga):
-        assert isinstance(ga, GeometryAttribute), "Input 'ga' should be an instance of GeometryAttribute."
-        self._ga = ga
-
-    @property
-    def sa(self):
-        return self._sa
-
-    @sa.setter
-    def sa(self, sa):
-        assert isinstance(sa, ScalarAttribute), "Input 'sa' should be an instance of ScalarAttribute."
-        self._sa = sa
+    @geometry.setter
+    def geometry(self, geometry):
+        assert isinstance(geometry, Geometry), "Input 'geometry' should be an instance of Geometry."
+        self._geometry = geometry
 
     @property
-    def ca(self):
-        return self._ca
+    def scalar(self):
+        return self._scalar
 
-    @ca.setter
-    def ca(self, ca):
-        assert isinstance(ca, ConnectionAttribute), "Input 'ca' should be an instance of ConnectionAttribute."
-        self._ca = ca
+    @scalar.setter
+    def scalar(self, scalar):
+        assert isinstance(scalar, Scalar), "Input 'scalar' should be an instance of Scalar."
+        self._scalar = scalar
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @connection.setter
+    def connection(self, connection):
+        assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
+        self._connection = connection
 
