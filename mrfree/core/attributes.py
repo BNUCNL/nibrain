@@ -219,14 +219,23 @@ class Scalar(object):
         Raises:
             pass    
         """
+        if isinstance(name, str):
+            name = [name]
         if self.name is not None:
             # find all occurrences of name in a list of self.name
-            indices = [i for i, x in enumerate(self.name) if x == name]
+            indices = [i for i, x in enumerate(self.name) if x in name]
+
+            if len(self.name) == len(name):
+                assert len(indices) == len(name), "Exist mismatched feature(s)."
+            else:
+                assert len(np.unique(self.name)) == len(np.unique(self.name)), "Exist mismatched feature(s)."
+
             if len(indices) == 0:
                 print('Name mismatched.')
                 return None
             else:
-                return self.data[:, tuple(indices)]
+                dataidx = [self.name[i] for i in indices]
+                return dataidx, self.data[:, tuple(indices)]
         else:
             print('Set data firstly.')
             return None            
@@ -285,10 +294,31 @@ class Scalar(object):
 
     def aggregate(self, scalar, feature = None):
         """
-        
+        Aggregate data in a new scalar to a existed scalar.
+
+        Args:
+            scalar: scalar instance
+            feature: feature(identity) list.
+                     Select specific feature(s) to aggregate with.
+
+        Returns:
+            A new scalar instance that has been aggregating. 
         """
+        sa_ins = Scalar()
         if feature is None:
             assert sorted(self.name) == sorted(scalar.name), "Feature mismatched."          
+            name = sorted(self.name)
+            agg_data = np.vstack((self.data[:,np.argsort(self.name)], scalar.data[:,np.argsort(scalar.name)]))      
+        else: 
+            if isinstance(feature, str):
+                feature = [feature]
+            name1, data1 = self.get(feature) 
+            name2, data2 = scalar.get(feature)
+            assert name1 == name2, "Existing mismatched feature."
+            name = name1
+            agg_data = np.vstack((data1, data2))
+        sa_ins.set(name, agg_data)
+        return sa_ins
             
 
         
