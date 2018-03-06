@@ -267,6 +267,30 @@ class Scalar(object):
             indices = [i for i, x in enumerate(self.name) if x == na]
             self.name = [x for i, x in enumerate(self.name) if i not in indices]
             self.data = np.delete(self.data, indices, axis=1)
+
+    def sort(self, reverse = False):
+        """
+        Sorted scalar instance by features
+
+        Args:
+            reverse: sorting order.
+                     By default is False, in ascending order.
+                     if True, by descending order.
+        """
+        self.name = sorted(self.name, reverse = reverse)
+        if reverse is False:
+            self.data = self.data[:, np.argsort(self.name)]
+        else:
+            self.data = self.data[:, np.argsort(self.name)[::-1]] 
+
+    def aggregate(self, scalar, feature = None):
+        """
+        
+        """
+        if feature is None:
+            assert sorted(self.name) == sorted(scalar.name), "Feature mismatched."          
+            
+
         
 
 class Connection(object):
