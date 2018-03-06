@@ -123,7 +123,7 @@ class Scalar(object):
         if (name is not None) & (data is not None):
             self.set(name, data)
         else:
-            print('Lack of input data.')
+            pass
 
     def __setattr__(self, item, value):
         object.__setattr__(self, item, value)
