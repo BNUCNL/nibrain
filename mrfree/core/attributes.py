@@ -170,7 +170,7 @@ class Scalar(object):
         same_indices = np.unique([i for i in self.name if i in other.name])
         for i, idname in enumerate(same_indices):
             try:
-                sa_ins.set(idname, self.get(idname)[1] / other.get(idname)[1])
+                sa_ins.set(idname, 1.0*self.get(idname)[1] / other.get(idname)[1])
             except ValueError:
                 raise Exception('{} mismatched'.format(idname))
         return sa_ins
@@ -300,7 +300,7 @@ class Scalar(object):
 
         Args:
             scalar: scalar instance
-            feature: feature(identity) list.
+            feature: feature (identity) list.
                      Select specific feature(s) to aggregate with.
 
         Returns:
@@ -324,6 +324,15 @@ class Scalar(object):
             
     def add(self, scalar, feature = None):
         """
+        Scalar addition
+
+        Args:
+            scalar: scalar instance
+            feature: feature (identity) list.
+                     Select specific feature(s) for operation
+
+        Returns:
+            A new scalar instance contains data from addition of data in two original scalar instance.
         """
         sa_ins = Scalar()
         if feature is None:
@@ -339,6 +348,90 @@ class Scalar(object):
             name = name1
             add_data = data1 + data2
         sa_ins.set(name, add_data)
+        return sa_ins
+
+    def subtract(self, scalar, feature = None):
+        """
+        Scalar subtraction
+
+        Args:
+            scalar: scalar instance
+            feature: feature (identity) list.
+                     select specific feature(s) for operation.
+
+        Returns:
+            A new scalar instance contains data from subtraction of data in two orginal scalar instance.
+        """
+        sa_ins = Scalar()
+        if feature is None:
+            assert sorted(self.name) == sorted(scalar.name), "Feature mismatched."
+            name = self.name
+            subtract_data = self.data[:, np.argsort(self.name)] - scalar.data[:, np.argsort(self.name)]
+        else:
+            if isinstance(feature, str):
+                feature = [feature]
+            name1, data1 = self.get(feature)
+            name2, data2 = scalar.get(feature)
+            assert name1 == name2, "Existing mismatched feature."
+            name = name1
+            subtract_data = data1 - data2
+        sa_ins.set(name, subtract_data)
+        return sa_ins 
+
+    def multiply(self, scalar, feature = None):
+        """
+        Scalar multiply.
+
+        Args: 
+            scalar: scalar instance
+            feature: feature (identity) list.
+                     Select specific feature(s) to operation.
+
+        Returns:
+            A new scalar instance contains data from multiplication of data in two original scalar instance.
+        """ 
+        sa_ins = Scalar()
+        if feature is None:
+            assert sorted(self.name) == sorted(scalar.name), "Feature mismatched."
+            name = self.name
+            multiply_data = self.data[:, np.argsort(self.name)] * scalar.data[:, np.argsort(self.name)]
+        else:
+            if isinstance(feature, str):
+                feature = [feature]
+            name1, data1 = self.get(feature)
+            name2, data2 = self.get(feature)
+            assert name1 == name2, "Existing mismatched feature."
+            name = name1
+            multiply_data = data1 * data2
+        sa_ins.set(name, multiply_data)
+        return sa_ins
+
+    def divide(self, scalar, feature = None):
+        """
+        Scalar division
+
+        Args:
+            scalar: scalar instance
+            feature: feature (identity) list.
+                     Select specific feature(s) to operation.
+
+        Returns:
+            A new scalar instance contains data from division of data in two original scalar instance.
+        """
+        sa_ins = Scalar()
+        if feature is None:
+            assert sorted(self.name) == sorted(scalar.name), "Feature mismatched."
+            name = self.name
+            div_data = self.data[:, np.argsort(self.name)] + scalar.data[:, np.argsort(self.name)]
+        else:
+            if isinstance(feature, str):
+                feature = [feature]
+            name1, data1 = self.get(feature)
+            name2, data2 = scalar.get(feature)
+            assert name1 == name2, "Existing mismatched feature."
+            name = name1
+            div_data = 1.0 * data1 / data2
+        sa_ins.set(name, div_data)
         return sa_ins
 
 class Connection(object):
