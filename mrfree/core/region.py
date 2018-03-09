@@ -1,7 +1,7 @@
 # region class
 import numpy as np
 from mrfree.core.attributes import Geometry, Scalar, Connection
-from mrfree.io import io
+from mrfree.io import load
 
 
 class Region(object):
@@ -273,15 +273,33 @@ class SurfaceRegion(Region):
     """
 
     """
-    def load_geometry(self, surf_file):
-        # TODO specify index and label
-        coords, faces, label = io.load_surf_geom(surf_file)
+    def load_geometry(self, name, surf_file, surf_label_file=None):
+        """
+        Load surf info into Geometry by load function.
+
+        Parameters
+        ----------
+            name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
+            surf_file: Surface file path, specified as a filename (single file).
+            surf_label_file: Surface label file path, specified as a filename (single file).
+        """
+        self.geometry.name = name
+        coords, faces, label = load.load_surf_geom(surf_file, surf_label_file)
         self.geometry.coords = coords
         self.geometry.faces = faces
         self.geometry.index = label
 
-    def load_scalar(self, name, surf_file, label=None):
-        data = io.load_surf_scalar(surf_file, label)
+    def load_scalar(self, name, surf_file, surf_label_file=None):
+        """
+        Load scalar data into Scalar by load function.
+
+        Parameters
+        ----------
+            name: A string or list as identity of scalar data.
+            surf_file: Surface file path, specified as a filename (single file).
+            surf_label_file: Surface label file path, specified as a filename (single file).
+        """
+        data = load.load_surf_scalar(surf_file, surf_label_file)
         self.scalar.set(name, data)
 
     def save(self, save_path):
@@ -292,13 +310,30 @@ class VolumeRegion(Region):
     """
 
     """
-    def load_geometry(self, vol_file):
-        coords, xform = io.load_vol_geom(vol_file)
+    def load_geometry(self, vol_file, vol_mask_file=None):
+        """
+        Load volume geometry by load function.
+
+        Parameters
+        ----------
+            vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
+            vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
+        """
+        coords, xform = load.load_vol_geom(vol_file, vol_mask_file)
         self.xform = xform
         self.anat_coords = coords
 
-    def load_scalar(self, name, vol_file, label=None):
-        data = io.load_vol_scalar(vol_file, label)
+    def load_scalar(self, name, vol_file, vol_mask_file=None):
+        """
+        Load volume scalar by load function.
+
+        Parameters
+        ----------
+            name: A string or list as identity of scalar data.
+            vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
+            vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
+        """
+        data = load.load_vol_scalar(vol_file, vol_mask_file)
         self.scalar.set(name, data)
 
     def save(self, save_path):

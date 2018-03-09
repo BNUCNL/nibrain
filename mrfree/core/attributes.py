@@ -306,7 +306,7 @@ class Scalar(object):
             name = [name]
         assert isinstance(name, list), "Name should be a string or list."
         assert isinstance(data, np.ndarray), "Convert data into np.ndarray before using it."
-	if data.ndim == 1:
+        if data.ndim == 1:
             data = data[...,np.newaxis]
         if (len(np.unique(name)) == 1)&(len(name)<data.shape[1]):
             name = [name[0]]*data.shape[1]
