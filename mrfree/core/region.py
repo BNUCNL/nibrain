@@ -74,7 +74,8 @@ class Region(object):
 
     @source.setter
     def source(self, source):
-        assert isinstance(source, str), "Input 'source' should be string."
+        if source:
+            assert isinstance(source, str), "Input 'source' should be string."
         self._source = source
 
     @property
@@ -136,8 +137,10 @@ class Region(object):
         self.__union_anat_coords(region.anat_coords)
         if hasattr(self, 'geometry'):
             self.__union_geometry(region.geometry)
-        self.__union_scalar(region.scalar)
-        self.__union_connection(region.connection)
+        if hasattr(self, 'scalar'):
+            self.__union_scalar(region.scalar)
+        if hasattr(self, 'connection'):
+            self.__union_connection(region.connection)
 
     def __union_anat_coords(self, anat_coords):
         anat_coords = np.append(self.anat_coords, anat_coords, axis=0)
@@ -168,8 +171,10 @@ class Region(object):
         self.__intersect_anat_coords(region.anat_coords)
         if hasattr(self, 'geometry'):
             self.__intersect_geometry(region.geometry)
-        self.__intersect_scalar(region.scalar)
-        self.__intersect_connection(region.connection)
+        if hasattr(self, 'scalar'):
+            self.__intersect_scalar(region.scalar)
+        if hasattr(self, 'connection'):
+            self.__intersect_connection(region.connection)
 
     def __intersect_anat_coords(self, anat_coords):
         result = []
@@ -196,15 +201,16 @@ class Region(object):
         ----------
             region: an instance of Region class, its layer and space should be the same as this region class.
         """
-        # TODO to be completed.
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
+
         self.exclude_anat_coords(region.anat_coords)
         if hasattr(self, 'geometry'):
             self.exclude_geometry(region.geometry)
-
-        self.exclude_scalar(region.scalar)
-        self.exclude_connection(region.connection)
+        if hasattr(self, 'scalar'):
+            self.exclude_scalar(region.scalar)
+        if hasattr(self, 'connection'):
+            self.exclude_connection(region.connection)
 
     def exclude_anat_coords(self, anat_coords):
         result = []
@@ -268,6 +274,13 @@ class Region(object):
         cen_anat_coords = np.mean(self.anat_coords, axis=1)
         return cen_anat_coords
 
+    def isc(self, data):
+        """
+
+        :param data:
+        :return:
+        """
+
 
 class SurfaceRegion(Region):
     """
@@ -283,11 +296,8 @@ class SurfaceRegion(Region):
             surf_file: Surface file path, specified as a filename (single file).
             surf_label_file: Surface label file path, specified as a filename (single file).
         """
-        self.geometry.name = name
         coords, faces, label = load.load_surf_geom(surf_file, surf_label_file)
-        self.geometry.coords = coords
-        self.geometry.faces = faces
-        self.geometry.index = label
+        self.geometry = Geometry(name, coords, faces, label)
 
     def load_scalar(self, name, surf_file, surf_label_file=None):
         """
@@ -300,7 +310,7 @@ class SurfaceRegion(Region):
             surf_label_file: Surface label file path, specified as a filename (single file).
         """
         data = load.load_surf_scalar(surf_file, surf_label_file)
-        self.scalar.set(name, data)
+        self.scalar = Scalar(name, data)
 
     def save(self, save_path):
         pass
@@ -334,7 +344,7 @@ class VolumeRegion(Region):
             vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
         """
         data = load.load_vol_scalar(vol_file, vol_mask_file)
-        self.scalar.set(name, data)
+        self.scalar = Scalar(name, data)
 
     def save(self, save_path):
         pass
