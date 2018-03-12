@@ -123,6 +123,19 @@ class Region(object):
         assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
         self._connection = connection
 
+    def __update(self, index):
+        """Update data by anat_coords."""
+        if hasattr(self, 'geometry'):
+            self.geometry.coords = self.geometry.coords[index]
+            self.geometry.faces = self.geometry.faces[index]
+            self.geometry.index = self.geometry.index[index]
+
+        if hasattr(self, 'scalar'):
+            self.scalar.data = self.scalar.data[index]
+
+        if hasattr(self, 'connection'):
+            pass
+
     def union(self, region):
         """
         Merge another region into self.
@@ -134,28 +147,25 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        self.__union_anat_coords(region.anat_coords)
+        # FIXME define unique_index
+        unique_coords = [item for item in region.anat_coords if item not in self.anat_coords]
+        unique_index =
+        self.anat_coords, index = self.__union_anat_coords(region.anat_coords)
+
         if hasattr(self, 'geometry'):
-            self.__union_geometry(region.geometry)
+            self.geometry.coords = self.geometry.coords[index] + region.geometry.coords[unique_index]
+            self.geometry.faces = self.geometry.faces[index] + region.geometry.faces[unique_index]
+            self.geometry.index = self.geometry.index[index] + region.geometry.index[unique_index]
+
         if hasattr(self, 'scalar'):
-            self.__union_scalar(region.scalar)
+            self.scalar.data = self.scalar.data[index].append(region.scalar.data[uindex])
+
         if hasattr(self, 'connection'):
-            self.__union_connection(region.connection)
+            pass
 
     def __union_anat_coords(self, anat_coords):
         anat_coords = np.append(self.anat_coords, anat_coords, axis=0)
-        self.anat_coords = np.unique(anat_coords, axis=0)
-
-    def __union_geometry(self, geometry):
-        self.geometry.union(geometry)
-
-    def __union_scalar(self, scalar):
-        # FIXME union scalar may need to remove duplicate elements.
-        self.scalar.aggregate(scalar)
-
-    def __union_connection(self, connection):
-        # FIXME union connection may need to remove duplicate elements.
-        self.connection.append(connection)
+        return np.unique(anat_coords, axis=0), index
 
     def intersect(self, region):
         """
@@ -168,13 +178,8 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        self.__intersect_anat_coords(region.anat_coords)
-        if hasattr(self, 'geometry'):
-            self.__intersect_geometry(region.geometry)
-        if hasattr(self, 'scalar'):
-            self.__intersect_scalar(region.scalar)
-        if hasattr(self, 'connection'):
-            self.__intersect_connection(region.connection)
+        self.__anat_coords, index = self.__intersect_anat_coords(region.anat_coords)
+        self.__update(index)
 
     def __intersect_anat_coords(self, anat_coords):
         result = []
@@ -182,16 +187,7 @@ class Region(object):
             for j in anat_coords:
                 if np.all(i == j):
                     result.append(i)
-        self.anat_coords = np.array(result)
-
-    def __intersect_geometry(self, geometry):
-        self.geometry.intersect(geometry)
-
-    def __intersect_scalar(self, scalar):
-        pass
-
-    def __intersect_connection(self, connection):
-        pass
+        return np.array(result), index
 
     def exclude(self, region):
         """
@@ -204,15 +200,10 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        self.exclude_anat_coords(region.anat_coords)
-        if hasattr(self, 'geometry'):
-            self.exclude_geometry(region.geometry)
-        if hasattr(self, 'scalar'):
-            self.exclude_scalar(region.scalar)
-        if hasattr(self, 'connection'):
-            self.exclude_connection(region.connection)
+        self.__anat_coords, index = self.__exclude_anat_coords(region.anat_coords)
+        self.__update(index)
 
-    def exclude_anat_coords(self, anat_coords):
+    def __exclude_anat_coords(self, anat_coords):
         result = []
         for i in self.anat_coords:
             match = 0
@@ -222,24 +213,7 @@ class Region(object):
                     break
             if not match:
                 result.append(i)
-        self.anat_coords = np.array(result)
-
-    def exclude_geometry(self, geometry):
-        self.geometry.exclude(geometry)
-
-    def exclude_scalar(self, scalar):
-        # FIXME the part of getting data should be modified.
-        data1, name1 = self.scalar.get('all')
-        __, name2 = scalar.get('all')
-
-        result_name = list(np.array(name1)[np.in1d(name1, name2)])
-        result_data = data1[np.in1d(name1, name2)]
-
-        self.scalar.name = result_name
-        self.scalar.data = result_data
-
-    def exclude_connection(self, connection):
-        pass
+        return np.array(result), index
 
     @property
     def centroid(self):
@@ -273,13 +247,6 @@ class Region(object):
         # TODO specify mean method.
         cen_anat_coords = np.mean(self.anat_coords, axis=1)
         return cen_anat_coords
-
-    def isc(self, data):
-        """
-
-        :param data:
-        :return:
-        """
 
 
 class SurfaceRegion(Region):
