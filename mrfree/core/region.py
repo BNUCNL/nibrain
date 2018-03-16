@@ -123,18 +123,37 @@ class Region(object):
         assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
         self._connection = connection
 
-    def __update(self, index):
-        """Update data by anat_coords."""
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[index]
-            self.geometry.faces = self.geometry.faces[index]
-            self.geometry.index = self.geometry.index[index]
+    @staticmethod
+    def extract(array1, array2, method='unique'):
+        """
+        Compare and extract rows from array2 if it suits requirement.
+        Notice that compare is affected by the order of row in array1 and array2, for example:
+            [1, 2, 3] and [3, 2, 1] is different in this method.
 
-        if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[index]
+        Parameters
+        ----------
+            array1: target array that be compared with.
+            array2: source array that used for loop and compare.
+            method: decide to get common part unique part in array2.
+                    keyword: 'unique' for unique row that in array2 and not in array1.
+                    keyword: 'common' for common row that in both array1 and array2.
 
-        if hasattr(self, 'connection'):
-            pass
+        Return
+        ------
+            index: index of rows that meets requirement in array2.
+        """
+        assert isinstance(method, str), 'method should be string.'
+        assert method in ['equal', 'unique'], 'Wrong method name.'
+
+        index = []
+        for i, n in enumerate(array2):
+            compare = (n == array1)
+            for j in compare:
+                if method == 'unique' and not j.all():  # not all equal
+                    index.append(i)
+                if method == 'common' and j.all():  # all equal
+                    index.append(i)
+        return np.array(index)
 
     def union(self, region):
         """
@@ -147,25 +166,19 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        # FIXME define unique_index
-        unique_coords = [item for item in region.anat_coords if item not in self.anat_coords]
-        unique_index =
-        self.anat_coords, index = self.__union_anat_coords(region.anat_coords)
+        idx = self.extract(self.anat_coords, region.anat_coords, method='unique')
+        self.anat_coords = np.append(self.anat_coords, region.anat_coords[idx], axis=0)
 
         if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[index] + region.geometry.coords[unique_index]
-            self.geometry.faces = self.geometry.faces[index] + region.geometry.faces[unique_index]
-            self.geometry.index = self.geometry.index[index] + region.geometry.index[unique_index]
+            self.geometry.coords = np.append(self.geometry.coords, region.geometry.coords[idx], axis=0)
+            self.geometry.faces = np.append(self.geometry.faces, region.geometry.faces[idx], axis=0)
+            self.geometry.index = np.append(self.geometry.index, region.geometry.index[idx], axis=0)
 
         if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[index].append(region.scalar.data[uindex])
+            self.scalar.data = np.append(self.scalar.data, region.scalar.data[idx], axis=0)
 
         if hasattr(self, 'connection'):
             pass
-
-    def __union_anat_coords(self, anat_coords):
-        anat_coords = np.append(self.anat_coords, anat_coords, axis=0)
-        return np.unique(anat_coords, axis=0), index
 
     def intersect(self, region):
         """
@@ -178,20 +191,23 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        self.__anat_coords, index = self.__intersect_anat_coords(region.anat_coords)
-        self.__update(index)
+        idx = self.extract(region.anat_coords, self.anat_coords, method='common')
+        self.anat_coords = self.anat_coords[idx]
 
-    def __intersect_anat_coords(self, anat_coords):
-        result = []
-        for i in self.anat_coords:
-            for j in anat_coords:
-                if np.all(i == j):
-                    result.append(i)
-        return np.array(result), index
+        if hasattr(self, 'geometry'):
+            self.geometry.coords = self.geometry.coords[idx]
+            self.geometry.faces = self.geometry.faces[idx]
+            self.geometry.index = self.geometry.index[idx]
+
+        if hasattr(self, 'scalar'):
+            self.scalar.data = self.scalar.data[idx]
+
+        if hasattr(self, 'connection'):
+            pass
 
     def exclude(self, region):
         """
-        Exclude another region out of self.
+        Exclude another region out of self, which also means keep the unique part of self.
 
         Parameters
         ----------
@@ -200,20 +216,19 @@ class Region(object):
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
 
-        self.__anat_coords, index = self.__exclude_anat_coords(region.anat_coords)
-        self.__update(index)
+        idx = self.extract(region.anat_coords, self.anat_coords, method='unique')
+        self.anat_coords = self.anat_coords[idx]
 
-    def __exclude_anat_coords(self, anat_coords):
-        result = []
-        for i in self.anat_coords:
-            match = 0
-            for j in anat_coords:
-                if np.all(i == j):
-                    match = 1
-                    break
-            if not match:
-                result.append(i)
-        return np.array(result), index
+        if hasattr(self, 'geometry'):
+            self.geometry.coords = self.geometry.coords[idx]
+            self.geometry.faces = self.geometry.faces[idx]
+            self.geometry.index = self.geometry.index[idx]
+
+        if hasattr(self, 'scalar'):
+            self.scalar.data = self.scalar.data[idx]
+
+        if hasattr(self, 'connection'):
+            pass
 
     @property
     def centroid(self):
