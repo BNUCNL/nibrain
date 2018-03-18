@@ -61,7 +61,7 @@ class Geometry(object):
     @index.setter
     def index(self, index):
         assert isinstance(index, list) or isinstance(index, np.ndarray), "Input should be list or numpy array"
-        self._index = index
+        self._index = np.array(index)
 
     def get(self, key):
         """
@@ -105,6 +105,22 @@ class Geometry(object):
             self.index = value
         else:
             raise ValueError("Input should be one of ['name', 'coords', 'faces', 'index'].")
+
+    @property
+    def centroid(self):
+        """
+        Get centroid of self geometry.
+
+        Return
+        ------
+            cen: an instance of geometry class, centroid of self geometry.
+        """
+        # FIXME specify meaning of parameters.
+        cen = Geometry(name=self.name)
+        cen.coords = np.mean(self.coords, axis=0)
+        cen.faces = None
+        cen.index = None
+        return cen
 
 
 class Scalar(object):
@@ -196,7 +212,7 @@ class Scalar(object):
             name = [name]
         assert isinstance(name, list), "Name should be a string or list."
         assert isinstance(data, np.ndarray), "Convert data into np.ndarray before using it."
-	if data.ndim == 1:
+        if data.ndim == 1:
             data = data[...,np.newaxis]
         if (len(np.unique(name)) == 1)&(len(name)<data.shape[1]):
             name = [name[0]]*data.shape[1]
