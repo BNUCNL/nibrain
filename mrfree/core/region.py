@@ -143,15 +143,15 @@ class Region(object):
             index: index of rows that meets requirement in array2.
         """
         assert isinstance(method, str), 'method should be string.'
-        assert method in ['equal', 'unique'], 'Wrong method name.'
+        assert method in ['common', 'unique'], 'Wrong method name.'
 
         index = []
         for i, n in enumerate(array2):
-            compare = (n == array1)
-            for j in compare:
-                if method == 'unique' and not j.all():  # not all equal
+            if method == 'common':
+                if np.any(np.all(n == array1, axis=1)):  # equal
                     index.append(i)
-                if method == 'common' and j.all():  # all equal
+            if method == 'unique':
+                if not np.any(np.all(n == array1, axis=1)):  # unique
                     index.append(i)
         return np.array(index)
 
