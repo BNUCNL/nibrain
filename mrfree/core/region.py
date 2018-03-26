@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # region class
 import numpy as np
 from mrfree.core.attributes import Geometry, Scalar, Connection

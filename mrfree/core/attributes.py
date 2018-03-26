@@ -3,6 +3,7 @@
 # attributes class
 
 import numpy as np
+from mrfree.algorithms.geometry.adj_tools import faces_to_edges, faces_to_adjmatrix
 
 
 class Geometry(object):
@@ -121,6 +122,32 @@ class Geometry(object):
         cen.faces = None
         cen.index = None
         return cen
+
+    def get_adjmatrix(self, sym=True):
+        """
+        Get adjacency matrix of Geometry, calculated from faces.
+
+        Parameters
+        ----------
+            sym: make adjmatrix symmetrical, default is True.
+
+        Returns
+        -------
+            adjm: adjacency matrix of (subj_id, hemi, surf), if mask=None, then shape = (n_vertexes, n_vertexes).
+        """
+        adjm = faces_to_adjmatrix(self.faces, sym=sym)
+        return adjm
+
+    def get_edges(self):
+        """
+        Get edges of Geometry, calculated from faces.
+
+        Returns
+        -------
+            edges: array, edges of brain surface mesh, shape=(n_edges, 2).
+        """
+        edges = faces_to_edges(self.faces)
+        return edges
 
 
 class Scalar(object):
