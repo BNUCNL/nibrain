@@ -1,26 +1,9 @@
+#!/usr/bin/env python
+
 """
 Provide tools for get or make matrix, faces, or other forms that reflect adjacent relationships of brain surface.
 """
 import numpy as np
-from mrfree.core.region import Region
-
-
-def mk_adjmatrix(region, mask=None):
-    """
-    Get adjacency matrix of region, and apply mask if it is given.
-
-    Parameters
-    ----------
-        region: an instance of Region class
-        mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
-
-    Returns
-    -------
-        adjmatrix: adjacency matrix of (subj_id, hemi, surf), if mask=None, then shape = (n_vertexes, n_vertexes).
-    """
-    assert isinstance(region, Region), "Input 'region' should be an instance of Region."
-    adj = faces_to_adjmatrix(region.geometry.faces, mask)
-    return 0.5 * (adj + adj.T)
 
 
 def faces_to_edges(faces):
@@ -48,28 +31,31 @@ def faces_to_edges(faces):
     return edges
 
 
-def edges_to_adjmatrix(edges):
+def edges_to_adjmatrix(edges, sym=True):
     """
     Build edges array from faces.
 
     Parameters
     ----------
-        edges: edges of brain surface mesh, shape=(n_edges, 2)
+        edges: edges of brain surface mesh, shape=(n_edges, 2).
+        sym: make adjmatrix symmetrical, default is True.
 
     Returns
     -------
-        adj_matrix: adj matrix that reflect linkages of edges, shape = (n_vertexes, n_vertexes).
+        adjm: adjm matrix that reflect linkages of edges, shape = (n_vertexes, n_vertexes).
     """
     vertexes = np.unique(edges)
     n_vertexes = len(vertexes)
-    adj_matrix = np.zeros((n_vertexes, n_vertexes))
+    adjm = np.zeros((n_vertexes, n_vertexes))
     for edge in edges:
-        adj_matrix[np.where(vertexes == edge[0]), np.where(vertexes == edge[1])] = 1
-    adj_matrix[np.where((adj_matrix + adj_matrix.T) > 0)] = 1
-    return adj_matrix
+        adjm[np.where(vertexes == edge[0]), np.where(vertexes == edge[1])] = 1
+    adjm[np.where((adjm + adjm.T) > 0)] = 1
+    if sym:
+        adjm = 0.5 * (adjm + adjm.T)
+    return adjm
 
 
-def faces_to_adjmatrix(faces, mask=None):
+def faces_to_adjmatrix(faces, mask=None, sym=True):
     """
     Build adjacency matrix by faces.
 
@@ -77,16 +63,19 @@ def faces_to_adjmatrix(faces, mask=None):
     ----------
         faces: triangles mesh of brain surface, shape=(n_mesh, 3).
         mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
+        sym: make adjmatrix symmetrical, default is True.
 
     Returns
     -------
-        adj_matrix: adj matrix that reflect linkages of faces, shape = (n_vertexes, n_vertexes).
+        adjm: adjacency matrix that reflect linkages of faces, shape = (n_vertexes, n_vertexes).
     """
-    adj = edges_to_adjmatrix(faces_to_edges(faces))
+    adjm = edges_to_adjmatrix(faces_to_edges(faces))
     if mask:
-        adj = np.delete(adj, mask, axis=0)
-        adj = np.delete(adj, mask, axis=1)
-    return adj
+        adjm = np.delete(adjm, mask, axis=0)
+        adjm = np.delete(adjm, mask, axis=1)
+    if sym:
+        adjm = 0.5 * (adjm + adjm.T)
+    return adjm
 
 
 def mk_label_adjmatrix(label_image, adjmatrix):
