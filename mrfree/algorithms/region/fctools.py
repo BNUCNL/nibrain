@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Calculate different types of functional correlation that maybe useful in natural stimulus analysis.
 Input file format: *.mgh (output format: *.mgh)
@@ -7,6 +9,7 @@ isc: Inter-subject correlation.
 fc: Functional correlation.
 """
 import numpy as np
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 
 
@@ -49,8 +52,13 @@ def isc(data1, data2):
         1. data1 and data2 should both be 2-dimensional.
         2. [n_samples, n_features] should be the same in data1 and data2.
     """
-    assert data1.shape == data2.shape, 'data1 and data2 should have the same shape.'
-    corr = np.array([np.corrcoef(data1[i], data2[i])[0, 1] for i in range(data1.shape[0])])
+    assert data1.ndim == 2 and data2.ndim == 2 and data1.shape == data2.shape, \
+        'data1 and data2 should have the same shape, and both should be 2-d array.\n \' \
+        Cannot calculate with shape {0}, {1}'.format(data1.shape, data2.shape)
+
+    z_data1 = zscore(data1, axis=1)
+    z_data2 = zscore(data2, axis=1)
+    corr = np.sum(z_data1 * z_data2, axis=1) / (np.size(data1, axis=1))
     return corr
 
 
