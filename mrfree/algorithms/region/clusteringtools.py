@@ -26,19 +26,21 @@ class Clustering(object):
         if self.mask:
             self._apply_mask()
 
-    def fit(self, parcel_num, method):
+    def fit(self, parcel_num, method, *args, **kwargs):
         self.method = method
         self.label = None
 
         # doing clustering
         if self.method == 'KMeans':
-            self._do_kmeans(parcel_num)
+            self._do_kmeans(parcel_num, *args, **kwargs)
 
         elif self.method == "hier_clustering":
-            self._do_hier(parcel_num)
+            self._do_hier(parcel_num, *args, **kwargs)
 
         elif self.method == "spectral_clustering":
-            self._do_spectral(parcel_num, affinity="precomputed")
+            if 'affinity' not in kwargs:
+                kwargs['affinity'] = 'precomputed'
+            self._do_spectral(parcel_num, *args, **kwargs)
 
         else:
             raise Exception("Wrong method name.")
@@ -46,7 +48,7 @@ class Clustering(object):
         self._rebuild_label(parcel_num)
         self.show_labelinfo()
 
-    def _do_kmeans(self, n_clusters):
+    def _do_kmeans(self, n_clusters, *args, **kwargs):
         """
         Doing KMeans clustering, see self.label for the result.
 
@@ -58,35 +60,29 @@ class Clustering(object):
         ------
             label: clustering result, shape: (n_vertexes,)
         """
-        kmeans = KMeans(n_clusters=n_clusters)
+        kmeans = KMeans(n_clusters, *args, **kwargs)
         kmeans.fit(self.data)
         self.label = kmeans.predict(self.data)
-
         return self.label
 
-    def _do_hier(self, n_clusters, adj=None):
+    def _do_hier(self, n_clusters, *args, **kwargs):
         """
         Doing hierarchy clustering, see self.label for the result.
 
         Parameters
         ----------
             n_clusters: the number of clusters, type: int.
-            adj: adjacency matrix, used for connectivity(adjacency constraint) if needed, default is None.
 
         Return
         ------
             label: clustering result, shape: (n_vertexes,)
         """
-        if adj is not None:
-            model = AgglomerativeClustering(n_clusters=n_clusters, linkage="ward", connectivity=adj)
-        else:
-            model = AgglomerativeClustering(n_clusters=n_clusters, linkage="ward")
+        model = AgglomerativeClustering(n_clusters, *args, **kwargs)
         model.fit(self.data)
         self.label = model.labels_
-
         return self.label
 
-    def _do_spectral(self, n_clusters, eigen_solver="arpack", affinity="rbf"):
+    def _do_spectral(self, n_clusters, *args, **kwargs):
         """
         Doing spectral clustering, see self.label for the result.
         This method calculate similarity matrix of data first, then use this smat as input for
@@ -96,21 +92,13 @@ class Clustering(object):
         Parameters
         ----------
             n_clusters: the number of clusters, type: int.
-            eigen_solver: The eigenvalue decomposition strategy to use, default is 'arpack'.
-                          For more information, see help(sklearn.cluster.SpectralClustering).
-            affinity: Only kernels that produce similarity scores (non-negative values that
-                      increase with similarity) should be used, default is 'rbf'.
 
         Return
         ------
             label: clustering result, shape: (n_vertexes,)
         """
-        beta = 0.1  # used in spectral clustering
-        smat = self._edist_mat(beta=beta)
-
-        spectral_cluster = SpectralClustering(n_clusters=n_clusters, eigen_solver=eigen_solver, affinity=affinity)
-        self.label = spectral_cluster.fit(X=smat).labels_
-
+        spectral_cluster = SpectralClustering(n_clusters, *args, **kwargs)
+        self.label = spectral_cluster.fit(self.data).labels_
         return self.label
 
     def show_labelinfo(self):
@@ -125,7 +113,16 @@ class Clustering(object):
         else:
             print('Do clustering first')
 
-    def add_geo_adj(self, coords, zeros, weight):
+    def add_geo_adj(self, coords, weight):
+        """
+        Add coords to data as geometry constraint, after apply mask.
+
+        Parameters
+        ----------
+            coords: coords of surface.
+            weight: set scale of coords, add_data = coords * weight.
+        """
+        zeros = np.where(self.mask == 0)[0]
         coords = np.delete(coords, zeros, axis=0)
         print('w = {0:.2f}'.format(weight))
         data = np.concatenate((self.data, coords * weight), axis=1)
