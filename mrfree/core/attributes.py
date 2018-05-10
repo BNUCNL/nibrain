@@ -76,16 +76,10 @@ class Geometry(object):
         ------
             Value of properties.
         """
-        if key == "name":
-            return self.name
-        elif key == "coords":
-            return self.coords
-        elif key == "faces":
-            return self.faces
-        elif key == "index":
-            return self.index
+        if hasattr(self, key):
+            return getattr(self, key)
         else:
-            raise ValueError("Input should be one of ['name', 'coords', 'faces', 'index'].")
+            raise ValueError('{} is not found.'.format(key))
 
     def set(self, key, value):
         """
@@ -96,16 +90,10 @@ class Geometry(object):
             key: name of properties of Geometry, should be one of ['coords', 'faces', index']
             value: value of properties that what to set.
         """
-        if key == "name":
-            self.name = value
-        elif key == "coords":
-            self.coords = value
-        elif key == "faces":
-            self.faces = value
-        elif key == "index":
-            self.index = value
+        if hasattr(self, key):
+            self.__setattr__(key, value)
         else:
-            raise ValueError("Input should be one of ['name', 'coords', 'faces', 'index'].")
+            raise ValueError('{} is not found.'.format(key))
 
     @property
     def centroid(self):
