@@ -54,6 +54,27 @@ def edges_to_adjmatrix(edges, sym=True):
         adjm = 0.5 * (adjm + adjm.T)
     return adjm
 
+def rings_to_adjmatrix(ring):
+    """
+    Generate adjacent matrix from ringlist
+    
+    Parameters:
+    ----------
+    ring: list of ring node, the format of ring list like below
+          [{i1,j1,k1,...}, {i2,j2,k2,...}, ...]
+          each element correspond to a index (index means a vertex)
+     
+    Return:
+    ----------
+    adjmatrix: adjacent matrix 
+    """
+    assert isinstance(ring, list), "ring should be a list"
+    node_number = len(ring)
+    adjmatrix = np.zeros((node_number, node_number))
+    for i,e in enumerate(ring):
+        for j in e:
+             adjmatrix[i,j] = 1
+    return adjmatrix
 
 def faces_to_adjmatrix(faces, mask=None, sym=True):
     """
