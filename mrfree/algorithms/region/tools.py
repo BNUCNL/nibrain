@@ -179,24 +179,29 @@ def convert_listvalue_to_ordinal(listdata):
     ordinals = [ordinal_map[val] for val in listdata]
     return ordinals
 
-def regressoutvariable(rawdata, covariate):
+def regressoutvariable(rawdata, covariate, fit_intercept = False):
     """
     Regress out covariate variables from raw data
     -------------------------------------------------
     Parameters:
-        rawdata: rawdata
-        covariate: covariate to be regressed out
+        rawdata: rawdata, as Nx1 series.
+        covariate: covariate to be regressed out, as Nxn series.
+        fit_intercept: whether to fit intercept or not.
+                       By default is False
     Return:
         residue
     """
+    try:
+        from sklearn import linear_model
+    except ImportError:
+        raise Exception('Please install sklearn first')
     if isinstance(rawdata, list):
         rawdata = np.array(rawdata)
     if isinstance(covariate, list):
         covariate = np.array(covariate)
-    samp = ~np.isnan(rawdata * covariate)
-    zfunc = lambda x: (x - np.nanmean(x))/np.nanstd(x)
-    slope, intercept, r_value, p_value, std_err = stats.linregress(stats.zscore(rawdata[samp]), stats.zscore(covariate[samp]))
-    residue = zfunc(rawdata) - slope*zfunc(covariate)
+    clf = linear_model.LinearRegression(fit_intercept=fit_intercept, normalize=True)
+    clf.fit(covariate, rawdata)
+    residue = rawdata - np.dot(covariate, clf.coef_.T)
     return residue
 
 def pearsonr(A, B):
