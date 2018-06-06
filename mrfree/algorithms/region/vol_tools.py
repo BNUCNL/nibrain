@@ -98,24 +98,23 @@ def get_signals(atlas, mask, method = 'mean', labelnum = None):
     # return signals    
     return [calfunc(sg) for sg in signals]
 
-def get_coordinate(atlas, mask, size = [2,2,2], method = 'peak', labelnum = None):
+def get_coordinate(atlas, mask, method = 'peak', labelnum = None):
     """
     Extract peak/center coordinate of rois
     --------------------------------------------
     Parameters:
         atlas: atlas
         mask: roi mask.
-        size: voxel size
         method: 'peak' or 'center'
         labelnum: mask label numbers in total, by default is None, set parameters if you want to do group analysis
     Return:
-        coordinates: nroi x 3 for activation data
+        coordinates: nroi x 3 for activation data, It's voxel coordinate
                      Note that do not extract coordinate of resting data
     """
     labels = np.unique(mask)[1:]
     if labelnum is None:
         labelnum = np.max(labels)
-    coordinate = np.empty((labelnum, 3))
+    coordinate = np.empty((int(labelnum), 3))
 
     extractpeak = lambda x: np.unravel_index(x.argmax(), x.shape)
     extractcenter = lambda x: np.mean(np.transpose(np.nonzero(x)))
@@ -130,7 +129,6 @@ def get_coordinate(atlas, mask, size = [2,2,2], method = 'peak', labelnum = None
         roisignal = atlas*(mask == (i+1))
         if np.any(roisignal):
             coordinate[i,:] = calfunc(roisignal)
-            coordinate[i,:] = vox2MNI(coordinate[i,:], size)
         else:
             coordinate[i,:] = np.array([np.nan, np.nan, np.nan])
     return coordinate
