@@ -1178,6 +1178,8 @@ def icc(Y, methods = '(1,1)'):
              (1,1), One-random effects
                     Each target is rated by a different set of k judges, 
                     randomly selected from a larger population of judges.
+             ML, Calculate ICC by ML estimation.
+             ReML, Calculate ICC by ReML estimation.
              (2,1), Two-way random effects
                     A random sample of k judges is selected from a larger 
                     population, and each judge rates each target, that is,
@@ -1196,6 +1198,32 @@ def icc(Y, methods = '(1,1)'):
         r = (decomp_var['BMS'] - decomp_var['WMS'])/(decomp_var['BMS']+(n_judges-1)*decomp_var['WMS'])
         F = decomp_var['BMS']/decomp_var['WMS']
         p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
+    elif methods == 'ML':
+        N = n_targs * n_judges
+        # Design matrix
+        X = np.ones((N,1))
+        Z = np.kron(np.eye(n_targs), np.ones((n_judges,1)))
+        y = Y.reshape((N,1))
+        # Estimate variance components using ReML
+        s20 = [0.001, 0.1]
+        dim = [1*n_targs]
+        s2, b, u, Is2, C, loglik, loops = _mixed_model(y, X, Z, dim, s20, method=1)
+        r = s2[0]/np.sum(s2)
+        F = s2[0]/s2[1]
+        p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
+    elif methods == 'ReML':
+        N = n_targs * n_judges
+        # Design matrix
+        X = np.ones((N,1))
+        Z = np.kron(np.eye(n_targs), np.ones((n_judges,1)))
+        y = Y.reshape((N,1))
+        # Estimate variance components using ReML
+        s20 = [0.001, 0.1]
+        dim = [1*n_targs]
+        s2, b, u, Is2, C, loglik, loops = _mixed_model(y, X, Z, dim, s20, method=2)
+        r = s2[0]/np.sum(s2)
+        F = s2[0]/s2[1]
+        p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
     elif methods == '(2,1)':
         r = (decomp_var['BMS'] - decomp_var['EMS'])/(decomp_var['BMS']+(n_judges-1)*decomp_var['EMS']+n_judges*(decomp_var['BJMS']-decomp_var['EMS'])/n_targs)
         F = decomp_var['BMS']/decomp_var['EMS']
@@ -1207,4 +1235,170 @@ def icc(Y, methods = '(1,1)'):
     else:
         raise Exception('Not support this method.')
     return r, p
+
+def _mixed_model(y, X, Z, dim, s20, method=2):
+    """
+    Computes ML, REML by Henderson's Mixed Model Equations Algorithm.
+    Code was migrated from DPABI_V3.0/ICC/mixed.m
+    Thanks for it!
+    
+    Model: Y = X*b + Z*u + e,
+           b=[b_1', ..., b_f']' and u = [u_1', ..., u_r]',
+           E(u)=0, Var(u)=diag(sigma^2_i*I_{m_i}), i = 1,...,r
+           E(e)=0, Var(e)=sigma^2_{r+1}*I_n
+           Var(y)=Sig=sum_{i=1}^{r+1} sigma^2_i*Sig_i.
+           We assume normality and independence of u and e.
+
+    Parameters:
+    ------------
+    y: n-dimensional vector of observations.
+    X: (n*k)-design matrix for fixed effects b = [b_1;...;b_f],
+       typically X = [X_1,...,X_f] for some X_i.
+    Z: (n*m)-design matrix for random effects u = [u_1;...;u_r],
+       typically Z=[Z_1;...;Z_r] for some Z_i.
+    dim: Vector of dimensions of u_i, i = 1,...,r,
+         dim=[m_1;...;m_r], m=sum(dim)
+    s20: A prior choice of the variance components.
+         SHOULD BE POSITIVE
+    method: Method of estimation of variance components
+         1: ML, 2:REML
+
+    Returns:
+    ---------
+    s2: Estimated Vector of variance components.
+        A warning message appears if some of the estimated
+        variance components is negative or equal to zero.
+        In such cases the calculated Fisher information 
+        matrices are inadequate.
+    b: k-dimensional vector of estimated fixed effects beta.
+    u: m-dimensional vector of estimated random effects U.
+    Is2: Fisher information matrix for variance components.
+    C: g-inverse of Henderson's MME matrix
+    loglik: Log-likelihood evaluated at the estimated parameters.
+    loops: Number of loops
+
+    """
+    yy = np.dot(y.T, y)
+    Xy = np.dot(X.T, y)
+    Zy = np.dot(Z.T, y)
+    XX = np.dot(X.T, X)
+    XZ = np.dot(X.T, Z)
+    ZZ = np.dot(Z.T, Z)
+    a = np.vstack((Xy, Zy)) 
+    # End of required input parameters
+    n = len(y)
+    k, m = XZ.shape
+    rx = np.linalg.matrix_rank(XX)
+    r = len(s20) - 1   
+    Im = np.eye(m)
+    loops = 0
+
+    fk = np.where(s20<=0)[0]
+    if any(fk):
+	s20[fk] = 100*2.2204e-16*np.ones((fk.shape)) 
+	print('Priors in s20 are negative or zeros !CHANGED!')
+    sig0 = 1*s20
+    s21 = 1*s20
+    ZMZ = ZZ - np.dot(np.dot(XZ.T,np.linalg.pinv(XX)),XZ)
+    q = np.zeros((r+1, ))
+    # loop starting
+    epss = 1e-9
+    crit = 1
+    while crit>epss:
+	loops += 1
+	sigaux = 1*s20
+	s0 = s20[r]
+	d = s20[0]*np.ones((dim[0],))
+	for i in np.arange(2,r+1,1):
+	    d = np.vstack((d, s20[i-1]*np.ones(dim[i-1],)))
+	D = np.diag(d.flatten())
+	V = s0*Im + np.dot(ZZ,D)
+	W = s0*np.linalg.inv(V)
+        T = np.linalg.inv(Im+1.0*np.dot(ZMZ,D)/s0)
+	A = np.vstack((np.hstack((XX, np.dot(XZ,D))), np.hstack((XZ.T, V))))
+	bb = np.dot(np.linalg.pinv(A),a)
+	b = bb[:k]
+	v = bb[k:k+m]
+	u = np.dot(D,v)
+	# ESTIMATION OF ML AND REML OF VARIANCE COMPONENTS
+	iupp = 0
+	for i in range(r):
+	    ilow = iupp+1
+	    iupp = iupp+dim[i]
+	    Wii = W[ilow-1:iupp, ilow-1:iupp]
+	    Tii = T[ilow-1:iupp, ilow-1:iupp]
+	    w = u[ilow-1:iupp]
+	    ww = np.dot(w.T, w).flatten()[0]
+	    q[i] = (1.0*ww/(s20[i]*s20[i]))
+	    s20[i] = (1.0*ww/(dim[i] - np.trace(Wii))).flatten()[0]
+	    s21[i] = (1.0*ww/(dim[i] - np.trace(Tii))).flatten()[0]
+	Aux = (yy-np.dot(b.T,Xy)-np.dot(u.T, Zy)).flatten()[0]
+	Aux1 = (Aux-np.dot(np.dot(u.T, v), s20[r])).flatten()[0]
+	q[r] = 1.0*Aux1/(s20[r]*s20[r])
+	s20[r] = 1.0*Aux/n
+	s21[r] = 1.0*Aux/(n-rx)
+	if method == 1: 
+	# ML
+	    crit = np.linalg.norm(np.array(sigaux)-np.array(s20))
+	    q = np.zeros((r+1,))
+	elif method == 2:
+	# REML
+	    s20 = 1*s21
+	    crit = np.linalg.norm(np.array(sigaux)-np.array(s20))
+	    q = np.zeros((r+1,))
+	else:
+	    crit = 0
+    s2 = 1*s20
+    fk = np.where(s2<0)[0]
+    if any(fk):
+        print('Estimated variance components are negative!')
+    s0 = s2[r]
+    d = s2[0]*np.ones((dim[0],))
+    for i in np.arange(2,r+1,1):
+        d = np.vstack((d, s2[i]*np.ones((dim[i],))))
+    D = np.diag(d.flatten())
+    V = s0*Im+np.dot(ZZ,D)    
+    W = 1.0*V/s0
+    T = np.linalg.inv(Im+1.0*np.dot(ZMZ,D)/s0)
+    A = np.vstack((np.hstack((XX, np.dot(XZ,D))), np.hstack((XZ.T, V))))
+    A = np.linalg.pinv(A)
+    C = np.dot(s0, np.vstack((np.hstack((A[0:k, 0:k], A[0:k, k:k+m])), 
+                   np.hstack((np.dot(D, A[k:k+m, 0:k]), 
+                              np.dot(D, A[k:k+m, k:k+m]))))))
+    bb = np.dot(A, a)
+    b = bb[0:k]
+    v = bb[k:k+m]
+    u = np.dot(D, v)
+    if method == 1:
+        loglik = -0.5*(n*np.log(2*np.pi*s0) - np.log(np.linalg.det(W)+n))
+    elif method == 2:
+        loglik = -0.5*((n-rx)*np.log(2*np.pi*s0) - np.log(np.linalg.det(T))+(n-rx))
+    else:
+        raise Exception('Assign method using 1 or 2 for ML or ReML')
+
+    # Fisher information matrix for variance components
+    Is2 = np.eye(r+1)
+    if method == 2:
+        W = 1*T
+        Is2[r, r] = (n-rx-m+np.trace(np.dot(W,W)))/(s2[r]*s2[r])
+    else:
+        Is2[r, r] = (n-m+np.trace(np.dot(W,W)))/(s2[r]*s2[r])
+    iupp = 0
+    for i in range(r):
+        ilow = iupp+1
+        iupp = iupp+dim[i]
+        trii = np.trace(W[ilow-1:iupp, ilow-1:iupp])
+        trsum = 0
+        jupp = 0
+        for j in range(r):
+            jlow = jupp+1
+            jupp = jupp+dim[j]
+            tr = np.trace(np.dot(W[ilow-1:iupp, jlow-1:jupp], 
+                                 W[jlow-1:jupp, ilow-1:iupp]))
+            trsum = trsum + tr
+            Is2[i,j] = ((i==j)*(dim[i]-2*trii)+tr)/(s2[i]*s2[j])
+        Is2[r,i] = (trii-trsum)/(s2[r]*s2[i])
+        Is2[i,r] = Is2[r,i]
+    Is2 = Is2/2
+    return s2, b, u, Is2, C, loglik, loops  
 
