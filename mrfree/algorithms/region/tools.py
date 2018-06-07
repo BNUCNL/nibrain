@@ -1209,7 +1209,9 @@ def icc(Y, methods = '(1,1)'):
         dim = [1*n_targs]
         s2, b, u, Is2, C, loglik, loops = _mixed_model(y, X, Z, dim, s20, method=1)
         r = s2[0]/np.sum(s2)
-        F = s2[0]/s2[1]
+        WMS = s2[1]/n_judges
+        BMS = s2[0]+s2[1]/n_judges
+        F = 1.0*BMS/WMS
         p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
     elif methods == 'ReML':
         N = n_targs * n_judges
@@ -1222,6 +1224,9 @@ def icc(Y, methods = '(1,1)'):
         dim = [1*n_targs]
         s2, b, u, Is2, C, loglik, loops = _mixed_model(y, X, Z, dim, s20, method=2)
         r = s2[0]/np.sum(s2)
+        WMS = s2[1]/n_judges
+        BMS = s2[0]+s2[1]/n_judges
+        F = 1.0*BMS/WMS
         F = s2[0]/s2[1]
         p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
     elif methods == '(2,1)':
