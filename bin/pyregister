@@ -1,0 +1,140 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+A pipeline for linear and nonlinear registration
+
+Edited by Lijie Huang, 2011-12-15
+
+"""
+
+import os
+import argparse
+
+import nipype.interfaces.io as nio
+import nipype.interfaces.utility as util
+from nipype.interfaces import fsl
+import nipype.pipeline.engine as pe
+from pynit.base import unpack as pyunpack
+
+def main():
+    parser = argparse.ArgumentParser(
+            description='A pipeline for linear and nonlinear registration')
+    parser.add_argument('-csv',
+                        dest = 'scanlist_file',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-fmt',
+                        dest='software',
+                        choices=['fs', 'fsl'],
+                        required=True,
+                        help='which directory containing anatomical data')
+    parser.add_argument('-w', '--workingdir',
+                        dest = 'workingdir',
+                        metavar = 'working directory',
+                        required = True,
+                        help = 'a directory containing temp files')
+    args = parser.parse_args()
+    
+    [scan_info, subj_list] = pyunpack.readscanlist(args.scanlist_file)
+
+    data_dir = os.path.abspath(scan_info['sessdir'])
+    #data_dir = r'/nfs/t1/nspnifti/nii'
+    #sessid_file = r'/nfs/t2/mricenter/doc/sessid_2008_R1'
+    #sessinfo = open(sessid_file)
+    #subject_list = [line.strip() for line in sessinfo]
+    subject_list = [subj.sess_ID for subj in subj_list
+                    if 'mri' in subj.run_info]
+
+    plugin_name = 'MultiProc'
+    plugin_args = {'n_procs': 20}
+    #fslpath = r'/usr/local/neurosoft/fsl5.0.1'
+    fslpath = os.getenv('FSL_DIR')
+
+    working_dir = args.workingdir
+    software = args.software
+
+    # infosource node
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subj_id']),
+            name='infosource')
+    infosource.iterables = ('subj_id', subject_list)
+
+    # flirt node
+    flt = pe.Node(
+            interface=fsl.FLIRT(bins=256, cost_func='corratio'),
+            name='flirt')
+    flt.inputs.reference = fslpath + '/data/standard/MNI152_T1_2mm_brain.nii.gz'
+
+    # fnirt node
+    fnt = pe.Node(interface=fsl.FNIRT(),
+                  name='fnirt')
+    fnt.inputs.config_file = fslpath + '/etc/flirtsch/T1_2_MNI152_2mm.cnf'
+    fnt.inputs.ref_file = fslpath + '/data/standard/MNI152_T1_2mm.nii.gz'
+
+    # applywrap node
+    aw = pe.Node(interface=fsl.ApplyWarp(), name='applywarp')
+    aw.inputs.ref_file = fslpath + '/data/standard/MNI152_T1_2mm_brain.nii.gz'
+
+    # workflow defination
+    regflow = pe.Workflow(name='register')
+    regflow.base_dir = working_dir
+
+    regflow.connect([
+        (infosource, flt, [
+            (('subj_id', brainparse, data_dir, software), 'in_file'),
+            (('subj_id', linear_moved_file, data_dir, software), 'out_file'),
+            (('subj_id', linear_aff_mtx, data_dir, software),
+             'out_matrix_file')]),
+        (infosource, fnt, [
+            (('subj_id', t1parse, data_dir, software), 'in_file'),
+            (('subj_id', nonlinear_transf_mtx, data_dir, software),
+             'fieldcoeff_file')]),
+        (flt, fnt, [('out_matrix_file', 'affine_file')]),
+        (infosource, aw, [
+            (('subj_id', nonlinear_moved_file, data_dir, software), 'out_file'),
+            (('subj_id', brainparse, data_dir, software), 'in_file')]),
+        (fnt, aw, [('fieldcoeff_file', 'field_file')])])
+
+    #regflow.write_graph(graph2use='flat')
+    regflow.run(plugin=plugin_name, plugin_args=plugin_args)
+    #regflow.run(plugin_args=plugin_args)
+
+def t1parse(subject_id, srcdir, software):
+    t1path = '/'.join([srcdir, subject_id, '3danat',
+                       'reg_' + software, 'T1.nii.gz'])
+    return t1path
+
+def brainparse(subject_id, srcdir, software):
+    brainpath = '/'.join([srcdir, subject_id, '3danat', 
+                          'reg_' + software, 'T1_brain.nii.gz'])
+    return brainpath
+
+def linear_moved_file(subject_id, srcdir, software):
+    linear_moved_path = '/'.join([srcdir, subject_id, '3danat',
+                                  'reg_' + software,
+                                  'highres2standard_linear_2mm.nii.gz'])
+    return linear_moved_path
+
+def linear_aff_mtx(subject_id, srcdir, software):
+    linear_aff_mtx_path = '/'.join([srcdir, subject_id, '3danat',
+                                    'reg_' + software,
+                                    'highres2standard_2mm.mat'])
+    return linear_aff_mtx_path
+
+def nonlinear_transf_mtx(subject_id, srcdir, software):
+    nonlinear_transf_mtx_path = '/'.join([srcdir, subject_id, '3danat',
+                                          'reg_' + software,
+                                          'highres2standard_warp_2mm.nii.gz'])
+    return nonlinear_transf_mtx_path
+
+def nonlinear_moved_file(subject_id, srcdir, software):
+    nonlinear_moved_path = '/'.join([srcdir, subject_id, '3danat',
+                                     'reg_' + software,
+                                     'highres2standard_2mm.nii.gz'])
+    return nonlinear_moved_path
+
+if __name__ == '__main__':
+    main()
+

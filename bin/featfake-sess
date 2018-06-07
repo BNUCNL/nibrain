@@ -1,0 +1,78 @@
+#! /usr/bin/env python
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""
+Solve problems that only have one run.
+
+Author: Taicheng Huang @ BNU
+Reviewer:
+"""
+
+import os 
+import argparse
+import subprocess
+
+def main():
+    parser = argparse.ArgumentParser(description='Resample run-level data into standard space.')
+    parser.add_argument('-df',
+                        type = argparse.FileType('r'),
+                        required = True,
+                        help = 'File raw data source', 
+                        metavar = 'sessparentdirfile')
+    parser.add_argument('-sf', 
+                        type = argparse.FileType('r'),
+                        required = True,
+                        help = 'Subject id in each session',
+                        metavar = 'func_subdir')
+    parser.add_argument('-fsd', 
+                        required = True,
+                        help = 'functional subdirectory in each session',
+                        metavar = 'func_subdir')
+    parser.add_argument('-rlf',
+                        type = str,
+                        required = True,
+                        metavar = 'runlist_file')
+    parser.add_argument('-cope',
+                        type = str,
+                        required = True,
+                        help = 'contrast number')
+
+    args = parser.parse_args()
+    
+    if args.df:
+        sesspar = os.path.abspath(args.df.read().strip())
+
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+        sess_dir = os.path.join(sesspar, sess)
+        tarsess_dir = os.path.join(sesspar, sess)
+        if not os.path.exists(sess_dir):
+            print 'Error: directory not exists: {0}'.format(sess_dir)
+            continue    
+        
+        func_dir = os.path.join(sess_dir, args.fsd)
+        if args.cope:
+            copeinfo = open(args.cope).read().strip().split('\n')
+        if args.rlf:
+            rlfinfo = open(os.path.join(func_dir, args.rlf)).read().strip().split('\n') 
+        for i,e in enumerate(copeinfo):
+            os.chdir(os.path.join(func_dir, rlfinfo[0], 'func.feat'))
+            copes = 'cope'+str(i+1)+'.feat'
+            tarsess = os.path.join(tarsess_dir, args.fsd+'.gfeat', copes, 'stats')
+            if not os.path.isdir(tarsess):
+                os.makedirs(tarsess)
+        
+            os.system('applywarp --ref=reg/standard --in=stats/cope'+str(i+1)+' --out=%s --warp=reg/highres2standard_warp --premat=reg/example_func2highres.mat --interp=spline' % (os.path.join(tarsess, 'cope'+str(i+1)+'.nii.gz')))
+            os.system('applywarp --ref=reg/standard --in=stats/zstat'+str(i+1)+' --out=%s --warp=reg/highres2standard_warp --premat=reg/example_func2highres.mat --interp=spline' % (os.path.join(tarsess, 'zstat'+str(i+1)+'.nii.gz')))
+            os.system('applywarp --ref=reg/standard --in=stats/varcope'+str(i+1)+' --out=%s --warp=reg/highres2standard_warp --premat=reg/example_func2highres.mat --interp=spline' % (os.path.join(tarsess, 'varcope'+str(i+1)+'.nii.gz')))
+            os.system('applywarp --ref=reg/standard --in=stats/tstat'+str(i+1)+' --out=%s --warp=reg/highres2standard_warp --premat=reg/example_func2highres.mat --interp=spline' % (os.path.join(tarsess, 'tstat'+str(i+1)+'.nii.gz')))
+
+    args.sf.close()
+    if args.df:
+        args.df.close()
+
+if __name__ == '__main__':
+    main()
+

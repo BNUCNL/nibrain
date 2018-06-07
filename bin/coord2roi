@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Make ROI masks, sphere or cube , from coordinates list.
+
+Notes:
+------
+    The format of the text file that contains the coordinates is like this:
+        50,50,50
+        45,34,56
+    
+Contributions:
+--------------
+    Author: kongxiangzheng@gmail.com
+    Date: 07/062012
+    Editors: [plz add own name after edit here] 
+    
+"""
+
+import os
+import sys
+import argparse as ap
+
+def coord2roi():
+    ps = ap.ArgumentParser(description = 'Make ROI masks, sphere or cube , from coordinates list. by conxz.', prog = 'coord2roi')
+    ps.add_argument(
+                    '-fcoord',
+                    dest = 'fcoord',
+                    required = True,
+                    help = 'The coordinates list file'
+                    )
+    ps.add_argument(
+                    '-resolution',
+                    dest = 'resolution',
+                    required = True,
+                    choices = ['1mm','2mm'],
+                    help = '1mm or 2mm'
+                    )
+    ps.add_argument(
+                    '-size',
+                    dest = 'size',
+                    required = True,
+                    help = 'The radius of a sphere or the side of a cube'
+                    )
+    ps.add_argument(
+                    '-shape',
+                    dest = 'shape',
+                    required = True,
+                    choices = ['sphere', 'cube'],
+                    help = 'The shape of ROIs:sphere or cube'
+                    )
+    ps.add_argument(
+                    '-basename',
+                    dest = 'basename',
+                    default = 'coord2roi',
+                    help = 'The basename of output files'
+                    )
+    ps.add_argument(
+                    '--version','-v',
+                    action = 'version',
+                    version = '%(prog)s 0.1 by conxz-20110930'
+                    )
+    args = ps.parse_args()
+    
+    if not os.path.exists(args.fcoord):
+        print 'Input fcoord does NOT exist!\n'
+        sys.exit()
+
+    fcoord = args.fcoord
+    resolution = args.resolution
+    size = args.size
+    shape = args.shape
+    basename = args.basename
+    temname = 'tem'
+    if basename == temname:
+        temname = 'tem2'
+
+    if resolution == '1mm':
+        ref = '$FSL_DIR/data/standard/MNI152_T1_1mm_brain.nii.gz'
+    elif resolution == '2mm':
+        ref = '$FSL_DIR/data/standard/MNI152_T1_2mm_brain.nii.gz'    
+
+    coorList = [line.strip() for line in open(fcoord)]
+    cmdstr_sum = 'fslmaths '
+    cmdstr_atlas = 'fslmaths '
+    
+    for i in range(len(coorList)):
+        out_roi = temname + '_' + str(i+1)
+        xyz = coorList[i].split(',')
+        if shape == 'sphere':
+            cmdstr = 'fslmaths ' + ref + ' -mul 0 -add 1 -roi ' + xyz[0] + ' 1 ' + xyz[1] + ' 1 ' + xyz[2] + ' 1 ' + ' 0 1 -kernel sphere ' + size + ' -fmean -bin -mul ' + str(i+1) + ' ' + out_roi + ' -odt float'
+        else:
+            cmdstr = 'fslmaths ' + ref + ' -mul 0 -add 1 -roi ' + str(round(int(xyz[0])-float(size)/2)) + ' ' + size + ' ' + str(round(int(xyz[1])-float(size)/2)) + ' ' + size + ' ' + str(round(int(xyz[2])-float(size)/2)) + ' ' + size + ' 0 1 -bin -mul ' + str(i+1) + ' ' + out_roi + ' -odt float'
+        os.system(cmdstr)
+        os.system('fslmaths ' + out_roi + ' -bin ' + out_roi + '_bin')
+        cmdstr_sum += out_roi + '_bin' + ' -add '
+        cmdstr_atlas += out_roi + ' -add '
+        
+    cmdstr_sum = cmdstr_sum[0:len(cmdstr_sum)-5] + temname + '_sum'
+    cmdstr_atlas = cmdstr_atlas[0:len(cmdstr_atlas)-5] + temname + '_atlas'
+    
+    #print cmdstr2
+    os.system(cmdstr_sum)
+    os.system(cmdstr_atlas)
+    os.system('fslmaths ' + temname + '_sum' + ' -thr 2 -bin -mul -1 -add 1 test')
+    os.system('fslmaths ' + temname + '_sum' + ' -thr 2 -bin -mul -1 -add 1 -mul ' + temname + '_atlas ' + basename + '_de_intersection_atlas')
+    os.system('rm ' + temname + '*')
+    print 'Finished!'
+
+if __name__ == '__main__':
+    coord2roi()

@@ -1,0 +1,231 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+Make a design matrix Xg baesd on the csv file
+
+"""
+import sys
+import argparse
+import re
+import os
+
+def mkXg():
+    parser = argparse.ArgumentParser(description = 'Make a design matrix based on csv file.',
+                                     prog = 'mkdesign')
+    parser.add_argument('-csv',
+                        type = file,
+                        dest = 'csvFile',
+                        metavar = 'csv-file',
+                        required = True,
+                        help = 'an input csv file containing raw data')
+    parser.add_argument('-sf',
+                        type = file,
+                        dest = 'sessidFile',
+                        default = False,
+                        metavar = 'sessid-file',
+                        help = 'an input file containing subject id list')
+    parser.add_argument('-model',
+                        dest = 'model',
+                        metavar = 'model',
+                        choices = ['dods','doss'],
+                        default = 'dods',
+                        help = 'config the model of regression, dods or doss, default is dods.')
+    parser.add_argument('-c',
+                        nargs = '*',
+                        dest = 'varLabel',
+                        default = [],
+                        help = 'continuous variables in regression')
+    parser.add_argument('-d',
+                        nargs = '*',
+                        dest = 'classVar',
+                        default = [],
+                        help = 'discrete variable in regression')
+    parser.add_argument('-o',
+                        dest = 'outFile',
+                        metavar = 'out-file',
+                        required = True,
+                        help = 'save output X matrix as out-file')
+    parser.add_argument('-fmt',
+                        dest = 'fmt',
+                        required = True,
+                        choices = ['fsl','fs'],
+                        help = 'output file format, fsl or fs')
+    parser.add_argument('--version','-v',
+                        action='version',
+                        version='%(prog)s 0.1')
+    args = parser.parse_args()
+
+    if os.path.exists(args.outFile):
+        print 'Output file has already existed.\n'
+        sys.exit()
+
+    # Read csv file and get variable labels
+    info = [line.strip() for line in args.csvFile]
+    label = info[0].split(',')
+    # Check whether variable exists in csv file or not
+    for item in args.varLabel:
+        if item not in label:
+            print 'Variable ' + item + ' does NOT in csv file.\n'
+            sys.exit()
+    for item in args.classVar:
+        if item not in label:
+            print 'Variable ' + item + ' does NOT in csv file.\n'
+            sys.exit()
+    rawdata = [[] for i in range(len(label))]
+
+    # Get data
+    for line in info[1:]:
+        tmp = line.split(',')
+        for num in range(len(tmp)):
+            rawdata[num].append(tmp[num])
+
+    # get subject's id from sessid file
+    if args.sessidFile:
+        sessid = [line.strip() for line in args.sessidFile]
+    else:
+        sessid = rawdata[0]
+        sessidOut = args.csvFile.name.split('/')[-1].split('.')[-2] + '_sessid'
+        tmp = args.outFile.split('/')[0:-1]
+        tmp.append(sessidOut)
+        sessidOut = '/'.join(tmp)
+        sessInfo = open(sessidOut,'a')
+        for subj in sessid:
+            sessInfo.write(subj + '\n')
+        sessInfo.close()
+
+    # query data from rawdata based on sessid
+    classRes = []
+    sessidIndex = []
+    classValue = []
+    classLabel = []
+    for subj in sessid:
+        if subj not in rawdata[0]:
+            print 'subject ' + subj + ' dose not in csv table.\n'
+            sys.exit()
+        else:
+            num =  rawdata[0].index(subj)
+            sessidIndex.append(num)
+            if len(args.classVar) != 0:
+                classTmp = []
+                for item in args.classVar:
+                    clsIndex = label.index(item)
+                    classTmp.append(rawdata[clsIndex][num])
+                if classTmp not in classValue:
+                    classValue.append(classTmp)
+                    classLabel.append('Group' + str(len(classValue)))
+                classRes.append(classLabel[classValue.index(classTmp)])
+            else:
+                if sessid.index(subj) == 0:
+                    classLabel.append('Group')
+                classRes.append('Group')
+
+    # Create a beta-sequence file
+    clsInfoFile = args.outFile + '.clsinfo'
+    clsInfo = open(clsInfoFile,'a')
+    if len(args.classVar) != 0:
+        clsInfo.write('      ')
+        for item in args.classVar:
+            clsInfo.write('%7s' % item)
+        clsInfo.write('\n')
+        for i in range(len(classLabel)):
+            clsInfo.write(classLabel[i])
+            for item in classValue[i]:
+                clsInfo.write('%7s' % item)
+            clsInfo.write('\n')
+        clsInfo.write('\n')
+    clsInfo.write('beta sequence:\n')
+    if args.model == 'dods':
+        for item in classLabel:
+            clsInfo.write('%10s' % item)
+        tmp = ['_'.join([y,x]) for x in args.varLabel for y in classLabel]
+        for item in tmp:
+            clsInfo.write('%15s' % item)
+    else:
+        for item in classLabel:
+            clsInfo.write('%10s' % item)
+        for item in args.varLabel:
+            clsInfo.write('%10s' % item)
+    clsInfo.write('\n')
+    clsInfo.close()
+
+    Xg = open(args.outFile,'a')
+    if args.fmt == 'fs':
+        for num in sessidIndex:
+            if args.model == 'dods':
+                colNum = len(classLabel)*(len(args.varLabel)+1)
+            else:
+                colNum = len(classLabel) + len(args.varLabel)
+            tmp = [0 for item in range(colNum)]
+            tmp[classLabel.index(classRes[sessidIndex.index(num)])] = 1
+            for item in args.varLabel:
+                varIndex = label.index(item)
+                itemIndex = args.varLabel.index(item)
+                if args.model == 'dods':
+                    tmp[(itemIndex+1)*len(classLabel)+ \
+                        classLabel.index(classRes[sessidIndex.index(num)])] = \
+                    float(rawdata[varIndex][num])
+                else:
+                    tmp[itemIndex+len(classLabel)] = float(rawdata[varIndex][num])
+            for item in tmp:
+                Xg.write('%+6.5f ' % item)
+            Xg.write('\n')
+        Xg.close()
+    else: 
+        if args.model == 'dods':
+            colNum = len(classLabel)*(len(args.varLabel)+1)
+        else:
+            colNum = len(classLabel) + len(args.varLabel)
+        Xg.write('/NumWaves       %d\n' % colNum)
+        Xg.write('/NumPoints      %d\n' % len(sessidIndex))
+        Xg.write('/PPheights\n\n')
+        Xg.write('/Matrix\n')
+        maxNum = [0 for item in range(colNum)]
+        minNum = [0 for item in range(colNum)]
+        for num in sessidIndex:
+            tmp = [0 for item in range(colNum)]
+            tmp[classLabel.index(classRes[sessidIndex.index(num)])] = 1
+            for item in args.varLabel:
+                varIndex = label.index(item)
+                itemIndex = args.varLabel.index(item)
+                if args.model == 'dods':
+                    tmp[(itemIndex+1)*len(classLabel)+ \
+                        classLabel.index(classRes[sessidIndex.index(num)])] = \
+                    float(rawdata[varIndex][num])
+                else:
+                    tmp[itemIndex+len(classLabel)] = float(rawdata[varIndex][num])
+            for item in tmp:
+                Xg.write('%e ' % item)
+            Xg.write('\n')
+            if sessidIndex.index(num) == 0:
+                for i in range(colNum):
+                    maxNum[i] = tmp[i]
+                    minNum[i] = tmp[i]
+            else:
+                for i in range(colNum):
+                    if tmp[i] > maxNum[i]:
+                        maxNum[i] = tmp[i]
+                    elif tmp[i] < minNum[i]:
+                        minNum[i] = tmp[i]
+                    else:
+                        pass
+        Xg.close()
+        strPP = '/PPheights      ' 
+        for i in range(colNum):
+            maxNum[i] = maxNum[i] - minNum[i]
+            strPP = strPP + '%e ' % maxNum[i]
+        Xg1 = open(args.outFile).read()
+        Xg1 = re.sub('/PPheights',strPP,Xg1)
+        open(args.outFile,'w').write(Xg1)
+        grpInfo = open(args.outFile + '.grp','a')
+        grpInfo.write('/NumWaves      1\n')
+        grpInfo.write('/NumPoints     %d\n' % len(sessidIndex))
+        grpInfo.write('\n/Matrix\n')
+        for num in sessidIndex:
+            grpInfo.write('1\n')
+        grpInfo.close()
+        
+
+if __name__ == '__main__':
+    mkXg()
+

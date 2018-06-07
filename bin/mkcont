@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import sys
+import string
+import argparse
+
+def mkcont():
+    parser = argparse.ArgumentParser(prog='mkcont', prefix_chars='-')
+    parser.add_argument('-fmt',help='contrast file format: must be fs or fsl',dest='software',choices=['fs','fsl'],required=True)
+    parser.add_argument('-contf', help='Input the contrast file you prepaired',dest='confile',required=True)
+
+    args = parser.parse_args()
+    software = args.software
+    conFile = args.confile
+
+    conFile = open(conFile)
+    conFile = [line.strip() for line in conFile]
+    for index in range(len(conFile)):
+        if conFile[index] == 't-contrast':
+           #print index
+           index1 = index
+        if conFile[index] == 'f-contrast':
+           #print index
+           index2 = index
+    if len(conFile)-1-index2 != 0:
+       number = len(conFile)-1-index2
+       print 'There also ' + str(number) +' f contrast exist'
+    else:
+       print 'There are no f contrast'
+
+    if  software == 'fs':
+        for counter in range(len(conFile)):
+            conVar = conFile[counter].split(' ')
+            con_txt = []
+            if counter in range(1,index2):
+               if os.path.exists('fs.t.'+ conVar[0]):
+                  print 'The same contrast file has already existed, please check!\n'
+                  sys.exit()
+               con = open('fs.t.'+ conVar[0],'a')
+               con_txt = ' '.join(['%s' %val for val in conVar[1:len(conVar)]])
+               con.write(con_txt)
+               con.close()
+               counter = counter + 1
+
+            if counter in range(index2+1,len(conFile)):
+               if os.path.exists('fs.f.'+ conVar[0]):
+                  print 'The same contrast file has already existed, please check!\n'
+                  sys.exit()
+               for i in range(1,len(conVar)):
+                   val = string.atoi(conVar[i])
+                   if val == 1:
+                      tconLine = conFile[i].split(' ')
+                      con_txt.append(' '.join(['%s' %val for val in tconLine[1:len(tconLine)]]))
+                      print conFile[i]
+               con_txt = '\n'.join(con_txt)
+               con = open('fs.f.'+conVar[0],'a')
+               con.write(con_txt)
+               con.close()
+               counter = counter + 1
+                       
+    elif software == 'fsl':
+         if os.path.exists('design.con')|os.path.exists('design.fts'):
+            print 'The same contrast file has already existed, please check!\n'
+            sys.exit()
+         nwaves = len(conFile[1].split(' '))-1
+         ntcons = index2 - 1
+         nfcons = len(conFile)-index2-1
+         con_txt = fcon_txt = [] 
+         counter = 0
+         # write t-con file
+         for item in range(1,index2):
+             counter += 1
+             conVar = conFile[item].split(' ')
+             con_txt += ['/ContrastName%d   %s'%(counter, conVar[0])]
+         con_txt += ['/NumWaves       %d'%nwaves,
+                     '/NumContrasts   %d'%ntcons,
+                     '/PPheights          %s' % ' '.join(['%e'%1 for i in range(counter)]),
+                     '/RequiredEffect     %s' % ' '.join(['%.3f'%100 for i in range(counter)]),
+                     '',
+                     '/Matrix']
+         for item in range(1,index2):
+             conVar = conFile[item].split(' ')
+             conVar = conVar[1:len(conVar)]
+             #print conVar
+             con_txt.append(' '.join(['%e'%string.atof(val) for val in conVar]))
+         con_txt = '\n'.join(con_txt)
+         con = open('design.con','a')
+         con.write(con_txt)
+         con.close()
+     
+	 # write f-con file
+         if len(conFile)-1-index2 != 0:
+            fcon_txt =['/NumWaves       %d'%ntcons,
+                       '/NumContrasts   %d'%nfcons,
+                       '',
+                       '/Matrix']
+            for item in range(index2+1,len(conFile)):
+                conVar = conFile[item].split(' ')
+                conVar = conVar[1:len(conVar)]
+                fcon_txt.append(' '.join(['%e'%string.atof(val) for val in conVar]))
+            fcon_txt = '\n'.join(fcon_txt)
+            con = open('design.fts','a')
+            con.write(fcon_txt)
+            con.close()
+
+if __name__ == '__main__':
+    mkcont()

@@ -1,0 +1,242 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+A pipeline for surface reconstruction using freesurfer reconall script.
+
+Edited by Lijie Huang, 2011-12-15
+Last modified by Lijie Huang, 2012-11-28
+
+"""
+# system functions
+import sys
+import os                                    
+import argparse
+
+import nipype.interfaces.freesurfer as fs    # freesurfer
+import nipype.interfaces.io as nio           # i/o routines
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+from pynit.base import unpack as pyunpack
+
+
+def main():
+    parser = argparse.ArgumentParser(description='a wraped function of command recon-all')
+    parser.add_argument('-csv',
+                        dest = 'scanlist_file',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-w', '--workingdir',
+                        dest = 'workingdir',
+                        metavar = 'working directory',
+                        required = True,
+                        help = 'a directory containing temp files')
+    #parser.add_argument('-dst',
+    #                    dest = 'dest_dir',
+    #                    metavar = 'destination directory',
+    #                    required = True,
+    #                    help = 'specify the SUBJECTS_DIR')
+    parser.add_argument('-s', '--stage',
+                        dest = 'stage',
+                        metavar = 'processing stage',
+                        choices = ['autorecon1', 
+                                   'autorecon2',
+                                   'autorecon3',
+                                   'localGI',
+                                   'qcache'],
+                        required = True,
+                        help = 'specify the processing stage')
+    args = parser.parse_args()
+
+    [scan_info, subj_list] = pyunpack.readscanlist(args.scanlist_file)
+    # Tell freesurfer where $SUBJECTS_DIR is.
+    subjects_dir = os.path.abspath(scan_info['subjdir'])
+
+    # Specify the location of the sesspar and sessid file
+    #fsesspar = '/nfs/t2/mricenter/doc/sesspar'
+    #fsessid = '/nfs/t2/mricenter/doc/2006_R1_sessid'
+
+    # Specify the working directory
+    #workingdir = r'/nfs/t2/mricenter/workingdir'
+    workingdir = args.workingdir
+
+    # Specify the process stage
+    # option:
+    #     -- autorecon1
+    #     -- autorecon2
+    #     -- autorecon3
+    #     -- localGI
+    #     -- qcache
+    stage = args.stage
+
+    # If you specify the stage as 'qcache' and need to config 
+    # the target average file, modify following line.
+    qcacheTarget = ''
+
+    # Parallel computation exec config
+    pluginName = 'IPython'
+
+    #[data_dir,subject_list] = readsess(fsesspar,fsessid)
+    data_dir = scan_info['sessdir']
+    subject_list = [subj.sess_ID for subj in subj_list]
+
+    if stage == 'autorecon1':
+        autorecon1(data_dir, subjects_dir, workingdir, subject_list, pluginName)
+    elif stage == 'autorecon2':
+        autorecon2(subjects_dir, workingdir, subject_list, pluginName)
+    elif stage == 'autorecon3':
+        autorecon3(subjects_dir, workingdir, subject_list, pluginName)
+    elif stage == 'qcache':
+        qcache(subjects_dir, workingdir, subject_list, qcacheTarget, pluginName)
+    elif stage == 'localGI':
+        localgi(subjects_dir, workingdir, subject_list, pluginName)
+    else:
+        print 'You enter a wrong stage name.\n'
+
+def subjrlf(subject_id, data_dir):
+    """
+    Get absolute path of MRI data
+
+    """
+    rlf = open('/'.join([data_dir, subject_id, '3danat', 'mri.rlf']))
+    run_list = [line.strip() for line in rlf]
+    info = dict(orig=[[subject_id,'3danat',run_list,'anat']])
+    return info
+
+def autorecon1(data_dir, subjects_dir, workingdir, subject_list, pluginName):
+    """
+    Define workflow of the 1st step in surface reconstruction
+
+    """
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subject_id']),
+            name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(
+            interface=nio.DataGrabber(infields=['subject_id'],
+                                      outfields=['orig']),
+            name="datasource")
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+
+    Autorecon1 = pe.MapNode(interface=fs.ReconAll(),
+                            name="Autorecon1",
+                            iterfield=['subject_id'])
+    Autorecon1.inputs.subjects_dir = subjects_dir
+    Autorecon1.inputs.directive = 'autorecon1'
+    Autorecon1.inputs.args = '-nuintensitycor-3T'
+
+    SurRecon1 = pe.Workflow(name='SurRecon1')
+    SurRecon1.base_dir = workingdir 
+
+    SurRecon1.connect([
+            (infosource, datasource, [
+                    ('subject_id', 'subject_id'),
+                    (('subject_id',subjrlf, data_dir),'template_args')]),
+            (datasource, Autorecon1, [('orig','T1_files')]),
+            (infosource, Autorecon1, [('subject_id','subject_id')])])
+
+    SurRecon1.run(plugin=pluginName)
+
+def autorecon2(subjects_dir, workingdir, subject_list, pluginName):
+    """
+    Define workflow of 2nd step in surface reconstruction
+
+    """
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subject_id']),
+            name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    Autorecon2 = pe.MapNode(interface=fs.ReconAll(),name="Autorecon2",
+                            iterfield=['subject_id'])
+    Autorecon2.inputs.subjects_dir = subjects_dir
+    Autorecon2.inputs.directive = 'autorecon2'
+    Autorecon2.inputs.args = '-no-isrunning'
+
+    SurRecon2 = pe.Workflow(name='SurRecon2')
+    SurRecon2.base_dir = workingdir
+
+    SurRecon2.connect([(infosource, Autorecon2, [('subject_id','subject_id')])])
+
+    SurRecon2.run(plugin=pluginName)
+
+def autorecon3(subjects_dir, workingdir, subject_list, pluginName):
+    """
+    Define workflow of 3rd step in surface reconstruction
+
+    """
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subject_id']),
+            name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    Autorecon3 = pe.MapNode(interface=fs.ReconAll(),name="Autorecon3",
+                            iterfield=['subject_id'])
+    Autorecon3.inputs.subjects_dir = subjects_dir
+    Autorecon3.inputs.directive = 'autorecon3'
+
+    SurRecon3 = pe.Workflow(name='SurRecon3')
+    SurRecon3.base_dir = workingdir
+
+    SurRecon3.connect([(infosource, Autorecon3, [('subject_id','subject_id')])])
+    
+    SurRecon3.run(plugin=pluginName)
+
+def qcache(subjects_dir, workingdir, subject_list, qcacheTarget, pluginName):
+    """
+    Define qcache workflow in surface reconstruction
+
+    """
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subject_id']),
+            name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    Qcache = pe.MapNode(interface=fs.ReconAll(),
+                        name="Qcache",
+                        iterfield=['subject_id'])
+    Qcache.inputs.subjects_dir = subjects_dir
+    Qcache.inputs.directive = 'qcache'
+    cmdstr = ' -no-isrunning'
+
+    if qcacheTarget != '':
+        Qcache.inputs.args = '-target ' + qcacheTarget + cmdstr
+    else:
+        Qcache.inputs.args = cmdstr
+
+    SurQcache = pe.Workflow(name='SurQcache')
+    SurQcache.base_dir = workingdir
+
+    SurQcache.connect([(infosource, Qcache, [('subject_id','subject_id')])])
+
+    SurQcache.run(plugin=pluginName)
+
+def localgi(subjects_dir, workingdir, subject_list, pluginName):
+    """
+    Define localGI workflow in surface reconstruction
+
+    """
+    infosource = pe.Node(
+            interface=util.IdentityInterface(fields=['subject_id']),
+            name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    LocalGI = pe.MapNode(interface=fs.ReconAll(),
+                         name="LocalGI",
+                         iterfield=['subject_id'])
+    LocalGI.inputs.subjects_dir = subjects_dir
+    LocalGI.inputs.directive = 'localGI'
+
+    SurLGI = pe.Workflow(name='SurLGI')
+    SurLGI.base_dir = workingdir
+
+    SurLGI.connect([(infosource, LocalGI, [('subject_id','subject_id')])])
+
+    SurLGI.run(plugin=pluginName)
+
+if __name__ == '__main__':
+    main()
+

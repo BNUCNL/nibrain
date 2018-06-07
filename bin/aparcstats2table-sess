@@ -1,0 +1,62 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+Get measurement of surface
+
+"""
+import os
+import sys
+import argparse
+
+def aparcstats2tablePy():
+    parser = argparse.ArgumentParser(description = 'Make a measurement table based on one annot file')
+    parser.add_argument('-sf',
+                        type = file,
+                        dest = 'sessidFile',
+                        metavar = 'sessid-file',
+                        required = True,
+                        help = 'an input file containing subject id list')
+    parser.add_argument('-para',
+                        dest = 'meas',
+                        metavar = 'measurement',
+                        required = True,
+                        choices = ['area','volume','thickness','thicknessstd','meancurv'],
+                        help = 'measurement can be one of the area, volume, thickness, thicknessstd or meancurv')
+    parser.add_argument('-hemi',
+                        dest = 'hemi',
+                        metavar = 'hemisphere',
+                        choices = ['lh','rh'],
+                        required = True,
+                        help = 'hemisphere for surface analysis using freesurfer')
+    parser.add_argument('-parc',
+                        dest = 'parc',
+                        metavar = 'parc-file',
+                        choices = ['aparc.a2009a','aparc'],
+                        required = True,
+                        help = 'parc-file can be aparc.a2009s or aparc')
+    parser.add_argument('-o',
+                        dest = 'outFile',
+                        metavar = 'out-file',
+                        required = True,
+                        help = 'output table file name')
+    parser.add_argument('-t',
+                        dest = 'delimiter',
+                        metavar = 'delimiter',
+                        choices = ['tab','space','comma','semicolon'],
+                        default = 'tab',
+                        help = 'delimiter can be tab, space, comma or semicolon')
+    args = parser.parse_args()
+
+    sessid = [line.strip() for line in args.sessidFile]
+
+    strCmd = 'aparcstats2table --hemi ' + args.hemi + ' --meas ' + args.meas \
+             + ' --parc '  + args.parc + ' -t ' + args.outFile \
+             + ' --delimiter ' + args.delimiter + ' --subjects'
+    for item in sessid:
+        strCmd = strCmd + ' ' + item
+    os.system(strCmd)
+
+if __name__ == '__main__':
+    aparcstats2tablePy()
+

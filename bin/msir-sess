@@ -1,0 +1,305 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import argparse
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+
+from msi import create_featreg_preproc
+from anat2func import anat2func
+
+# Setup any package specific configuration. The output file format
+# for FSL routines is being set to uncompressed NIFTI
+
+print fsl.Info.version()
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+def subjrlf(subject_id, data_dir, fsd, frlf, fstem, asd):
+    """
+    Get input file information.
+    """
+    import os
+    rlf = open(os.path.join(data_dir,subject_id,fsd,frlf))
+    run_list = [line.strip() for line in rlf]
+    run_list.sort()
+    rlf.close()
+    info = dict(func=[[subject_id,fsd,run_list,fstem]],
+                brain=[[subject_id,asd,'reg_fsl','T1_brain']],
+                highres2standard=[[subject_id,asd,'reg_fsl','highres2standard_2mm.mat']])
+    return info
+
+def savef(in_file, in_file1,filename):
+    """
+    Save results with the name of filename.
+    """
+    import os
+    from numpy import savetxt
+    from nipype.utils.filemanip import copyfile
+    op_strings = []
+
+    if isinstance(in_file, list):
+        in_file = in_file
+    else:
+        in_file = [in_file]
+
+    for i in range(len(in_file)):
+        targdir = os.path.dirname(in_file[i])
+        if filename == 'highres2example_func.mat':
+            if not os.path.exists(targdir+'/reg_fsl'):
+	        os.mkdir(targdir+'/reg_fsl')
+            copyfile(in_file1[i], targdir+'/reg_fsl/'+filename, copy=True, 
+                     hashmethod='content')
+            op_strings.append('cp '+in_file1[i]+' '+targdir+'/reg_fsl/'+filename)
+        else:
+            copyfile(in_file1[i], targdir+'/'+filename, copy=True, 
+                     hashmethod='content')
+            op_strings.append('cp '+in_file1[i]+' '+targdir+'/'+filename)
+    # Save command strings
+    out_file = os.path.join(os.getcwd(), 'cmdstrings')
+    op_strings = '\n'.join(op_strings)
+    out_filef = open(out_file,'a')
+    out_filef.write(op_strings)
+    out_filef.close()    
+    return out_file
+
+def main():
+    """
+    usage: msir-sess [-h] (-datadir datadir | -datadirf datadir-file)
+                     (-sess sessid | -sessf sessid-file) -fsd func-subdir -rlf rlf
+                     -fstem func-file [-asd anat-subdir] [-nskip number-of-del-TR]
+                     [-mcref {middle,mean,first,last}] [-fwhm FWHM] [-debug]
+                     [-plugin {Linear,Multiproc,IPython}] [-v]
+
+    Do functional preprocess motion correction, smooth, intensity normlization,
+    registration.
+
+    Parameters
+    ----------
+      -h, --help            show this help message and exit
+      -datadir datadir      Source directory contains data file
+      -datadirf datadir-file
+                            File contains the source data directory
+      -sess sessid          Input the sessid
+      -sessf sessid-file    Input the sessid file
+      -fsd func-subdir      Functional sub directory, e.g. bold
+      -rlf rlf              Run list file
+      -fstem func-file      The file name(suffix) of the functional image
+      -asd anat-subdir      Anatomical sub directory
+      -nskip number-of-del-TR
+                            The number of delete time points, if do ALFF analysis,
+                            the left number of time points should be even
+      -mcref {middle,mean,first,last}
+                            Motion correction refference volume
+      -fwhm FWHM            The fwhm of the smooth, 0 instead for no smooth
+      -debug                Debug mode, save mediate results in present dir
+      -plugin {Linear,Multiproc,IPython}
+                            The name of the plugin, the available plugins allow
+                            local and distributed execution of workflows, default
+                            is IPython
+      -v, --version         show program's version number and exit
+
+    Examples
+    --------
+    Specify daradir and subject id in command line, no skip of first several
+    volumes and default parameter of smooth is 6mm:
+    msir-sess -datadir /nfs/s3/workingshop/wangxu/restsess/test/ -sess S0001 
+              -fsd rest -rlf rfMRI.rlf -fstem rest
+    
+    Specify daradir and subject id in command line, skip first four volumes:
+    msir-sess -datadir /nfs/s3/workingshop/wangxu/restsess/test/ -sess S0001 
+              -fsd rest -rlf rfMRI.rlf -fstem rest -nskip 4 -fwhm 6
+ 
+    Specify daradir and subject id in text file, skip first four volumes:
+    msir-sess -datadirf sesspar -sessf sessidfile -fsd rest -rlf rfMRI.rlf 
+              -fstem rest -nskip 4 -mcref first -fwhm 6
+
+    """
+    parser = argparse.ArgumentParser(prog='msir-sess', 
+                                     prefix_chars='-',
+                                     description='Do functional preprocess '
+                                                 'motion correction, smooth,'
+                                                 ' intensity normlization, '
+                                                 'registration.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-asd', 
+                        help='Anatomical sub directory',
+                        dest='asd',
+                        metavar='anat-subdir',               
+                        default='3danat')
+    parser.add_argument('-nskip', 
+                        help='The number of delete time points, if do ALFF'
+                             ' analysis, the left number of time points '
+                             'should be even',
+                        dest='nskip',
+                        metavar='number-of-del-TR',
+                        type=int,
+                        default=0)
+    parser.add_argument('-mcref', 
+                        help='Motion correction refference volume',
+                        dest='mcref',
+                        choices = ['middle','mean','first','last'],
+                        default='middle')
+    parser.add_argument('-fwhm', 
+                        help='The fwhm of the smooth, 0 instead for no smooth',
+                        dest='fwhm',
+                        type=int,
+                        default=6)
+    parser.add_argument('-debug', 
+                        help='Debug mode, save mediate results in present dir',
+                        dest='debug',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-plugin', 
+                        help='The name of the plugin, the available plugins '
+                              'allow local and distributed execution of '
+                              'workflows, default is IPython',
+                        dest='plugin',
+                        default = 'IPython',
+                        choices=['Linear','Multiproc','IPython'])
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+    
+    
+    # Parallel computation exec config
+
+    pluginName = args.plugin
+    
+    # Setup parameters for data and processing   
+    
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = os.path.abspath(datadir) # add abspath
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = os.path.abspath(datadirf.readline().strip()) # add abspath
+
+    if args.debug:
+        targetdir = os.path.abspath('./') # add abspath
+    elif not args.debug:
+        targetdir = ''
+        
+    fsd = args.fsd
+    asd = args.asd
+    rlf = args.rlf
+    fstem = args.fstem
+    whichvol = args.mcref
+    deletetimepoints = args.nskip
+    fwhm  = args.fwhm
+
+    preproc_workflow = pe.Workflow(name='msir')
+
+    preproc = create_featreg_preproc(whichvol=whichvol,
+                                     deletetimepoints=deletetimepoints)
+
+    register = anat2func()
+
+    infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
+                         name="infosource")
+
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(interface=nio.DataGrabber(infields=['subject_id'],
+                                                   outfields=['func','brain','highres2standard']),
+                         name = 'datasource')
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+    datasource.inputs.field_template = dict(highres2standard='%s/%s/%s/%s')
+    datasource.inputs.sort_filelist = False
+
+    filenamelist = ['mc.par','sm'+str(fwhm)+'_inorm.nii.gz',
+                    'example_func.nii.gz','mask.nii.gz',
+                    'highres2example_func.mat','csfmask.nii.gz',
+                    'wmmask.nii.gz','gmmask.nii.gz']
+    nodename = ['savefile','savefile1','savefile2','savefile3','savemtx',
+                'savecsfmask','savewmmask','savegmmask']
+    nodelist = ['%s = pe.Node(interface=util.Function('
+    'input_names=[\'in_file\',\'in_file1\',\'filename\'],'
+    'output_names=[\'out_file\'],function=savef),name=\'%s\')'
+    %(name,name) for name in nodename]
+    nodeinputs = ['%s.inputs.filename = \'%s\''
+                 %(nodename[i],filenamelist[i]) for i in range(len(nodename))]
+
+    for node in nodelist:
+        exec(node)
+
+    for nodeinput in nodeinputs:
+        exec(nodeinput)
+ 
+    preproc.inputs.inputspec.fwhm = fwhm
+    preproc_workflow.base_dir = os.path.abspath(targetdir)
+    preproc_workflow.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                                        (('subject_id',subjrlf,data_dir,fsd,rlf,fstem,asd),'template_args')]),
+                              (datasource, preproc, [('func', 'inputspec.func')]),
+                              (preproc, register, [('outputspec.reference', 'inputspec.example_func')]),
+                              (preproc, register, [('outputspec.mask', 'inputspec.mask')]),
+                              (datasource, register, [('brain', 'inputspec.brain')]),			      
+                              (datasource, register, [('highres2standard', 'inputspec.highres2standard')]),			      
+                              (datasource, savefile, [('func', 'in_file')]),
+                              (datasource, savefile1, [('func', 'in_file')]),
+                              (datasource, savefile2, [('func', 'in_file')]),
+                              (datasource, savefile3, [('func', 'in_file')]),
+                              (datasource, savemtx, [('func', 'in_file')]),
+                              (datasource, savecsfmask, [('func', 'in_file')]),
+                              (datasource, savewmmask, [('func', 'in_file')]), 
+                              (datasource, savegmmask, [('func', 'in_file')]), 			      
+                              (preproc, savefile, [('outputspec.motion_parameters', 'in_file1')]),
+                              (preproc, savefile1, [('outputspec.meanscaled_files','in_file1')]),
+                              (preproc, savefile2, [('outputspec.reference', 'in_file1')]),
+                              (preproc, savefile3, [('outputspec.mask','in_file1')]),
+                              (register, savemtx, [('outputspec.anat2funcmtx','in_file1')]),
+                              (register, savecsfmask, [('outputspec.csfmask','in_file1')]),
+                              (register, savewmmask, [('outputspec.wmmask','in_file1')]),
+                              (register, savegmmask, [('outputspec.gmmask','in_file1')]),
+                            ])
+    preproc_workflow.run(plugin=pluginName)
+
+if __name__ == '__main__':
+    main()

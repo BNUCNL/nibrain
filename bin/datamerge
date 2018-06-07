@@ -1,0 +1,240 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+A pipeline used to merge a 4D file
+"""
+import os                                    # system functions
+import string
+import re
+import sys
+import argparse
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+
+def merge():
+    parser = argparse.ArgumentParser(description = 'merge a 4D file',
+                                     prog = 'merge')
+    parser.add_argument('-sf',
+                        dest = 'sessidFile',
+                        required = True,
+                        metavar = 'sessid-file',
+                        help = 'an input file containing subject id list')
+    parser.add_argument('-para',
+                        dest = 'index',
+                        metavar = 'parameter',
+                        required = True,
+                        choices = ['thickness','area',
+                                'alff','falff',
+                                'FA','MD','AD','RD','MO',
+                                'gray','white'],
+                        help = 'parameter you wan to analyses: \
+                            for surface analysis, we have thcikness; \
+                            for resting, we have alff and falff; \
+                            for vbm, we have gray and white;\
+                            for dti, there are FA, MD, AD, RD and MO'
+                        )
+    parser.add_argument('-outDir',
+                        dest = 'outDir',
+                        metavar = 'outDir',
+                        default = '.',
+                        help = 'output file in outDir')
+    parser.add_argument('-hemi',
+                        dest = 'hemi',
+                        choices = ['lh','rh'],
+                        default = '',
+                        help = 'hemisphere for surface analysis using freesurfer')
+    parser.add_argument('-fwhm',
+                        dest = 'fwhm',
+                        choices = ['0','5','10','15','20','25'],
+                        default = '',
+                        help = 'fwhm (mm) for surface analysis using freesurfer')
+    parser.add_argument('-target',
+                        dest = 'template',
+                        default = '',
+                        help = 'template surface for surface analysis')
+    parser.add_argument('-o',
+                        dest = 'outFile',
+                        default = '',
+                        help = 'output file name for surface analysis')
+    args = parser.parse_args()
+
+    if not os.path.exists(args.sessidFile):
+        print args.sessidFile
+        print 'sessid file does not exist.\n'
+        sys.exit()
+    if args.outDir:
+        if not os.path.exists(args.outDir):
+            print 'out-dir does not exist.\n'
+            sys.exit()
+
+    fsIndex = ['thickness','area']
+    restIndex = ['alff','falff']
+    vbmIndex = ['gray','white']
+
+    if args.index in fsIndex:
+        if not args.hemi:
+            print 'Please specify the -hemi argument.\n'
+            sys.exit()
+        if not args.fwhm:
+            print 'Please specify the -fwhm argument.\n'
+            sys.exit()
+        if not args.template:
+            print 'Please specify the -target argument.\n'
+            sys.exit()
+        if not args.outFile:
+            print 'Please specify the output file name.\n'
+            sys.exit()
+        outAdd = os.path.join(args.outDir,args.outFile)
+        strEle = [args.index,'fwhm'+args.fwhm,args.template]
+        fileName = '.'.join(strEle)
+        cmdStr = 'mris_preproc --f ' + args.sessidFile + \
+                 ' --cache-in ' + fileName + \
+                 ' --target ' + args.template + \
+                 ' --hemi ' + args.hemi + \
+                 ' --out ' + outAdd
+        os.system(cmdStr)
+    elif args.index in restIndex:
+        restingMerge(args.sessidFile,args.index,args.outDir)
+    elif args.index in vbmIndex:
+        if not args.outFile:
+            print 'Please specify the output file name.\n'
+            sys.exit()
+        srcDir = r'/nfs/t1/nsppara/VBM/amount'
+        vbmMerge(args.sessidFile,
+                 args.index,
+                 args.outDir,
+                 args.outFile,
+                 srcDir)
+    else:
+        dtiMerge(args.sessidFile, args.index, args.outDir, args.outFile)
+
+
+def restingMerge(sessidFile,index,outDir):
+    fsessid = sessidFile
+    fsessid = open(fsessid)
+    subject_list  = [line.strip() for line in fsessid]
+
+    paraname = index
+    workingdir = outDir
+    datadir = '/nfs/t1/nsppara/resting'
+
+    para_list = getList(subject_list,index)
+    datasource = pe.Node(interface=nio.DataGrabber(outfiles=['para_list']),
+                                                   name='datasource')
+    datasource.inputs.base_directory = os.path.abspath(datadir)
+    datasource.inputs.template = '%s.nii.gz'
+    datasource.inputs.template_args = dict(para_list=[[para_list]])
+    datasource.inputs.sort_filelist = False
+    
+    """
+    Setup a RS3Dto4D workflow
+    """
+    RS3Dto4D = pe.Workflow(name='RS3Dto4D')
+
+    """
+    Set up a node to define all inputs required for the highlevel workflow
+    """
+    inputnode = pe.Node(interface=util.IdentityInterface(fields=['para_list']
+                                                        ),
+                        name='inputspec')
+    """
+    Set up a node to merge all the parameter volume of all subj into a 4D file
+    """
+    merge = pe.Node(interface=fsl.Merge(dimension='t'),name = 'merge')
+
+    """
+    Get a group mask
+    """
+    groupmask = pe.Node(fsl.ImageMaths(op_string="-abs -Tmin -bin",
+                                       out_data_type="char",
+                                       suffix="_mask"),
+                        name="groupmask")
+
+    RS3Dto4D.base_dir = os.path.abspath(workingdir)
+    RS3Dto4D.connect([(datasource, inputnode, [('para_list','para_list')]),
+                      (inputnode,merge,[('para_list','in_files')]),
+                      (merge,groupmask,[('merged_file','in_file')]),
+                     ])
+    RS3Dto4D.run()
+
+
+def getList(subject_list,index):
+    para_list = []
+    for subject_id in subject_list:
+        para_list.append(os.path.join(subject_id, index, index))
+    return para_list
+
+def dtiMerge(sessidFile, index, outDir, outFile):
+    nspdataTBSSdir = '/nfs/s2/dticenter/nspdata/iTBSS'
+    allSessidFile = '/nfs/s2/dticenter/nspdata/subj/sessid'
+
+    tbssType = index #'FA' 'MD' 'AD' 'RD' 'MO'
+    if tbssType in ['FA', 'MD', 'AD', 'RD', 'MO']:
+        if tbssType == 'FA':
+            postfix = '_' + tbssType + '_prep_warp_imasked_skeletonised.nii.gz'
+        else:
+            postfix = '_' + tbssType + '_warp_imasked_skeletonised.nii.gz'
+    else:
+        print 'The parameter must be FA/MD/AD/RD/MO!'
+        exit(-1)
+
+    if outFile == '':
+        outFile = 'all'
+    outFile = os.path.join(outDir, 
+                            outFile + "_" + tbssType + "_skeletonised.nii.gz")
+    
+    fsessid = open(sessidFile)
+    sessList = [line.strip() for line in fsessid]
+    
+    if '' in sessList:
+        print "Please delete the blank line in the sessid file."
+        exit(-1)
+
+    fsessidAll = open(allSessidFile)
+    sessListAll = [line.strip() for line in fsessidAll]
+
+    '''
+    Get the specified files and merge them
+    '''
+    fileList = []
+    for sess in sessList:
+        if (sess in sessListAll):
+            #file_listFA.append(os.path.join(tbssdatasink, subject_id,
+            #                                            subject_id + postfix))
+            fileList.append(os.path.join(nspdataTBSSdir, 
+                                                        sess + postfix))
+        else:
+            print sess +' not in all the subjects!'
+            exit(-1)
+
+    tbssmerge = fsl.Merge(dimension = "t", 
+                        merged_file = outFile,
+                        in_files = fileList)
+    tbssmerge.run()
+
+def vbmMerge(sessidFile, index, outDir, outFile, sDir):
+    outPath = os.path.join(outDir,outFile)
+    if os.path.exists(outPath):
+        print 'Output file has already existed.'
+        sys.exit()
+
+    fsessid = open(sessidFile)
+    sessid = [line.strip() for line in fsessid]
+
+    if index == 'gray':
+        prefix = 'smwc1'
+    else:
+        prefix = 'smwc2'
+
+    cmdstr = 'fslmerge -a ' + outPath
+    for subj in sessid:
+        temp = os.path.join(sDir, prefix + subj + '_anat.nii')
+        cmdstr = cmdstr + ' ' + temp
+    os.system(cmdstr)
+
+if __name__ == '__main__':
+    merge()
+

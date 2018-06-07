@@ -1,0 +1,216 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import subprocess
+import sys
+import argparse
+from nibabel import load
+
+def bandpass_operand(in_file, LP, HP):
+    """
+    Get op_strings for band pass analysis
+    """
+    LP = float(LP)
+    HP = float(HP)
+    hdr = load(in_file).get_header()
+    TR = hdr['pixdim'][4]
+    LP_sigma = 1/LP/2.35/TR
+    HP_sigma = 1/HP/2.35/TR
+    op_strings = ' -bptf %.10f %.10f '%(LP_sigma,HP_sigma)
+    return op_strings
+
+def main():
+    """
+    usage: timefilter-sess [-h] (-datadir datadir | -datadirf datadir-file)
+                           (-sess sessid | -sessf sessid-file) -fsd func-subdir
+                           -rlf rlf -fstem func-file [-detrend] [-meth {fsl,afni}]
+                           [-bp BP BP] [-v]
+
+    Do functional filter.
+
+    Parameters
+    ----------
+      -h, --help            show this help message and exit
+      -datadir datadir      Source directory contains data file
+      -datadirf datadir-file
+                            File contains the source data directory
+      -sess sessid          Input the sessid
+      -sessf sessid-file    Input the sessid file
+      -fsd func-subdir      Functional sub directory, e.g. bold
+      -rlf rlf              Run list file
+      -fstem func-file      The file name(suffix) of the functional image
+      -detrend              Remove linear trend
+      -meth {fsl,afni}      The method of filtering
+      -bp BP BP             The filter band, e.g., -bp 0.01 0.1, Bandpass temporal
+                            filtering; highpass and lowpass; set either <0 to skip
+                            that filter
+      -v, --version         show program's version number and exit
+ 
+    Examples
+    --------
+    Do band pass of 0.01-0.1 Hz, then detrend the band passed data:
+    timefilter-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+                    -fstem confrm -detrend
+
+    Do band pass of 0.01-0.1 Hz without detrending the band passed data:
+    timefilter-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+                    -fstem confrm -bp 0.01 0.2
+
+    Do highpass of 0.01 Hz:
+    timefilter-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+                    -fstem confrm -detrend -bp 0.01 -1
+    Do lowpass of 0.1 Hz:
+    timefilter-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+                    -fstem confrm -detrend -bp -1 0.1
+
+    """
+    parser = argparse.ArgumentParser(prog='timefilter-sess', 
+                                     prefix_chars='-',
+                                     description='Do functional filter.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-detrend', 
+                        help='Remove linear trend',
+                        dest='detrend',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-meth', 
+                        help='The method of filtering',
+                        dest='meth',
+                        choices = ['fsl','afni'],
+                        default = 'fsl')
+    parser.add_argument('-bp', 
+                        help='The filter band, e.g., -bp 0.01 0.1, '+\
+                        'Bandpass temporal filtering; highpass '+\
+                        'and lowpass; set either <0 to skip '+\
+                        'that filter',
+                        dest='bp',
+                        nargs=2,
+                        metavar='lower-band higher-band',
+                        default=['0.01', '0.1'])
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+
+    # Setup parameters for data and processing   
+    
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = datadir
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = datadirf.readline().strip()
+    data_dir = os.path.abspath(data_dir)
+
+    fsd = args.fsd
+    rlf = args.rlf
+    fstem = args.fstem
+    LB = args.bp[0]
+    HB = args.bp[1]
+
+    for subject_id in subject_list:
+        frlf = open(os.path.join(data_dir,subject_id,fsd,rlf))
+        run_lists = [line.strip() for line in frlf]
+        frlf.close()    
+	for run in run_lists:
+            data4d = os.path.join(data_dir,subject_id,fsd,run,fstem+'.nii.gz')
+            if os.path.exists(data4d):
+                rundir = os.path.join(data_dir,subject_id,fsd,run)
+            else:
+                print 'No such file: '+data4d
+                sys.exit(0)
+            os.chdir(rundir)
+            print os.getcwd()
+            log_file = os.path.join(rundir, 'filtercmdstr.log')
+            log_info = open(log_file, 'a')
+            if args.detrend:
+                if os.path.exists(os.path.join(rundir, fstem+'_rlt.nii.gz')):
+                    mvrlt = 'mv '+fstem+'_rlt.nii.gz rlt_bak.nii.gz'
+                    subprocess.call(mvrlt,shell=True)
+                    log_info.write(mvrlt+'\n')
+                    rltcmd = '3dTcat -prefix '+fstem+'_rlt.nii.gz -rlt+ '+data4d
+                    subprocess.call(rltcmd,shell=True)
+                    log_info.write(rltcmd+'\n')
+                else:
+                    rltcmd = '3dTcat -prefix '+fstem+'_rlt.nii.gz -rlt+ '+data4d
+                    subprocess.call(rltcmd,shell=True)
+                    log_info.write(rltcmd+'\n')
+                prefilt =  os.path.join(rundir, fstem+'_rlt.nii.gz')     
+            elif not args.detrend:
+                prefilt = data4d
+            if args.meth == 'fsl':
+                op_strings = bandpass_operand(prefilt,LB,HB)
+                if float(LB) < 0 and float(HB) > 0:
+                    cmdstr = 'fslmaths '+prefilt+op_strings+' '+fstem+'_lp'+HB
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) > 0 and float(HB) < 0:
+                    cmdstr = 'fslmaths '+prefilt+op_strings+' '+fstem+'_hp'+LB
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) > 0 and float(HB) > 0:
+                    cmdstr = 'fslmaths '+prefilt+op_strings+' '+fstem+'_bp'+LB+'_'+HB
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) < 0 and float(HB) < 0:
+                    cmdstr = 'No fileter !!!'                  
+                    print 'Please check the filter parameters, no filter now.\n'
+            elif args.meth == 'afni':
+                if float(LB) < 0 and float(HB) > 0:
+                    cmdstr = '3dFourier -prefix '+fstem+'_lp'+HB+'.nii.gz -lowpass '+HB+' -ignore 0 -retrend '+prefilt
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) > 0 and float(HB) < 0:
+                    cmdstr = '3dFourier -prefix '+fstem+'_hp'+LB+'.nii.gz -highpass '+LB+' -ignore 0 -retrend '+prefilt
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) > 0 and float(HB) > 0:
+                    cmdstr = '3dFourier -prefix '+fstem+'_bp'+LB+'_'+HB+'.nii.gz -highpass '+LB+' -lowpass '+HB+' -ignore 0 -retrend '+prefilt
+                    subprocess.call(cmdstr,shell=True)
+                elif float(LB) < 0 and float(HB) < 0:
+                    cmdstr = 'No fileter !!!'                 
+                    print 'Please check the filter parameters, no filter now.\n'
+
+            log_info.write(cmdstr+'\n')
+
+if __name__ == '__main__':
+    main()

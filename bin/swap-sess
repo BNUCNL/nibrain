@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import argparse
+import logging
+import subprocess
+from glob import glob
+    
+def swapsess(sessid_file,datadir_file,swap_file,rlf,fsd):
+    """ Reorient data from LPS to LAS 
+    
+    Parameters
+    ----------
+    sessid_file : txt file
+        A txt file with sessids in a list
+    datadir_file : txt file
+        A txt file with datadir in the first row
+    swap_file : file
+        The filename to swap
+    rlf : string
+        The name of the runlist file
+    fsd: string
+        The name of the functional subdir, e.g. 'bold', 'dti'
+    
+    Date: 2011-12-16
+    Author: Xiangzhen Kong
+    
+    """
+    
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%Y/%m/%d %H:%M:%S',
+                        filename='swap-sess.log', filemode='w',
+                        level=logging.DEBUG)
+    
+    src_dir = [line.strip() for line in open(datadir_file)][0]
+    sessid_list = [line.strip() for line in open(sessid_file)]
+    for sessid in sessid_list:
+        if rlf == '':
+            runlist = glob(os.path.join(src_dir,sessid,fsd,'0*'))
+        else:
+            runlist_file = os.path.join(src_dir,sessid,fsd,rlf)
+            runlist = [line.strip() for line in open(runlist_file)]
+        for run in runlist:
+            srcfile = os.path.join(src_dir,sessid,fsd,run,swap_file)
+            if os.path.exists(srcfile):
+                #outfile = os.path.join(src_dir,sessid,fsd,run,swap_file.split('.')[0]+'_swaped')
+                outfile = os.path.join(src_dir,sessid,fsd,run,'func.nii.gz')
+                cmd_fslswarpdim = 'fslswapdim ' + srcfile + ' x -y z ' + outfile
+                logging.info(cmd_fslswarpdim)
+                subprocess.call(cmd_fslswarpdim, shell=True)
+                cmd_fslorient = 'fslorient ' + '-swaporient ' + outfile
+                logging.info(cmd_fslorient)
+            else:
+                logging.warning('File not exist:' + srcfile)
+            subprocess.call(cmd_fslorient, shell=True)
+
+def main():
+    """
+    Author : Xiangzhen Kong@BNU
+    
+    """
+    parser = argparse.ArgumentParser(description='Reorient data.',
+                                     prog='swap-sess')
+    parser.add_argument('-sf', '--sessidfile', 
+                    dest='sessid_file',
+                    metavar='sessid-file',
+                    required=True,
+                    help='A list of session ids.')
+    parser.add_argument('-df', '--datadirfile',
+                    dest='datadir_file',
+                    metavar='datadir-file',
+                    required=True,
+                    help='A datadir file.')
+    parser.add_argument('-in_file', '--in_file', 
+                    dest='in_file',
+                    required=True,
+                    help='data name to be reoriented.')
+    parser.add_argument('-rlf', '--rlfile',
+                    dest='rlfile',
+                    default='',
+                    help='run list file name, \
+                            default all runs in subDir(file name).')
+    parser.add_argument('-fsd', '--subdir', 
+                    dest='subdir',
+                    required=True,
+                    help='A functional subdir or other subdir(dir name).')
+    parser.add_argument('-v','--version',
+                    action='version',
+                    version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+
+    if (not os.path.exists(args.sessid_file)) or \
+        (not os.path.exists(args.datadir_file)):
+         parser.error('Must specify the option -sf, -df with existing files')
+
+    swapsess(args.sessid_file, args.datadir_file, args.in_file, \
+            args.rlfile, args.subdir)
+
+if __name__ == '__main__':
+    main()

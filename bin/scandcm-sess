@@ -1,0 +1,30 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+unpack tools -- make subject name file
+
+"""
+import argparse
+
+from pynit.base import unpack as pyunpack
+
+def unpack_scandcmsess():
+    parser = argparse.ArgumentParser(description = 'scan only')
+    parser.add_argument('-csv',
+                        dest = 'scanlist_file',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-o',
+                        dest = 'scaninfo_name',
+                        metavar = 'output scaninfo file name',
+                        required = True,
+                        help = 'output scaninfo file name')
+    args = parser.parse_args()
+
+    pyunpack.scandcmsess(args.scanlist_file, scan_info_name=args.scaninfo_name)
+
+if __name__ == '__main__':
+    unpack_scandcmsess()
+

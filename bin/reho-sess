@@ -1,0 +1,264 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os                                    # system functions
+import argparse
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+#from rehoneib import reho_volneighbors
+
+# Setup any package specific configuration. The output file format
+# for FSL routines is being set to uncompressed NIFTI
+
+print fsl.Info.version()
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+
+def subjrlf(subject_id, data_dir, fsd, rlf, fstem):
+    """
+    Get input file information.
+    """
+    import os
+    frlf = open(os.path.join(data_dir,subject_id,fsd,rlf))
+    run_list = [line.strip() for line in frlf]
+    info = dict(preReho=[[subject_id,fsd,run_list,fstem]],
+                mask=[[subject_id,fsd,run_list,'mask']])
+    return info
+
+def reho(in_files,shape,size,fstem):
+    """
+    Compute voxel-wise reho in the cube with edge of size
+    """
+    import os
+    import nibabel as nib
+    import numpy as np
+    #from rehoneib import reho_volneighbors
+    from nkpi.rfmri.sess.rehoneib import reho_volneighbors
+    #from pynit.base import getrank,kendall
+    from nkpi.base import getrank,kendall
+
+    if isinstance(in_files, list):
+        # For multiple runs' processiong
+        in_files = in_files
+    else:
+        # For single run's processing
+        in_files = [in_files]
+
+    for in_file in in_files:
+        mask = in_file[0]
+        func = in_file[1]
+        maskimg = nib.load(mask)
+        mask = maskimg.get_data()
+        maskhdr = maskimg.get_header()
+        res = maskhdr['pixdim'][1:4]    
+        dims = np.shape(mask)
+        # neighbor.ncut_volneighbors(imgdata, ndim(2 or 3), size (radius of 
+        # the sphere), shape='sphere')
+        neib = reho_volneighbors(mask, 3, size, res, shape=shape)
+        neib = neib.compute_offsets()
+        func = nib.load(func)
+        func = func.get_data()
+        timepoints = np.shape(func)[3]
+        # Compute the rank order of signal in each voxel
+        funcrank = getrank(func)
+        funcrank = np.reshape(funcrank,[dims[0]*dims[1]*dims[2],timepoints])
+        outinit = func[:,:,:,0]
+        for element in neib:
+        # index3d = np.unravel_index(element[1], dims)
+            print element[1]
+            ts = funcrank[element[1], :] 
+            kenW = kendall(ts)
+            outinit[np.unravel_index(element[0], dims)] = kenW
+        maskimg._data._data = outinit
+        rehodir = os.path.dirname(in_file[1])+'/reho'
+        if not os.path.exists(rehodir):
+            os.mkdir(rehodir)
+        outfile = os.path.join(rehodir,fstem+'_reho_'+str(size)+'.nii.gz')
+        nib.save(maskimg,outfile)
+    return outfile
+
+
+def main():
+    """
+    usage: reho-sess [-h] (-datadir datadir | -datadirf datadir-file)
+                     (-sess sessid | -sessf sessid-file) -fsd func-subdir -rlf rlf
+                     -fstem func-file [-radius RADIUS]
+                     [-plugin {Linear,Multiproc,IPython}] [-debug] [-v]
+
+    Do ReHo analysis.
+
+    Parameters
+    ----------
+      -h, --help            show this help message and exit
+      -datadir datadir      Source directory contains data file
+      -datadirf datadir-file
+                            File contains the source data directory
+      -sess sessid          Input the sessid
+      -sessf sessid-file    Input the sessid file
+      -fsd func-subdir      Functional sub directory, e.g. bold
+      -rlf rlf              Run list file
+      -fstem func-file      The file name(suffix) of the functional image
+      -shape {fast_cube,cube,sphere}
+                            The shape of the neighbour voxels
+      -size size/radius     The radius of the sphere to compute Kendal W, voxel
+                            based
+      -plugin {Linear,Multiproc,IPython}
+                            The name of the plugin, the available plugins allow
+                            local and distributed execution of workflows, default
+                            is IPython
+      -debug                Debug mode, save mediate results in present dir
+      -v, --version         show program's version number and exit
+
+    Examples
+    --------
+    Specify the sphere with the radius of 3 as the neighbours of the voxel
+    and compute the reho value for all the voxels in the sphere:
+    reho-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+              -fstem confrm -shape sphere -size 3 
+
+    """
+    parser = argparse.ArgumentParser(prog='reho-sess', 
+                                     prefix_chars='-',
+                                     description='Do ReHo analysis.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-shape', 
+                        help='The shape of the neighbour voxels',
+                        dest='shape',
+                        choices=['fast_cube','cube','sphere'],
+                        default='fast_cube')
+    parser.add_argument('-size', 
+                        help='The radius of the sphere to compute Kendal W, voxel based',
+                        dest='size',
+                        metavar='size/radius',
+                        type=int,
+                        default='26')   
+    parser.add_argument('-plugin', 
+                        help='The name of the plugin, the available plugins '
+                              'allow local and distributed execution of '
+                              'workflows, default is IPython',
+                        dest='plugin',
+                        default = 'IPython',
+                        choices=['Linear','Multiproc','IPython'])    
+    parser.add_argument('-debug', 
+                        help='Debug mode, save mediate results in present dir',
+                        dest='debug',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+    
+    # Parallel computation exec config
+
+    pluginName = args.plugin
+
+    # Specify the location of the data
+
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = datadir
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = datadirf.readline().strip()
+    data_dir = os.path.abspath(data_dir)
+
+    if args.debug:
+        targetdir = os.path.abspath('./')
+    elif not args.debug:
+        targetdir = ''
+
+    fsd = args.fsd
+    rlf = args.rlf
+    fstem = args.fstem
+    shape = args.shape
+    size = args.size
+
+    if shape == 'fast_cube':
+        if size not in [6,18,26]:
+            print 'The size \''+size+'\' not in the fast_cube list!!!'
+            sys.exit(0)
+
+    # Set up complete workflow
+
+    Reho = pe.Workflow(name='ReHo')
+
+    infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
+                        name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(interface=nio.DataGrabber(infields=['subject_id'],
+                                                   outfields=['preReho','mask']),
+                         name = 'datasource')
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+    datasource.inputs.sort_filelist = False
+
+    mergenode = pe.Node(interface=util.Merge(2, axis='hstack'),
+                        name='merge')
+
+    rehocomput = pe.Node(interface=util.Function(input_names=['in_files','shape','size','fstem'],
+                                                 output_names=['out_file'],
+                                                 function=reho),
+                       name='rehocomput')
+    rehocomput.inputs.shape = shape
+    rehocomput.inputs.size = size
+    rehocomput.inputs.fstem = fstem    
+
+    Reho.base_dir = os.path.abspath(targetdir)
+    Reho.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                            (('subject_id',subjrlf,data_dir,fsd,rlf,fstem),'template_args')]),
+                  (datasource, mergenode, [('mask', 'in1')]),
+                  (datasource, mergenode,[('preReho', 'in2')]),
+                  (mergenode, rehocomput,[('out','in_files')]),
+                ])
+
+    Reho.run(plugin=pluginName)
+
+if __name__ == '__main__':
+    main()

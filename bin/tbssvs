@@ -1,0 +1,55 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+Displaying TBSS Results(randomise)
+
+"""
+import os
+import argparse
+import sys
+
+def tbssvs():
+    parser = argparse.ArgumentParser(description = 'Displaying TBSS Results(randomise).',
+					prog = 'tbssvs')
+    parser.add_argument(
+				'-in',
+				dest = 'statsFile',
+				metavar = 'stats-file',
+				required = True,
+				help = 'an stats nii file outputed by randomise TBSS'
+				)
+    parser.add_argument(
+				'-thr',
+				dest = 'threshold',
+				metavar = 'threshold',
+				required = True,
+				help = 'a threshold, e.g. 0.95 for a p-map'
+				)
+    parser.add_argument(
+                '--version','-v',
+                action = 'version',
+                version = '%(prog)s 0.1'
+                )
+    args = parser.parse_args()
+
+    if not os.path.exists(args.statsFile):
+        print 'Input statsFile doesnot exist!\n'
+        sys.exit()
+    statsFile = args.statsFile
+    threshold = args.threshold
+    meanFA = '/nfs/s2/dticenter/nspdata/TBSS/mean_FA.nii.gz'
+    tmp = os.path.split(statsFile)
+    outputFile = os.path.join(tmp[0],'t'+tmp[1])
+    baseimage = meanFA
+    mean_FA_skeleton = '/nfs/s2/nspworking/dti/datasink/TBSS/mean_FA_skeleton_mask.nii.gz'
+    cmdStr1 = 'tbss_fill ' + statsFile + ' '+ str(threshold) + ' ' + meanFA + ' ' + outputFile
+    cmdStr2 = 'fslview ' + baseimage + ' -b 0,0.6 ' + mean_FA_skeleton + ' -l Green -b 0.2,0.7 ' + outputFile + ' -l Red-Yellow'
+    os.system(cmdStr1)
+    if os.path.exists(outputFile):
+        #os.system(cmdStr2)
+        print 'Done!\n'
+        print 'Dispaly the result begining with \'t\' by fslview, e.g.\n ' + cmdStr2 + '\n'
+
+if __name__ == '__main__':
+    tbssvs()

@@ -1,0 +1,79 @@
+#! /usr/bin/env python
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""Merge volume in feat directory for sessions
+Author: Zonglei Zhen @ bnu
+
+"""
+
+import os
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+from pynit.base import get_logger
+
+def main():
+    parser = argparse.ArgumentParser(description="Merge statistic volume from feat for multiple sessions")
+
+
+    parser.add_argument('-sf',
+                        type=argparse.FileType('r'),
+                        required=True,
+                        help='session id file, each row contains a sessionid',
+                        metavar='sessidfile')
+
+    parser.add_argument('-df',
+                        type=argparse.FileType('r'),
+                        required=True,
+                        help='session parenet file, each row is a parent directory',
+                        metavar='sessparfile')
+
+
+    parser.add_argument('-feat',
+                        required=True,
+                        help='Feat directory in each session',
+                        metavar='featdir')
+
+    parser.add_argument('-stem',
+                        required=True,
+                        help='Stem for target volume relative to the feat directory',
+                        metavar='stemvolume')
+
+    parser.add_argument('-output',
+                        required=True,
+                        help='Output file name',
+                        metavar='stemvolume')
+
+    args = parser.parse_args()
+    logger = get_logger('mergefeat-sess.log')
+    logger.debug(args)
+    logger.info('Here we go!')
+
+    sesspar = args.df.readline().strip()
+    fslmerge = 'fslmerge -t' + ' ' + args.output
+    files = ''
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+        files = files  + ' ' + os.path.join(sesspar, sess, args.feat, args.stem)
+        
+    #print files
+    
+    mergesess = fslmerge + ' ' +  files
+    subprocess.call(mergesess,shell = True)
+    
+    # print the command on the terminal
+    print fslmerge + ' ' + '\\' + '\n'
+    logger.info(fslmerge + ' ' + '\\'+ '\n')
+    files = files.split(' ')
+    for f in files[:-1]:
+        print f + ' ' + '\\' + '\n'
+    print files[-1] + '\n'
+    logger.info(files[-1]+'\n')
+
+if __name__ == '__main__':
+    main()

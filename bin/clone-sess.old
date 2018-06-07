@@ -1,0 +1,146 @@
+#! /usr/bin/env python
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""Clone data of interest from data repo, including stem.nii stem.nii.gz and
+*ev files
+
+Author: Yangzetian @ BNU/BUAA
+Reviewer: Lijie Huang @ BNU
+"""
+
+import os
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+from pynit.base import get_runs
+
+
+def get_files(stem, run_dir):
+    files = glob.glob(os.path.join(run_dir, stem+'.nii.gz'))
+    files.extend(glob.glob(os.path.join(run_dir, stem+'.nii')))
+    files.extend(glob.glob(os.path.join(run_dir, '*.ev')))
+    files.extend(glob.glob(os.path.join(run_dir, '*.par')))
+    return files
+
+def mkdirs(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+def copy_wraper(cmd, src_dir):
+    try:
+        eval(cmd)
+    except OSError as (errno, strerror):
+        if strerror == 'File exists':
+            print 'Warning: {0}: {1}'.format(strerror, src_dir)
+            logging.warning(strerror+': '+src_dir)
+        else:
+            print 'Error: {0}: {1}'.format(strerror, src_dir)
+            logging.error(strerror+': '+src_dir)
+    except IOError as (errno, strerror):
+        print 'Error: {0}: {1}'.format(strerror, src_dir)
+        logging.error(strerror+': '+src_dir)
+    else:
+        logging.info('copied {0}'.format(src_dir))
+
+def main():
+    nsp = '/nfs/t1/nspnifti/nii'
+    parser = argparse.ArgumentParser(description="Clone sessions to current directory")
+    parser.add_argument('-df',
+                        type=argparse.FileType('r'),
+                        help='file record source data directory',
+                        metavar='sessparentdirfile')
+    parser.add_argument('-sf',
+                        type=argparse.FileType('r'),
+                        required=True,
+                        help='session id file, each row contains a sessionid',
+                        metavar='sessidfile')
+    parser.add_argument('-fsd',
+                        required=True,
+                        help='functional subdirectory in each session',
+                        metavar='func_subdir')
+    parser.add_argument('-rlf',
+                        help='functional rlf, rlf file should be located in '
+                             'fsd, if supplied , the rlf file will also be '
+                             'copied (default: all runs in the fsd)',
+                        metavar='runlist_file')
+    parser.add_argument('-stem',
+                        required=True,
+                        help='image name WITHOUT suffix(.nii, .nii.gz) in your '
+                             'run directory',
+                        metavar='img')
+    parser.add_argument('-asd',
+                        help='full anatomical subdirectory',
+                        metavar='anat_subdir')
+    parser.add_argument('-clean',
+                        action='store_true',
+                        help='Be CAREFULL! if add this option, ALL FILES in current directory will'
+                             ' be cleaned first!')
+
+    args = parser.parse_args()
+
+    if args.clean:
+        subprocess.call('rm -r *', shell=True)
+
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%Y/%m/%d %H:%M:%S',
+                        filename='clone-sess.log', filemode='w',
+                        level=logging.DEBUG)
+    logging.info('Here we go!')
+    logging.info(args)
+    
+    if args.df:
+        datadir = os.path.abspath(args.df.read().strip())
+    else:
+        datadir = os.path.abspath(nsp)
+
+    targdir = os.path.abspath('.')
+
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+        sess_dir = os.path.join(datadir, sess)
+        tsess_dir = os.path.join(targdir, sess)
+        if not os.path.exists(sess_dir):
+            print 'Error: directory not exists: {0}'.format(sess_dir)
+            logging.error('Error: directory not exists: {0}'.format(sess_dir))
+            continue
+        mkdirs(tsess_dir)
+        if args.asd:
+            anat_dir = os.path.join(sess_dir, args.asd)
+            tanat_dir = os.path.join(tsess_dir, args.asd)
+            copy_wraper("shutil.copytree('{0}', '{1}')".
+                        format(anat_dir, tanat_dir), anat_dir)
+            subjname = os.path.join(sess_dir, 'subjectname')
+            copy_wraper("shutil.copy2('{0}', '{1}')".
+                        format(subjname, tsess_dir), subjname)
+
+        func_dir = os.path.join(sess_dir, args.fsd)
+        tfunc_dir = os.path.join(tsess_dir, args.fsd)
+        if not os.path.exists(func_dir):
+            print 'Error: directory not exists: {0}'.format(func_dir)
+            logging.error('Error: directory not exists: {0}'.format(func_dir))
+            continue
+        mkdirs(tfunc_dir)
+
+        if args.rlf:
+            rlf_file = os.path.join(func_dir, args.rlf)
+            copy_wraper("shutil.copy2('{0}', '{1}')".
+                        format(rlf_file, tfunc_dir), rlf_file)
+
+        for run in get_runs(args.rlf, func_dir):
+            run_dir = os.path.join(func_dir, run)
+            trun_dir = os.path.join(tfunc_dir, run)
+            mkdirs(trun_dir)
+            for f in get_files(args.stem, run_dir):
+                copy_wraper("shutil.copy2('{0}', '{1}')".
+                            format(f, trun_dir), f)
+    args.sf.close()
+    if args.df:
+        args.df.close()
+
+if __name__ == '__main__':
+    main()

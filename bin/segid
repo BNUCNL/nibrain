@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import sys
+import argparse
+
+def segid():
+    parser = argparse.ArgumentParser(prog = 'segid',
+                        description = 'Segment a ID list into several parts')
+    parser.add_argument('-sf',
+                        type = file,
+                        dest = 'sessid_file',
+                        required = True,
+                        metavar = 'sessid-file',
+                        help='An input file containing subject ID list')
+    parser.add_argument('-n',
+                        type = int,
+                        dest = 'seg_num',
+                        required = True,
+                        metavar = 'number-of-parts',
+                        help = 'The number of parts which ID list would be segmented into')
+    parser.add_argument('-o',
+                        dest = 'out_dir',
+                        metavar = 'output-directory',
+                        default = False,
+                        help = 'Output directory path')
+    parser.add_argument('-prefix',
+                        dest = 'prefix',
+                        metavar = 'prefix_name',
+                        default = False,
+                        help = 'Specify a prefix name of output file')
+    args = parser.parse_args()
+
+    if args.out_dir:
+        out_dir = args.out_dir
+        if not os.path.exists(out_dir):
+            print 'Output directory does not exist.\n'
+            sys.exit()
+    else:
+        out_dir = r''
+
+    if args.prefix:
+        prefix = args.prefix
+    else:
+        prefix = os.path.basename(args.sessid_file.name)
+
+    sessid = args.sessid_file.readlines()
+    sessid_len = len(sessid)
+    if sessid_len < args.seg_num:
+        print 'ID list could not be segmented into ' + str(args.seg_num) + \
+              ' parts. We take no action.'
+    else:
+        part_len = sessid_len / args.seg_num
+        res = sessid_len % args.seg_num
+        start_idx = 0
+        for idx in range(args.seg_num):
+            if res:
+                end_idx = part_len + 1
+                res -= 1
+            else:
+                end_idx = part_len
+            temp = sessid[start_idx:(start_idx + end_idx)]
+            start_idx += end_idx
+
+            targ_file_name = prefix + str(idx + 1)
+            targ_file = os.path.join(out_dir, targ_file_name)
+            f = open(targ_file, 'w')
+            for item in temp:
+                f.write(item)
+
+if __name__ == '__main__':
+    segid()

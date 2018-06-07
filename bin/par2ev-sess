@@ -1,0 +1,78 @@
+#! /usr/bin/env python
+
+"""Generate .ev files in functional subdirectory 
+
+If the para file contains a fifth column which specify the name of each
+condition, the ev file will have the name as a combination of condition
+name and condition number. If the para file only contains four columns, 
+the ev file will have the name of the condition number.
+
+Author : Yangzetian @ BNU/BUAA
+Reviewer: Huanglijie @ BNU
+"""
+
+import os
+import string
+import argparse
+
+from pynit.base import get_runs
+
+def main():
+    parser = argparse.ArgumentParser(description='generate *.ev files')
+    parser.add_argument('-df',
+                        required=True,
+                        type=argparse.FileType('r'),
+                        help='session parent directory file',
+                        metavar='sessionparentdir')
+    parser.add_argument('-sf', 
+                        required=True,
+                        type=argparse.FileType('r'),
+                        help='session id file',
+                        metavar='sessidfile')
+    parser.add_argument('-fsd',
+                        required=True,
+                        help='functional subdirectory',
+                        metavar='funcsubdir')
+    parser.add_argument('-rlf',
+                        help='run list file (default: all runs)',
+                        metavar='runlistfile')
+    parser.add_argument('-par',
+                        required=True,
+                        help='parameter file',
+                        metavar='parafile')
+    args = parser.parse_args()
+    spd = args.df.readline().strip()
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+        sessdir = os.path.join(spd, sess)
+        funcdir = os.path.join(sessdir, args.fsd)
+
+        for run in get_runs(args.rlf, funcdir):
+            rundir = os.path.join(funcdir, run)
+            with open(os.path.join(rundir, args.par), 'r') as f:
+                evs = dict()
+                for line in f:
+                    if not line:
+                        pass
+                    line = line.split()
+                    if line[1] > '0' and line[1] not in evs:
+                        if len(line) > 4:
+			    line[4] = string.join(line[4:], '_')
+                            evs.update({line[1]:open(
+                                        os.path.join(rundir, 
+                                                     line[4]+'.ev'), 
+                                                  'w')})
+                        else:
+                            evs.update({line[1]:open(
+                                        os.path.join(rundir, 
+                                                     line[1]+'.ev'), 'w')})
+                    if line[1] > '0':
+                        evs[line[1]].write('{0:8}\t{1:6}\t{2:d}\n'.
+                                        format(line[0], line[2], int(float(line[3]))))
+                for key, value in evs.items():
+                    value.close()
+
+if __name__ == '__main__':
+    main()
