@@ -1,4 +1,0 @@
-#!/bin/bash
-
-ps aux | awk '{arr[$1]+=$4}; END {for (i in arr) {print i,arr[i]}}'
-
