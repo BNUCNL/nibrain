@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+Make a fsgd file baesd on a csv file
+
+"""
+import sys
+import argparse
+import os
+
+def mkFSGD():
+    parser = argparse.ArgumentParser(description = 'Make a FSGD file based on a csv file.',prog = 'mkfsgd')
+    parser.add_argument('-csv',
+                        type = file,
+                        dest = 'csvFile',
+                        metavar = 'csv-file',
+                        required = True,
+                        help = 'an input csv file containing raw data')
+    parser.add_argument('-sf',
+                        type = file,
+                        dest = 'sessidFile',
+                        required = True,
+                        metavar = 'sessid-file',
+                        help = 'an input file containing subject id list')
+    parser.add_argument('-c',
+                        nargs = '*',
+                        dest = 'varLabel',
+                        default = [],
+                        help = 'continuous variables in regression')
+    parser.add_argument('-d',
+                        nargs = '*',
+                        dest = 'classVar',
+                        default = [],
+                        help = 'discrete variable in regression')
+    parser.add_argument('-model',
+                        dest = 'model',
+                        metavar = 'model',
+                        choices = ['dods','doss'],
+                        default = 'dods',
+                        help = 'config the model of regression, dods or doss. default is dods.')
+    parser.add_argument('-plotFile',
+                        dest = 'plotFile',
+                        metavar = 'plotFile',
+                        default = '',
+                        help = 'config the plotFile used for regression plot')
+    parser.add_argument('-designMat',
+                        dest = 'designMatFile',
+                        metavar = 'designMatFile',
+                        default = '',
+                        help = 'config the X.mat file for regression plot')
+    parser.add_argument('-o',
+                        dest = 'outFile',
+                        metavar = 'out-file',
+                        required = True,
+                        help = 'save output FSGD file as out-file')
+
+    args = parser.parse_args()
+
+    if os.path.exists(args.outFile):
+        print 'Output file has already existed.\n'
+        sys.exit()
+
+
+    # FSGD Title
+    title = '-'.join(args.classVar + args.varLabel)
+
+    #classPlot = ['','']
+
+    # get subject's id from sessid file
+    # sessidF = open(args.sessidFile)
+    sessid = [line.strip() for line in args.sessidFile]
+
+    # Read csv file and get variable labels
+    # csv = open(args.csvFile)
+    info = [line.strip() for line in args.csvFile]
+    label = info[0].split(',')
+    rawdata = [[] for i in range(len(label))]
+
+    # Get data
+    for line in info[1:]:
+        tmp = line.split(',')
+        for num in range(len(tmp)):
+            rawdata[num].append(tmp[num])
+
+    # query data from rawdata based on sessid
+    classRes = []
+    sessidIndex = []
+    classValue = []
+    classLabel = []
+    for subj in sessid:
+        if subj not in rawdata[0]:
+            print 'subject ' + subj + ' dose not in csv table.\n'
+            sys.exit()
+        else:
+            num =  rawdata[0].index(subj)
+            sessidIndex.append(num)
+            if len(args.classVar) != 0:
+                classTmp = []
+                for item in args.classVar:
+                    clsIndex = label.index(item)
+                    classTmp.append(rawdata[clsIndex][num])
+                if classTmp not in classValue:
+                    classValue.append(classTmp)
+                    classLabel.append('Class' + str(len(classValue)))
+                classRes.append(classLabel[classValue.index(classTmp)])
+            else:
+                classRes.append('Class1')
+                if 'Class1' not in classLabel:
+                    classLabel.append('Class1')
+
+    # Create a class info file
+    if len(args.classVar) != 0:
+        clsInfoFile = args.outFile + '.clsinfo'
+        clsInfo = open(clsInfoFile,'a')
+        clsInfo.write('      ')
+        for item in args.classVar:
+            clsInfo.write('%7s' % item)
+        clsInfo.write('\n')
+        for i in range(len(classLabel)):
+            clsInfo.write(classLabel[i])
+            for item in classValue[i]:
+                clsInfo.write('%7s' % item)
+            clsInfo.write('\n')
+        clsInfo.write('\n')
+        clsInfo.close()
+
+    fsgd = open(args.outFile,'a')
+    fsgd.write('GroupDescriptorFile 1\n')
+    fsgd.write('Title ' + title + '\n')
+    if len(args.plotFile) != 0:
+        fsgd.write('PlotFile ' + args.plotFile + '\n')
+    if len(args.designMatFile) != 0:
+        fsgd.write('DesignMatFile ' + args.designMatFile + ' ' + args.model + '\n')
+    for item in classLabel:
+            fsgd.write('Class ' + item + '\n')
+    if len(args.varLabel) != 0:
+        fsgd.write('Variables ')
+        for item in args.varLabel:
+            fsgd.write(item + ' ')
+        fsgd.write('\n')
+
+    for num in sessidIndex:
+        fsgd.write('Input ' + rawdata[0][num])
+        fsgd.write(' ' + classRes[sessidIndex.index(num)])
+        for item in args.varLabel:
+            varIndex = label.index(item)
+            fsgd.write(' ' + rawdata[varIndex][num])
+        fsgd.write('\n')
+    fsgd.close()
+
+
+if __name__ == '__main__':
+    mkFSGD()
+

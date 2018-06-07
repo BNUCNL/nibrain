@@ -1,0 +1,260 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os                                    # system functions
+import argparse
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+import time
+
+# Setup any package specific configuration. The output file format
+# for FSL routines is being set to uncompressed NIFTI
+
+print fsl.Info.version()
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+def subjrlf(subject_id, data_dir, fsd, rlf, fstem, asd):
+    """
+    Get input file information.
+    """
+    import os
+    frlf = open(os.path.join(data_dir,subject_id,fsd,rlf))
+    run_list = [line.strip() for line in frlf]
+    info = dict(func=[[subject_id,fsd,run_list,fstem]],
+                brain=[[subject_id,asd,'reg_fsl','T1_brain']],
+                warp=[[subject_id,asd,'reg_fsl','highres2standard_warp_2mm']],
+                anat2stand=[[subject_id,asd,'reg_fsl','highres2standard_2mm.mat']],
+		        anat2funcmtx=[[subject_id,fsd,run_list,'reg_fsl','highres2example_func.mat']],
+                funcref=[[subject_id,fsd,run_list,'example_func']],)
+    return info
+
+def savef(in_file, in_file1,filename):
+    """
+    Save results with the name of filename.
+    """
+    import os
+    from numpy import savetxt
+    from nipype.utils.filemanip import copyfile
+    op_strings = []
+
+    if isinstance(in_file, list):
+        in_file = in_file
+    else:
+        in_file = [in_file]
+
+    for i in range(len(in_file)):
+        targdir = os.path.dirname(in_file[i])
+        copyfile(in_file1[i], targdir+'/'+filename, copy=True, 
+                 hashmethod='content')
+        op_strings.append('cp '+in_file1[i]+' '+targdir+'/'+filename)
+    # Save command strings
+    out_file = os.path.join(os.getcwd(), 'cmdstrings')
+    op_strings = '\n'.join(op_strings)
+    out_filef = open(out_file,'a')
+    out_filef.write(op_strings)
+    out_filef.close()    
+    return out_file
+
+def main():
+    parser = argparse.ArgumentParser(prog='registration-sess', 
+                                     prefix_chars='-',
+                                     description='Do registration.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-asd', 
+                        help='Anatomical sub directory',
+                        dest='asd',
+                        metavar='anat-subdir',               
+                        default='3danat')
+    parser.add_argument('-regtype', 
+                        help='Regstration type lin, nonl, invlin',
+                        dest='regtype',
+                        choices=['lin','nonl','invlin'],
+                        default='lin')			
+    parser.add_argument('-plugin', 
+                        help='The name of the plugin, the available plugins '
+                              'allow local and distributed execution of '
+                              'workflows, default is IPython',
+                        dest='plugin',
+                        default = 'IPython',
+                        choices=['Linear','Multiproc','IPython'])    
+    parser.add_argument('-debug', 
+                        help='Debug mode, save mediate results in present dir',
+                        dest='debug',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+    
+    # Parallel computation exec config
+
+    pluginName = args.plugin
+
+    # Specify the location of the data
+
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = datadir
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = datadirf.readline().strip()
+
+    if args.debug:
+        targetdir = './'
+    elif not args.debug:
+        targetdir = ''
+
+    fsd = args.fsd
+    rlf = args.rlf
+    fstem = args.fstem
+    asd = args.asd
+    regtype = args.regtype
+
+    standardspacebrain = '/usr/local/neurosoft/fsl5.0.1/data/standard/MNI152_T1_2mm_brain.nii.gz'
+
+    # Set up complete workflow
+
+    register = pe.Workflow(name='register')
+
+    infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
+                        name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(interface=nio.DataGrabber(infields=['subject_id'],
+                                                   outfields=['func','brain','warp','anat2stand','anat2funcmtx','funcref']),
+                         name = 'datasource')
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+    datasource.inputs.field_template = dict(anat2stand='%s/%s/%s/%s',
+                                            anat2funcmtx='%s/%s/%s/%s/%s')
+    datasource.inputs.sort_filelist = False
+
+    # convet T1 to func xfm to func to T1
+
+    xfmconvert = pe.Node(interface=fsl.ConvertXFM(invert_xfm=True),
+                         name='xfmconvert')
+    
+    xfmconcat = pe.Node(interface=fsl.ConvertXFM(concat_xfm=True),
+                        name='xfmconcat')
+
+    func2anat = pe.MapNode(interface=fsl.ApplyXfm(apply_xfm=True),
+                           iterfield=['in_file'],
+                           name='func2anat')
+
+    anat2mni = pe.MapNode(interface=fsl.ApplyWarp(ref_file=standardspacebrain),
+                          iterfield=['in_file'],
+                          name='anat2mni')
+	
+    # resampling residuals to MNI space (linear) 4D
+
+    res2mni = pe.MapNode(interface=fsl.ApplyXfm(apply_xfm=True,
+                                                interp='trilinear',
+                                                reference=standardspacebrain),
+                         iterfield=['in_file'],
+                         name='res2mni')
+
+    mni2func = pe.MapNode(interface=fsl.ApplyXfm(apply_xfm=True,
+                                                interp='nearestneighbour'),
+                         iterfield=['in_file'],
+                         name='mni2func')
+
+    savefile = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savefile')
+    savefile.inputs.filename = fstem.split('/')[-1]+'_'+regtype+'.nii.gz'
+
+    register.base_dir = os.path.abspath(targetdir)
+
+
+    if regtype == 'nonl':
+        register.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                                    (('subject_id',subjrlf,data_dir,fsd,rlf,fstem,asd),'template_args')]),
+                          (datasource, func2anat, [('brain', 'reference')]),
+                          (datasource, anat2mni, [('warp', 'field_file')]),
+                          (datasource, xfmconvert, [('anat2funcmtx', 'in_file')]),
+                          (datasource, func2anat, [('func', 'in_file')]),                          
+                          (xfmconvert,func2anat,[('out_file','in_matrix_file')]),
+                          (func2anat,anat2mni,[('out_file','in_file')]),
+                          (datasource, savefile, [('func', 'in_file')]),                          
+                          (anat2mni,savefile,[('out_file','in_file1')]),
+                        ])
+    elif regtype == 'lin':
+        register.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                                    (('subject_id',subjrlf,data_dir,fsd,rlf,fstem,asd),'template_args')]),
+                          (datasource, xfmconvert, [('anat2funcmtx', 'in_file')]),
+                          (datasource, xfmconcat, [('anat2stand', 'in_file2')]),
+                          (datasource, res2mni, [('func', 'in_file')]),                          
+                          (xfmconvert,xfmconcat,[('out_file','in_file')]),
+                          (xfmconcat,res2mni,[('out_file','in_matrix_file')]),
+                          (datasource, savefile, [('func', 'in_file')]),                          
+                          (res2mni,savefile,[('out_file','in_file1')]),
+                        ])
+    elif regtype == 'invlin':
+        register.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                                    (('subject_id',subjrlf,data_dir,fsd,rlf,fstem,asd),'template_args')]),
+                          (datasource, xfmconvert, [('anat2stand', 'in_file')]),
+                          (datasource, xfmconcat, [('anat2funcmtx', 'in_file2')]),
+                          (datasource, mni2func, [('func', 'in_file')]),
+                          (datasource, mni2func, [('funcref', 'reference')]),
+                          (xfmconvert, xfmconcat,[('out_file','in_file')]),
+                          (xfmconcat, mni2func,[('out_file','in_matrix_file')]),
+                          (datasource, savefile, [('func', 'in_file')]),
+                          (mni2func, savefile,[('out_file','in_file1')]),
+                        ])
+
+
+    register.run(plugin=pluginName)
+
+if __name__ == '__main__':
+    start = time.time()
+    main()
+    end = time.time()
+    elapsed = (end - start)
+    print("Time used:",elapsed)

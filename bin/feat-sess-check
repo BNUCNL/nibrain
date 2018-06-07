@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+
+import glob
+import os
+
+a = glob.glob('S*')
+
+for dir in a:
+    sess = os.path.join(dir, 'sess.fsf')
+    with open(sess, 'r') as f:
+        print 'func runs:',
+        for line in f:
+            if 'set feat_files' in line:
+                print line.split('/')[-2],
+        print

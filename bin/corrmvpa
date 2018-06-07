@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Prepare for MVPA with resting connectivity.
+
+wangxuvsrain@gmail.com
+2012/03/29
+
+"""
+
+import argparse
+from pynit.base import Niireader
+from pynit.base import prepdataset
+ 
+def corrmvpa():
+    parser = argparse.ArgumentParser(description = 'Get data set for mvpa',
+                                     prog = 'corrmvpa')
+    parser.add_argument('-sf',
+                        dest = 'sessid_file',
+                        required = True,
+                        metavar = 'sessid-file',
+                        help = 'A sessid file')
+    parser.add_argument('-mask',
+                        dest = 'mask_file',
+                        required = True,
+                        help = 'A mask file')
+    parser.add_argument('-o',
+                        dest = 'out_prefix',
+                        default = 'mvpacorr',
+                        help = 'The prefix of the output file')
+
+    args = parser.parse_args()
+    
+    # Read sessid
+    fsessid = args.sessid_file
+    fsessid = open(fsessid)	
+    subject_list  = [line.strip() for line in fsessid]
+    corrfile = []
+    for subject_id in subject_list:
+        datadir = '/nfs/s2/rfmricenter/restingwork/20111224_336_result'
+	res4d = os.path.join(data_dir,subject_id,'res4dstandard','res4dmni.nii.gz')
+	mask = args.mask_file
+	readnii = Niireader(res4d,mask)
+	roimean = Niireader.getroi_mean()
+	[subjcorr, corrmtx]= prepdataset(roimean)
+        corrfile.append(subjcorr)
+    corrfile = '\n'.join(corrfile)
+    corrtxt = open(args.out_prefix,'a')
+    corrtxt.write(corrfile)
+    corrtxt.close()
+
+if __name__ == '__main__':
+    corrmvpa()

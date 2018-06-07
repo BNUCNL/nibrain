@@ -1,0 +1,69 @@
+#! /usr/bin/env python
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""Extract genotype for single snp according to snpid and sessid 
+
+Author : Liuzhaoguo @ BNU
+Reviewer: Zhenzonglei @ BNU
+"""
+
+import os
+import string
+import argparse
+
+
+def main():
+    snpdir = '/nfs/t1/nsppara/snp/'
+    parser = argparse.ArgumentParser(description='extract genotype for single snp')
+    parser.add_argument('-snpid',
+                        required=True,
+                        help='snp id (such as rs4680)',
+                        metavar='snpid')
+    parser.add_argument('-sf', 
+                        required=True,
+                        type=argparse.FileType('r'),
+                        help='session id file(absolute path)',
+                        metavar='sessidfile')
+    parser.add_argument('-o',
+                        required=True,
+                        help='output file',
+                        metavar='output')
+    args = parser.parse_args()
+
+    #read snpfile as dict{key=sessid:value=other information}
+    sessdic = {}
+    snpfile = os.path.join(snpdir, args.snpid+'.txt')
+    with open(snpfile, 'r') as f: 
+        for line in f:
+            line = line.replace('\n','')
+            if (line != '') and ('#' not in line):
+                line = line.replace(' ','').split('\t')
+                sessdic[line[2]]=line[2]+'\t'+line[1]+'\t'+ \
+                        line[3]+'\t'+line[5]+'\t'+line[6]+'\t'+line[7]+'\n'
+
+    #specify the head information
+    Found=0
+    new_lines=[]
+    new_lines.append('#SNPID:'+args.snpid+'\n')
+    new_lines.append('#FOUND:')
+    new_lines.append('\n')
+    new_lines.append('#SEX:1,female;2,male\n')
+    new_lines.append('#GRADE:1,2006;2,2008\n')
+    new_lines.append('#HasMRI:1,yes;0,no\n\n')
+    new_lines.append(sessdic['NSPID'])
+
+    #extract information from dict according to sessid
+    for sess in args.sf:
+        sess = sess.strip()
+        if sess in sessdic.keys():
+            new_lines.append(sessdic[sess])
+            Found += 1
+        
+    new_lines[1] += str(Found)
+    fobj = open(args.o, 'w')
+    for line in new_lines:
+        fobj.write(line)
+    fobj.close()
+
+if __name__ == '__main__':
+    main()

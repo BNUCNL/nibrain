@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Plot bin correlation scatter for behavioral two scores.
+
+Contributions:
+--------------
+    Author: kongxiangzheng@gmail.com
+    Date: 11/2/2012
+    Editors: [plz add own name after edit here]
+
+"""
+
+import argparse
+from pynit.base import readsessid
+from pynit.dti.pyview.base import *
+
+def main():
+    parser = argparse.ArgumentParser(
+            description = 'Plot bin correlation scatter for two scores in the\
+                    csv file. [Feed bugs back to Xiznagzhen kong, BNU.]',
+            prog = 'csv_scatter_bin')
+    parser.add_argument('-csv',
+                        dest = 'csvfile',
+                        required = True,
+                        metavar = 'csv-file',
+                        help = 'an input csv file containing scores.')
+    parser.add_argument('-xl',
+                        dest = 'xlabel',
+                        required = True,
+                        nargs = 1,
+                        metavar = 'x-label',
+                        help = 'the label in the csvfile, the X scores that you want.')
+    parser.add_argument('-yl',
+                        dest = 'ylabel',
+                        required = True,
+                        nargs = 1,
+                        metavar = 'y-label',
+                        help = 'the label in the csvfile, the Y scores that you want.')
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-binned',
+                        dest = 'binned',
+                        default = False,
+                        action = 'store_true',
+                        help = 'X is a binned variable.(Mutual exclusion with -nbin)')
+    
+    group.add_argument('-nbin',
+                        dest = 'nbin',
+                        type = int,
+                        metavar = 'n-bin',
+                        help = 'number of bins.(Mutual exclusion with -binned)')
+    
+    parser.add_argument('-sf',
+                        dest = 'sessfile',
+                        default = None,
+                        metavar = 'sessid-file',
+                        help = 'an input file containing subject id list.')
+    parser.add_argument('-o',
+                        dest = 'figfile',
+                        default = '',
+                        metavar = 'fig-file',
+                        help = 'an output fig file name.')
+
+    args = parser.parse_args()
+    
+    if args.sessfile != None:
+        sesslist = readsessid(args.sessfile) 
+        X = get_scores_from_csv(args.csvfile, args.xlabel, sesslist)[0]
+        Y = get_scores_from_csv(args.csvfile, args.ylabel, sesslist)[0]
+    else:
+        X = get_scores_from_csv(args.csvfile, args.xlabel)[0]
+        Y = get_scores_from_csv(args.csvfile, args.ylabel)[0]
+    #print X, Y
+    if args.binned == False:
+        binned_x = get_binned(X, args.nbin)
+    else: 
+        binned_x = X
+    
+    binx, biny, binystd, binysem, binn = get_bindat(binned_x, Y)
+    
+    print 'Plotting...'
+    show_scatter_bin(binx, biny, binn, binysem, args.xlabel[0], args.ylabel[0], args.figfile)
+    print 'Finished.'
+    
+
+if __name__ == '__main__':
+    main()
+

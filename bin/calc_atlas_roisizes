@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Docstrings for the modula.
+
+Contributions:
+--------------
+    Author: kongxiangzheng@gmail.com
+    Date: 2012.05.26
+    Editors: [plz add own name after edit here]
+
+"""
+
+import argparse
+import nibabel as nib
+from numpy import reshape, prod, nonzero, vstack, savetxt
+
+def calcAtlasSize(atlasfile):
+    """Calc cluster size list in the atlas.
+
+    atlasfile: a atlas volume file.
+
+    return: sizelist
+    """
+    nim = nib.load(atlasfile)
+    nimsz = nim.get_shape()
+    nimdat = reshape(nim.get_data(), prod(nimsz))
+
+    iv = nonzero(nimdat)[0]
+    nimdat_nz = nimdat[iv]
+
+    N = len(iv)
+    ivset = list(set(nimdat_nz))
+    ivset = [int(i) for i in ivset]
+    K = len(ivset)
+
+    sizelist = []
+    
+    for k in ivset:
+        clstindx = [t for t, x in enumerate(nimdat_nz) if x == k]
+        size = len(clstindx)
+        #print k, size
+        sizelist.append(int(size))
+    
+    return ivset, sizelist
+
+def main():
+    parser = argparse.ArgumentParser(description = 'calc the cluster size list for atlas volume.',
+                                     prog = 'calc_atlas_sizelist')
+    parser.add_argument('-at',
+                        dest = 'atlasfile',
+                        required = True,
+                        metavar = 'atlas-file',
+                        help = 'an input atlas volume file.')
+    parser.add_argument('-o',
+                        dest = 'out',
+                        required = True,
+                        metavar = 'outfile',
+                        help = 'outfile.')
+
+    args = parser.parse_args()
+    
+    
+    clstindx, sizelist = calcAtlasSize(args.atlasfile)
+
+    dat = vstack((clstindx, sizelist))
+    savetxt(args.out, dat, delimiter = ',')
+
+if __name__ == '__main__':
+    main()

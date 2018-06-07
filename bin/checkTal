@@ -1,0 +1,50 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+A function that uses tkmedit to view the result of FreeSurfer
+
+NOTE:
+    Before use this script, please config your SUBJECTS_DIR.
+    And MAKE SURE you have installed the ImageMagick.
+
+Author Lijie Huang
+Last modified: 2012-03-01
+
+"""
+
+import os
+import argparse
+from pynit.base import readsess
+
+def checktal():
+    parser = argparse.ArgumentParser(description='Check registration status.')
+    parser.add_argument('-sp',
+                        dest='sesspar',
+                        metavar='sesspar-file',
+                        required=True,
+                        help='an input file containing session directory path')
+    parser.add_argument('-sf',
+                        dest='sessid',
+                        metavar='sessid-file',
+                        required=True,
+                        help='an input file containing subject ID')
+    args = parser.parse_args()
+
+    # Get subjects directory
+    subjects_dir = os.getenv('SUBJECTS_DIR')
+
+    [data_dir,subject_list] = readsess(args.sesspar, args.sessid)
+
+    for subject in subject_list:
+        num = subject_list.index(subject) + 1
+        print 'Subject No.' + str(num) + '\n'
+        char = raw_input("Press any key to continue, or press 'q' to exit:\n")
+        if char == 'q':
+            break
+        else:
+            os.system('tkregister2 --s ' + subject + ' --fstal --surf orig')
+
+if __name__ == '__main__':
+    checktal()
+

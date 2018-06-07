@@ -1,0 +1,132 @@
+#! /usr/bin/env python
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""Merge volume in feat directory for sessions
+Author: Zonglei Zhen @ bnu
+
+2015.12.29
+
+"""
+
+import os
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+
+parser = argparse.ArgumentParser(description="Normalize each run fMRI data to MNI152_3mm")
+
+parser.add_argument('-sf',
+                    type=argparse.FileType('r'),
+                    required=True,
+                    help='session id file, each row contains a session id',
+                    metavar='sessidfile')
+
+parser.add_argument('-df',
+                    type=argparse.FileType('r'),
+                    required=True,
+                    help='session parenet file, each row is a parent directory',
+                    metavar='sessparfile')
+
+
+parser.add_argument('-task',
+                    required=True,
+                    help='Task directory in each session, e.g., obj or mem',
+                    metavar='taskdir')
+
+# parser.add_argument('-stem',
+#                     required=True,
+#                     help='Stem for target volume relative to the anat directory, e.g., T1_brain',
+#                     metavar='stemvolume')
+
+
+def main():
+    sesspar = args.df.readline().strip()
+    std_ref = std_ref = os.path.join(os.getenv('FSLDIR'),'data','standard','MNI152_T1_3mm_brain')
+    cmd = []
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+
+        flirt = []
+        anat = os.path.join(sesspar, sess, '3danat','reg_fsl')
+        func = os.path.join(sesspar, sess, args.task)
+        rlf = open(os.path.join(func,args.task + '.rlf'),'r')
+        for r in rlf.readlines():
+            # func to std
+            r = r.strip()
+            func_data = os.path.join(func,r,'func.feat','filtered_func_data')
+            func_xfm = os.path.join(func,r,'func.feat','reg','example_func2standard.mat')
+
+            func_out = os.path.join(func,r,'func.feat','standard_filtered_func_data')
+            flirt.append(' '.join(['flirt','-in',func_data,'-ref', std_ref,'-applyxfm', \
+                                   '-init', func_xfm,'-out', func_out]))
+
+            # anat csf to to std
+            csf = os.path.join(anat,'T1_brain_seg_0')
+            anat_xfm = os.path.join(func,r,'func.feat','reg','highres2standard.mat')
+            csf_out =  os.path.join(func,r,'func.feat','reg','csf2standard')
+            flirt.append(' '.join(['flirt','-in',csf,'-ref', std_ref,'-applyxfm', \
+                                   '-init', anat_xfm, '-interp','nearestneighbour','-out', csf_out]))
+
+            # anat gm to std
+            gm = os.path.join(anat,'T1_brain_seg_1')
+            gm_out =  os.path.join(func,r,'func.feat','reg','gm2standard')
+            flirt.append(' '.join(['flirt','-in',gm,'-ref', std_ref,'-applyxfm', \
+                                   '-init', anat_xfm, '-interp','nearestneighbour','-out', gm_out]))
+            # anat wm to std
+            wm = os.path.join(anat,'T1_brain_seg_2')
+            wm_out =  os.path.join(func,r,'func.feat','reg','wm2standard')
+            flirt.append(' '.join(['flirt','-in',wm,'-ref', std_ref,'-applyxfm', \
+                                   '-init', anat_xfm, '-interp','nearestneighbour', '-out', wm_out]))
+
+            # mcf.par to mcf.txt
+            mcf =  os.path.join(func,r,'func.feat','mc','prefiltered_func_data_mcf_final.par')
+            mcf_out = os.path.join(func,r,'func.feat','mc','prefiltered_func_data_mcf_final.txt')
+
+            flirt.append(' '.join(['cp',mcf,mcf_out]))
+
+
+        cmd.append((sess,flirt))
+
+        rlf.close()
+
+
+
+
+    for x in cmd:
+        # print sessid
+        print(x[0])
+
+        # exectue cmd
+        for f in x[1]:
+            subprocess.call(f,shell = True)
+        #subprocess.call(x[1][4],shell = True)
+
+
+
+
+        # fastcmd = os.path.join(anat,'fastcmd')
+        # f = open(fastcmd,'wb')
+        # f.write('#! /bin/bash\n')
+        # f.write('#$ -N ' + sess + '-fast' + '\n')
+        # f.write('#$ -S /bin/bash\n')
+        # f.write('#$ -V\n')
+        # f.write('#$ -cwd\n')
+        # f.write('#$ -q short.q\n')
+        # f.write(xfm + '\n' + fast +'\n')
+        # f.close()
+        # os.system('qsub ' + fastcmd)
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%Y/%m/%d %H:%M:%S',
+                        filename='pre-conn-sess.log', filemode='w',
+                        level=logging.DEBUG)
+    logging.info(args)
+    logging.info('Here we go!')
+    main()

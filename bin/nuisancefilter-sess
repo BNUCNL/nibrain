@@ -1,0 +1,503 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+import nipype.algorithms.modelgen as model
+import numpy as np
+import argparse
+import os
+import sys
+
+# Setup any package specific configuration. The output file format
+# for FSL routines is being set to uncompressed NIFTI
+
+print fsl.Info.version()
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+def subjrlf(subject_id, data_dir, fsd, rlf, fstem):
+    """
+    Get input file information.
+    """
+    import os
+    frlf = open(os.path.join(data_dir,subject_id,fsd,rlf))
+    run_list = [line.strip() for line in frlf]
+    frlf.close()
+    info = dict(func=[[subject_id,fsd,run_list,fstem]],
+                csfmask=[[subject_id,fsd,run_list,'csfmask']],
+                wmmask=[[subject_id,fsd,run_list,'wmmask']],
+                mask=[[subject_id,fsd,run_list,'mask']],
+                mcpar=[[subject_id,fsd,run_list,'mc.par']])
+    return info
+
+def subjectinfo(meantsfiles,select):
+    """
+    Get model time series for regrresson analysis
+    """
+    print meantsfiles
+    import numpy as np
+    from nipype.interfaces.base import Bunch
+    output = []
+    for r in range(len(meantsfiles)):
+        csfts = np.loadtxt(meantsfiles[r][0])
+        wmts = np.loadtxt(meantsfiles[r][1])
+        gs = np.loadtxt(meantsfiles[r][2])
+        mcp = np.loadtxt(meantsfiles[r][3],delimiter='  ',usecols=(0,1,2,3,4,5),unpack=True)
+        # Use dictionary to save regressor's name and data
+        regressor = {'data':[],'name':[]}
+        for reg in select:
+            if reg == 'csf':
+                regressor['data'].append(csfts.tolist())
+                regressor['name'].append('csfts')
+            elif reg == 'wm':
+                regressor['data'].append(wmts.tolist())
+                regressor['name'].append('wmts')
+            elif reg == 'gs':
+                regressor['data'].append(gs.tolist())
+                regressor['name'].append('global')
+            elif reg == 'mc':
+                for num in range(6):
+                    regressor['data'].append(mcp[num].tolist())
+                    regressor['name'].append('mc'+str(num))
+        output.insert(r,
+                     (Bunch(conditions=None,
+                            onsets=None,
+                            durations=None,
+                            amplitudes=None,
+                            tmod=None,
+                            pmod=None,
+                            regressor_names=regressor['name'],
+                            regressors=regressor['data'])))
+    return output
+
+def deriv(fsf_files,select):
+    """
+    Modifiy fsf for derivative model time series
+    """
+    import re
+    import os
+    if isinstance(fsf_files, list):
+        for i in range(len(fsf_files)):
+            fsf = open(fsf_files[i]).read()
+            if 'mc' not in select:
+                regnum = len(select)
+                fsf = re.sub('set fmri\(evs_real\) '+str(regnum),'set fmri(evs_real) '+str(2*regnum),fsf)
+            elif 'mc' in select:
+                regnum = len(select)+5
+                fsf = re.sub('set fmri\(evs_real\) '+str(regnum),'set fmri(evs_real) '+str(2*regnum),fsf)
+            fsf = re.sub('set fmri\(deriv_yn1\) 0','set fmri(deriv_yn1) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn2\) 0','set fmri(deriv_yn2) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn3\) 0','set fmri(deriv_yn3) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn4\) 0','set fmri(deriv_yn4) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn5\) 0','set fmri(deriv_yn5) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn6\) 0','set fmri(deriv_yn6) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn7\) 0','set fmri(deriv_yn7) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn8\) 0','set fmri(deriv_yn8) 1',fsf)
+            fsf = re.sub('set fmri\(deriv_yn9\) 0','set fmri(deriv_yn9) 1',fsf)
+            fsfname = os.path.basename(fsf_files[i])
+            fsfdir = os.path.dirname(fsf_files[i])
+	    open(os.path.join(fsfdir,'new'+fsfname),'w').write(fsf)
+            fsf_files[i] = os.path.join(fsfdir,'new'+fsfname)
+    else:
+        fsf = open(fsf_files).read()      
+        if 'mc' not in select:
+            regnum = len(select)
+            fsf = re.sub('set fmri\(evs_real\) '+str(regnum),'set fmri(evs_real) '+str(2*regnum),fsf)
+        elif 'mc' in select:
+            regnum = len(select)+5
+            fsf = re.sub('set fmri\(evs_real\) '+str(regnum),'set fmri(evs_real) '+str(2*regnum),fsf)
+        fsf = re.sub('set fmri\(deriv_yn1\) 0','set fmri(deriv_yn1) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn2\) 0','set fmri(deriv_yn2) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn3\) 0','set fmri(deriv_yn3) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn4\) 0','set fmri(deriv_yn4) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn5\) 0','set fmri(deriv_yn5) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn6\) 0','set fmri(deriv_yn6) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn7\) 0','set fmri(deriv_yn7) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn8\) 0','set fmri(deriv_yn8) 1',fsf)
+        fsf = re.sub('set fmri\(deriv_yn9\) 0','set fmri(deriv_yn9) 1',fsf)
+        fsfname = os.path.basename(fsf_files)
+        fsfdir = os.path.dirname(fsf_files)
+	open(os.path.join(fsfdir,'new'+fsfname),'w').write(fsf)
+        fsf_files = os.path.join(fsfdir,'new'+fsfname)
+    return fsf_files
+
+def getTR(in_files):
+    """
+    Get TR information of input files
+    """
+    from nibabel import load
+    if isinstance(in_files, list):
+        TRvals = []
+        for in_file in in_files:
+            hdr = load(in_file).get_header()
+            TR = hdr['pixdim'][4]
+            TRvals.append(float(TR))
+    else:
+        hdr = load(in_files).get_header()
+        TR = hdr['pixdim'][4]
+        TRvals = [float(TR)]
+    return TRvals[0]
+
+def savef(in_file, in_file1,filename):
+    """
+    Save results with the name of filename.
+    """
+    import os
+    from numpy import savetxt
+    from nipype.utils.filemanip import copyfile
+    op_strings = []
+
+    if isinstance(in_file, list):
+        in_file = in_file
+    else:
+        in_file = [in_file]
+
+    for i in range(len(in_file)):
+        targdir = os.path.dirname(in_file[i])
+        copyfile(in_file1[i], targdir+'/'+filename, copy=True, 
+                 hashmethod='content')
+        op_strings.append('cp '+in_file1[i]+' '+targdir+'/'+filename)
+    # Save command strings
+    out_file = os.path.join(os.getcwd(), 'cmdstrings')
+    op_strings = '\n'.join(op_strings)
+    out_filef = open(out_file,'a')
+    out_filef.write(op_strings)
+    out_filef.close()    
+    return out_file
+
+def main():
+    """
+    usage: nuiscancefilter-sess [-h] (-datadir datadir | -datadirf datadir-file)
+                                (-sess sessid | -sessf sessid-file) -fsd
+                                func-subdir -rlf rlf -fstem func-file -regressor
+                                [REGRESSOR [REGRESSOR ...]] [-debug]
+                                [-plugin {Linear,Multiproc,IPython}] [-v]
+
+    Do nuisance regression analysis.
+
+    Parameters
+    ----------
+      -h, --help            show this help message and exit
+      -datadir datadir      Source directory contains data file
+      -datadirf datadir-file
+                            File contains the source data directory
+      -sess sessid          Input the sessid
+      -sessf sessid-file    Input the sessid file
+      -fsd func-subdir      Functional sub directory, e.g. bold
+      -rlf rlf              Run list file
+      -fstem func-file      The file name(suffix) of the functional image
+      -regressor [REGRESSOR [REGRESSOR ...]]
+                            Which signal input to the model, at least one
+      -debug                Debug mode, save mediate results in present dir
+      -plugin {Linear,Multiproc,IPython}
+                            The name of the plugin, the available plugins allow
+                            local and distributed execution of workflows, default
+                            is IPython
+      -v, --version         show program's version number and exit
+ 
+    Examples
+    --------
+    Specify cerebrospinal fluid, white matter, global signal and motion parameters
+    as nuisance regressors:
+    nuisancefilter-sess -datadirf sesspar -sess S0001 -fsd rest -fstem sm6_inorm 
+                        -rlf rfMRI.rlf -regressor csf wm gs mc
+    
+    Specify motion parameters as nuisance regressors:
+    nuisancefilter-sess -datadirf sesspar -sess S0001 -fsd rest -fstem sm6_inorm 
+                        -rlf rfMRI.rlf -regressor mc    
+
+    """
+
+    parser = argparse.ArgumentParser(prog='nuiscancefilter-sess', 
+                                     prefix_chars='-',
+                                     description='Do nuisance regression analysis.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-regressor', 
+                        help='Which signal input to the model, at least one',
+                        dest='regressor',
+                        nargs='*',                        
+                        required=True)
+    parser.add_argument('-debug', 
+                        help='Debug mode, save mediate results in present dir',
+                        dest='debug',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-plugin', 
+                        help='The name of the plugin, the available plugins '
+                              'allow local and distributed execution of '
+                              'workflows, default is IPython',
+                        dest='plugin',
+                        default = 'IPython',
+                        choices=['Linear','Multiproc','IPython'])
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+    
+    # Parallel computation exec config
+
+    pluginName = args.plugin
+    
+    # Setup parameters for data and processing   
+    
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = os.path.abspath(datadir)
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = os.path.abspath(datadirf.readline().strip())
+
+    if args.debug:
+        targetdir = os.path.abspath('./')
+    elif not args.debug:
+        targetdir = ''
+
+    fsd = args.fsd
+    rlf = args.rlf
+    fstem = args.fstem
+
+    select = args.regressor
+    for sreg in select:
+        if sreg not in ['csf','wm','gs','mc']:
+            print 'The regressor \''+sreg+'\' not in the list!!!'
+            sys.exit(0)
+
+
+    input_units = 'secs'
+    hpcutoff = np.inf
+    hrf= {'none': None}
+
+    filtermodel = pe.Workflow(name='nuisance')
+
+    infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
+                        name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(interface=nio.DataGrabber(infields=['subject_id'],
+                                                   outfields=['func','csfmask','wmmask','mask','mcpar']),
+                         name = 'datasource')
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+    datasource.inputs.field_template = dict(mcpar='%s/%s/%s/%s')
+    datasource.inputs.sort_filelist = False
+
+    # Extract CSF timeseries
+
+    extractcsfts = pe.MapNode(interface = fsl.ImageMeants(), 
+                              iterfield=['in_file','mask'],
+                              name='extraccsfts')
+
+    # Extract WM timeseries
+
+    extractwmts = pe.MapNode(interface = fsl.ImageMeants(), 
+                             iterfield=['in_file','mask'],
+                             name='extractwmts')
+
+    # Extract global signal timeseries
+   
+    extractgs = pe.MapNode(interface = fsl.ImageMeants(), 
+                           iterfield=['in_file','mask'],
+                           name='extractgs')
+    
+    # Merge the CSF ts and WM ts and global signal into a coupled list
+
+    mergenode = pe.Node(interface=util.Merge(4, axis='hstack'),
+                        name='merge')
+   
+
+    # To get CSF and WM and global time series
+    
+    filtermodel.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                                  (('subject_id',subjrlf, data_dir, fsd, rlf, fstem),'template_args')]),
+                         (datasource,extractcsfts,[('func','in_file')]),
+                         (datasource,extractcsfts,[('csfmask','mask')]),
+                         (datasource,extractwmts,[('func','in_file')]),
+                         (datasource,extractwmts,[('wmmask','mask')]),
+                         (datasource,extractgs,[('func','in_file')]),
+                         (datasource,extractgs,[('mask','mask')]),
+                         (extractcsfts,mergenode,[('out_file','in1')]),
+                         (extractwmts,mergenode,[('out_file','in2')]),
+                         (extractgs,mergenode,[('out_file','in3')]),
+                       ])
+
+
+    # Remove confouned effect from raw resting state data with GLM
+    
+    # Specify the model
+    
+    modelspec = pe.Node(interface=model.SpecifyModel(), name="modelspec")
+
+    # Generate a run specific fsf file for analysis
+    
+    filterdesign = pe.Node(interface=fsl.Level1Design(), name="fsfdesign")
+
+    # Generate a run specific mat file for use by FILMGLS
+    
+    modelgen = pe.MapNode(interface=fsl.FEATModel(), name='modelgen',
+                          iterfield = ['fsf_file', 'ev_files'])
+
+    # Estimate a model specified by a mat file and a functional run
+    
+    modelestimate = pe.MapNode(interface=fsl.FILMGLS(autocorr_noestimate=True), 
+                               name='modelestimate',
+                               iterfield = ['design_file','in_file'])
+    
+    # Demean residuals and add 100
+    
+    meanres = pe.MapNode(interface=fsl.ImageMaths(op_string='-Tmean',
+                                                  suffix='_mean'),
+                         iterfield=['in_file'],
+                         name='meanres')
+    demeanres = pe.MapNode(interface = fsl.ImageMaths(op_string = '-sub',suffix='_demean'),
+                          iterfield=['in_file','in_file2'],
+                          name = 'demeanres')
+    add1000 = pe.MapNode(interface = fsl.ImageMaths(op_string = '-add 1000',suffix='_add1000'),
+                        iterfield=['in_file'],
+                        name = 'add1000')
+    maskfunc = pe.MapNode(interface=fsl.ImageMaths(suffix='_mask',
+                                                   op_string='-mas'),
+                          iterfield=['in_file','in_file2'],
+                          name = 'maskfunc')
+
+    savefile = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savefile')
+    savefile.inputs.filename = fstem+'_'+'_'.join(select)+'_confrm.nii.gz' # add select by kong
+    savecsfts = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savecsfts')
+    savecsfts.inputs.filename = 'csf.1D'
+    savewmts = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savewmts')
+    savewmts.inputs.filename = 'wm.1D'
+    savegs = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savegs')
+    savegs.inputs.filename = 'gs.1D'
+    
+    # Full filtermodel workflow
+    
+    filtermodel.connect([(datasource,modelspec,[('func', 'functional_runs'),
+                                               (('func', getTR), 'time_repetition')]),                                               
+                         (datasource,mergenode,[('mcpar', 'in4')]),
+                         (datasource,filterdesign,[(('func', getTR), 'interscan_interval')]),
+                         (datasource,modelestimate,[('func', 'in_file')]),
+                         (mergenode,modelspec,[(('out', subjectinfo, select), 'subject_info')]),
+                         (modelspec,filterdesign,[('session_info', 'session_info')]),
+                         (filterdesign,modelgen,[(('fsf_files', deriv, select), 'fsf_file'),
+                                                 ('ev_files', 'ev_files')]),
+                         (modelgen,modelestimate,[('design_file', 'design_file')]),
+                         (modelestimate,meanres,[('residual4d', 'in_file')]),
+                         (modelestimate,demeanres,[('residual4d', 'in_file')]),
+                         (meanres,demeanres,[('out_file', 'in_file2')]),
+                         (demeanres,add1000,[('out_file', 'in_file')]),
+                         (add1000,maskfunc,[('out_file','in_file')]),
+                         (datasource,maskfunc,[('mask', 'in_file2')]), 
+                         (datasource,savefile,[('func', 'in_file')]), 
+                         (maskfunc,savefile,[('out_file','in_file1')]),
+                         (datasource,savecsfts,[('func', 'in_file')]), 
+                         (extractcsfts,savecsfts,[('out_file','in_file1')]),
+                         (datasource,savewmts,[('func', 'in_file')]), 
+                         (extractwmts,savewmts,[('out_file','in_file1')]),
+                         (datasource,savegs,[('func', 'in_file')]), 
+                         (extractgs,savegs,[('out_file','in_file1')]),
+                       ])
+
+    filtermodel.inputs.modelspec.input_units = input_units
+    #filtermodel.inputs.modelspec.time_repetition = TR
+    filtermodel.inputs.modelspec.high_pass_filter_cutoff = hpcutoff
+    #filtermodel.inputs.fsfdesign.interscan_interval = TR
+    filtermodel.inputs.fsfdesign.bases = hrf
+    #filtermodel.inputs.fsfdesign.contrasts = contrasts
+    filtermodel.inputs.fsfdesign.model_serial_correlations = False
+    filtermodel.base_dir = os.path.abspath(targetdir)   
+    filtermodel.run(plugin=pluginName)    
+
+if __name__ == '__main__':
+    main()
+
+
+
+"""
+For the fix regressors.
+"""
+#def subjectinfo(meantsfiles):
+#    print meantsfiles
+#    import numpy as np
+#    from nipype.interfaces.base import Bunch
+#    output = []
+#    for r in range(len(meantsfiles)):
+#        csfts = np.loadtxt(meantsfiles[r][0])
+#        wmts = np.loadtxt(meantsfiles[r][1])
+#        gs = np.loadtxt(meantsfiles[r][2])
+#        mcp = np.loadtxt(meantsfiles[r][3],delimiter='  ',usecols=(0,1,2,3,4,5),unpack=True)
+#        output.insert(r,
+#                     (Bunch(conditions=None,
+#                            onsets=None,
+#                            durations=None,
+#                            amplitudes=None,
+#                            tmod=None,
+#                            pmod=None,
+#                            regressor_names=['CSFMeanTS','WMMeanTS','Global',
+#                                             'Relign1','Relign2','Relign3',
+#                                             'Relign4','Relign5','Relign6'],
+#                            regressors=[csfts.tolist(),
+#                                        wmts.tolist(),
+#                                        gs.tolist(),
+#                                        mcp[0].tolist(),
+#                                        mcp[1].tolist(),
+#                                        mcp[2].tolist(),
+#                                        mcp[3].tolist(),
+#                                        mcp[4].tolist(),
+#                                        mcp[5].tolist()])))
+#    return output

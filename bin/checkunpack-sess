@@ -1,0 +1,56 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+unpack tools -- check session
+
+"""
+import argparse
+
+from pynit.base import unpack as pyunpack
+
+def unpack_checksess():
+    parser = argparse.ArgumentParser(description = 'check session quality')
+    parser.add_argument('-csv',
+                        dest = 'scanlist_file',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-exp',
+                        dest = 'exp_name',
+                        metavar = 'experiment-name',
+                        required = True,
+                        help = 'experiment name like mri, rfmri, dti or'
+                               ' task name.')
+    parser.add_argument('-seq',
+                        dest = 'seq_name',
+                        metavar = 'sequence',
+                        required = True,
+                        help = 'scan sequence name, e.g. t1_mprage_sag')
+    parser.add_argument('-dim',
+                        dest = 'size',
+                        metavar = 'dimensions',
+                        required = True,
+                        help = 'dimensions of specify scan, e.g.'
+                               ' [256, 256, 128, 1]')
+    args = parser.parse_args()
+
+    print args.size
+    x = [item.strip() for item in args.size.split(',')]
+    size = []
+    for index in range(len(x)):
+        if index == 0:
+            size.append(int(x[index][1:]))
+        elif index == (len(x) - 1):
+            size.append(int(x[index][:-1]))
+        else:
+            size.append(int(x[index]))
+
+    pyunpack.checksess(args.scanlist_file,
+                       args.exp_name,
+                       args.seq_name,
+                       size)
+
+if __name__ == '__main__':
+    unpack_checksess()
+

@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Datamerge for multi-para.
+
+Contributions
+    -------------
+    Date : 2012/03/23
+    Author : Xiangzhen Kong,
+    Reviewer :
+
+"""
+
+import argparse
+from pynit.dti.multimodal import multimerge
+
+def main():
+    parser = argparse.ArgumentParser(description = 'merge a 4D file(multi-)',
+                                     prog = 'multimerge')
+    parser.add_argument('-sf',
+                        dest = 'sessid_file',
+                        required = True,
+                        metavar = 'sessid-file',
+                        help = 'an input file containing subject id list')
+    parser.add_argument('-para',
+                        dest = 'paralist',
+                        required = True,
+                        nargs = '+',
+                        help = 'parameters like tbss_FA tbss_AD... or path related to sessid')
+    parser.add_argument('-sd',
+                        dest = 'sessdir',
+                        default = None,
+                        help = 'sess dir, default system config')
+    parser.add_argument('-ss',
+                        dest = 'ss',
+                        default = None,
+                        help = 'paras in each sess dir, default None')
+    parser.add_argument('-o',
+                        dest = 'out_file',
+                        default = 'multipara',
+                        help = 'output file name')
+    
+    args = parser.parse_args()
+    
+    sesslist = [line.strip() for line in open(args.sessid_file)]
+    
+    
+    multimerge(sesslist, args.paralist, args.out_file, args.sessdir, args.ss)
+    
+if __name__ == '__main__':
+    main()

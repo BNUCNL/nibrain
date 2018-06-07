@@ -1,0 +1,200 @@
+#! /usr/bin/env python
+
+"""Substitute the metastring in the fsf file
+
+Author: Yangzetian @ BNU/BUAA
+Reviewer: Huanglijie @ BNU
+"""
+
+import os
+import re
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+from pynit.base import get_runs
+
+
+def get_rlfd(fsf, substr, arun=False):
+    """Get the rlf template for each session from the template fsf"""
+    def get_path(line, metastr):
+        return os.path.abspath(
+                        re.sub('(/.*/)'+metastr+'.*', r'\1',
+                               re.search(r'".*"', line).group(0).strip('"')))
+    
+    while '# 4D AVW data or FEAT directory' not in fsf.readline():
+        pass
+    rlfdir = get_path(fsf.readline(), substr['funcrun'][0])
+    if arun:
+        while "# Subject's structural image for analysis 1" not in \
+              fsf.readline():
+            pass
+        arlfdir = get_path(fsf.readline(), substr['anatrun'])
+        return rlfdir, arlfdir
+    else:
+        return rlfdir
+
+    
+def go(rundir, fsfname):
+    """Let's go feat"""
+    logging.info('go feat: ' + rundir)
+    cwd = os.getcwd()
+    os.chdir(rundir)
+    subprocess.call(['feat', fsfname])
+    os.chdir(cwd)
+
+def main():
+    parser = argparse.ArgumentParser(description='Substitute metastring and run'
+                                                 ' feat.\n'
+                                                 'ADVICE: you better manually'
+                                                 ' change EACH run number'
+                                                 '(including functional runs and anatomy'
+                                                 ' run)in your fsf template to some'
+                                                 ' unique string, such as XXX1,'
+                                                 ' XXX2 ect. Otherwise'
+                                                 ' something unexpected may'
+                                                 ' happen.')
+    parser.add_argument('-sf', 
+                        type=argparse.FileType('r'),
+                        required=True,
+                        help='each row contains a session id',
+                        metavar='sessidfie')
+    parser.add_argument('-frlf',
+                        help='functional rlf, rlf should be located in the same '
+                             'directory where you put your run data '
+                             '(default: all runs)',
+                        metavar='func_rlf')
+    parser.add_argument('-arlf',
+                        help='anatomy rlf, see discussion about rlf above '
+                             '(default: run in 3danat)',
+                        metavar='anat_rlf')
+    parser.add_argument('-fsf',
+                        required=True,
+                        type=argparse.FileType('r'),
+                        help='template fsf file (default: %(default)s)',
+                        metavar='template_fsf')
+    parser.add_argument('-sessstr',
+                        help='sessid metastring',
+                        metavar='metastr')
+    parser.add_argument('-frunstr',
+                        nargs='+',
+                        help='funcrun metastring',
+                        metavar='metastr')
+    parser.add_argument('-arunstr',
+                        help='anatrun metastring',
+                        metavar='metastr')
+    parser.add_argument('-level',
+                        required=True,
+                        choices=['run', 'sess'],
+                        help='run level')
+    parser.add_argument('-em',
+                        required=True,
+                        choices=['cln', 'clngo', 'go'],
+                        help='execution mode: cln(clone without go feat), '
+                             'clngo(clone and go feat), go(don\'t clone)')
+
+    args = parser.parse_args()
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%m-%d %H:%M',
+                        filename='feat-sess.log', filemode='w',
+                        level=logging.DEBUG)
+    console = logging.StreamHandler()
+    console.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+    logging.info('Here we go!')
+    logging.info(args)
+
+    if args.level == 'run' and len(args.frunstr) != 1:
+        logging.error("Run level must specify only one frunstr")
+        return 
+
+    substr = dict(sessid='', funcrun=args.frunstr, anatrun='')
+    fsfname = os.path.basename(args.fsf.name)
+    if args.sessstr:
+        substr['sessid'] = args.sessstr
+    if args.arunstr:
+        substr['anatrun'] = args.arunstr
+        rlfdir, arlfdir = get_rlfd(args.fsf, substr, arun=True) 
+    else:
+        rlfdir = get_rlfd(args.fsf, substr, arun=False)
+    sessdir = os.path.abspath(os.path.join(rlfdir, '..'))
+
+    for sess in args.sf:
+        logging.info('Sess: {0}'.format(sess))
+        sess = sess.strip()
+        if not sess:
+            continue
+        if args.sessstr:
+            c_rlfdir = re.sub(substr['sessid'], sess, rlfdir)
+            c_sessdir = re.sub(substr['sessid'], sess, sessdir)
+        else:
+            c_rlfdir = rlfdir
+            c_sessdir = sessdir
+        c_runs = get_runs(args.frlf, c_rlfdir)
+
+        if args.arunstr:
+            ac_rlfdir = re.sub(substr['sessid'], sess, arlfdir)
+            ac_runs = get_runs(args.arlf, ac_rlfdir)
+            if len(ac_runs) == 1:
+                arun = ac_runs[0]
+                logging.info("anatomy run: "+arun)
+            elif len(ac_runs) == 0:
+                logging.error("No anatomy run founded! Skip this session")
+                continue
+            else:
+                logging.error("More than one anatomy run founded! check your "
+                              "anat_rlf(or specify a rlf?). Skip this session")
+                continue
+
+        def sed_wrapper(targ_dir, targ_runs):
+            if args.em == 'go':
+                go(targ_dir, fsfname)
+            else:
+                targ_fsf = os.path.join(targ_dir, fsfname)
+                shutil.copy2(args.fsf.name, targ_fsf)
+                
+                unique_marker = 'unique_marker_you_cannot_change'
+                unique_markers = [unique_marker+str(i) for i in
+                        range(len(substr['funcrun']))]
+                for (sub_run, marker) in zip(substr['funcrun'], unique_markers):
+                    subprocess.call("sed "+
+                        "-i 's/{0}/{1}/g' ".format(sub_run, marker)+
+                        targ_fsf, shell=True)
+                for (marker, targ_run) in zip(unique_markers, targ_runs):
+                    subprocess.call("sed "+
+                        "-i 's/{0}/{1}/g' ".format(marker, targ_run)+
+                        targ_fsf, shell=True)
+                if args.sessstr:
+                    subprocess.call("sed "+ 
+                       "-i 's/{0}/{1}/g' ".format(substr['sessid'], sess)+
+                       targ_fsf, shell=True)
+                if args.arunstr:
+                    subprocess.call("sed "+ 
+                       "-i 's/{0}/{1}/g' ".format(substr['anatrun'], arun)+
+                       targ_fsf, shell=True)
+
+                if args.em == 'clngo':
+                    go(targ_dir, fsfname)
+
+        if args.level == 'run':
+            for run in c_runs:
+                logging.info("functonal run: "+run)
+                rundir = os.path.join(c_rlfdir, run)
+                sed_wrapper(rundir, [run])
+        elif args.level == 'sess':
+            if len(substr['funcrun']) != len(c_runs):
+                logging.error("Number of target runs not equal run sbustrs: "+
+                              "{0}: {1}, {2}".format(sess, substr['funcrun'], c_runs))
+                continue
+            logging.info('Session level: ' + str(c_runs))
+            sed_wrapper(c_sessdir, c_runs)
+
+    args.sf.close()
+    args.fsf.close()
+
+if __name__ == '__main__':
+    main()

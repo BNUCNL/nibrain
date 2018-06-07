@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""
+Make bvecs and bvals
+
+date: 2011-12-17
+email: kongxiangzheng@gmail.com
+
+"""
+
+import argparse
+import pynit.dti.preparation as prep
+
+def main():
+    parser = argparse.ArgumentParser(description = 'make bvecs and bvals file')
+    parser.add_argument('-csv',
+                        dest = 'scanlistFile',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-fmt',
+                        dest = 'outFormat',
+                        metavar = 'fileformat',
+                        choices = ['fsl', 'fs', 'both'],
+                        required = True,
+                        help = 'the outfile format')
+    
+    args = parser.parse_args()
+    prep.mkbvs(args.scanlistFile, args.outFormat)
+
+if __name__ == '__main__':
+    main()

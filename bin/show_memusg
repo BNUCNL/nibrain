@@ -1,0 +1,24 @@
+#!/bin/sh
+
+user=$(sh /usr/local/neurosoft/labtool/pynit/bin/mem_usage | gawk {'print $1'})
+mem=$(sh /usr/local/neurosoft/labtool/pynit/bin/mem_usage | gawk {'print $2'})
+
+# echo $user
+# echo $mem
+
+mem_lim=10
+
+mem_sum=0
+set -- $user
+
+for m in $mem;
+do
+    mem_sum=$(expr $mem_sum+$m | bc)
+    if [ $(echo "$m > $mem_lim"|bc) -eq 1 ]
+    then 
+        echo $m $1;
+    fi
+    shift
+done
+
+echo "This server has used memory: ${mem_sum}%"

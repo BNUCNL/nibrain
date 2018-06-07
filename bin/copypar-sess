@@ -1,0 +1,38 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+unpack tools -- copy par file for specific task
+
+"""
+import argparse
+
+from pynit.base import unpack as pyunpack
+
+def unpack_copyparsess():
+    parser = argparse.ArgumentParser(description = 'copy par file')
+    parser.add_argument('-csv',
+                        dest = 'scanlist_file',
+                        metavar = 'csv-scanlist-file',
+                        required = True,
+                        help = 'a csv file containing scanlist')
+    parser.add_argument('-exp',
+                        dest = 'exp_name',
+                        metavar = 'experiment-name',
+                        required = True,
+                        help = 'experiment name like mri, rfmri, dti or'
+                               ' task name.')
+    parser.add_argument('-dst',
+                        dest = 'sub_dir',
+                        metavar = 'destination_dir',
+                        required = True,
+                        help = 'specify the sub-directory name')
+    args = parser.parse_args()
+
+    pyunpack.copyparsess(args.scanlist_file,
+                         args.exp_name,
+                         args.sub_dir)
+
+if __name__ == '__main__':
+    unpack_copyparsess()
+

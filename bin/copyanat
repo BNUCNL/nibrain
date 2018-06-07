@@ -1,0 +1,97 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+"""
+Copy T1 image and a brain extracted image to the 3danat/reg directory.
+The images could be processed using FreeSurfer or FSL.
+Using FreeSurfer, T1.mgz and brainmask.mgz from SUBJECTS_DIR would be used,
+and convert their format into nii.gz.
+Using FSL, the raw T1 image would be copied into reg directory, and the brain
+image is generated using BET.
+
+Edited by Lijie Huang, 2011-12-15
+Last update by Lijie Huang, 2014-06-05
+
+"""
+
+import os
+import subprocess
+import argparse
+from pynit.base import unpack as pyunpack
+
+def main():
+    parser = argparse.ArgumentParser(description=\
+            'Copy T1 image and a brain extracted image to the reg directory.')
+    parser.add_argument('-csv',
+                        dest='scanlist_file',
+                        metavar='csv-scanlist-file',
+                        required=True,
+                        help='a csv file containing scanlist')
+    parser.add_argument('-fmt',
+                        dest='software',
+                        choices=['fs', 'fsl'],
+                        required=True,
+                        help='used software, fs or fsl')
+    args = parser.parse_args()
+
+    [scan_info, subj_list] = pyunpack.readscanlist(args.scanlist_file)
+
+    sessid = [subj.sess_ID for subj in subj_list]
+    subjects_dir = os.path.abspath(scan_info['subjdir'])
+    targetdir = os.path.abspath(scan_info['sessdir'])
+
+    if args.software == 'fs':
+        for subj in sessid:
+            anat_dir = os.path.join(targetdir, subj, '3danat')
+            if not os.path.exists(anat_dir):
+                continue
+            t1_file = os.path.join(subjects_dir, subj, 'mri', 'T1.mgz')
+            targ_subj_dir = os.path.join(targetdir, subj, '3danat', 'reg_fs')
+            targ_t1_file = os.path.join(targ_subj_dir, 'T1.nii.gz')
+            subprocess.call(['mkdir', targ_subj_dir])
+            subprocess.call(['mri_convert', 
+                             '--in_type', 'mgz',
+                             '--out_type', 'nii',
+                             '--out_orientation', 'LAS',
+                             t1_file,
+                             targ_t1_file])
+
+            brain_file = os.path.join(subjects_dir, subj, 'mri',
+                                      'brainmask.mgz')
+            targ_brain_file = os.path.join(targ_subj_dir, 'T1_brain.nii.gz')
+            subprocess.call(['mri_convert', 
+                             '--in_type', 'mgz',
+                             '--out_type', 'nii',
+                             '--out_orientation', 'LAS',
+                             brain_file,
+                             targ_brain_file])
+    else:
+        for subj in sessid:
+            anat_dir = os.path.join(targetdir, subj, '3danat')
+            if not os.path.exists(anat_dir):
+                continue
+            rlf = open(os.path.join(anat_dir, 'mri.rlf')).readlines()
+            t1_file = os.path.join(anat_dir, rlf[0].strip(), 'anat.nii.gz')
+            if not os.path.exists(t1_file):
+                t1_file = os.path.join(anat_dir, rlf[0].strip(), '001.nii')
+            targ_subj_dir = os.path.join(anat_dir, 'reg_fsl')
+            targ_t1_file = os.path.join(targ_subj_dir, 'T1.nii.gz')
+            subprocess.call(['mkdir', targ_subj_dir])
+            #subprocess.call(['mri_convert',
+            #                 '--out_orientation', 'LAS',
+            #                 t1_file,
+            #                 targ_t1_file])
+            subprocess.call(['fslswapdim', t1_file,
+                             'z', '-x', '-y',
+                             targ_t1_file])
+            #subprocess.call(['fslorient', '-swaporient', targ_t1_file])
+            #subprocess.call(['flirt', '-in', targ_t1_file,
+            #                 '-ref', targ_t1_file, '-out', targ_t1_file,
+            #                 '-applyisoxfm', '1'])
+            targ_brain_file = os.path.join(targ_subj_dir, 'T1_brain.nii.gz')
+            # subprocess.call(['fsl_sub', '-q', 'veryshort.q', 'bet',
+            #                 targ_t1_file, targ_brain_file, '-B'])
+            subprocess.call(['bet', targ_t1_file, targ_brain_file, '-B'])
+
+if __name__ == '__main__':
+    main()

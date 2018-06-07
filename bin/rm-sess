@@ -1,0 +1,96 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+
+from pynit.base import get_runs, get_logger
+
+def main():
+    """
+    rm-sess: remove specified files in session or run level    
+    Author : Zonglei Zhen, Xiangzhen Kong 
+
+    """
+    parser = argparse.ArgumentParser(description='Remove files from session\
+                                    or run.', prog='rm-sess')
+    parser.add_argument('-sf',  
+                    type=argparse.FileType('r'),
+                    metavar='sessid file',
+                    required=True,
+                    help='session id file')
+    parser.add_argument('-df', 
+                    type=argparse.FileType('r'),
+                    metavar='sesspardir file',
+                    required=True,
+                    help='session parent directory file')
+    parser.add_argument('-level', 
+                    choices=['sess','run'],
+                    required=True,
+                    help='session or run.')
+    parser.add_argument('-rmfile', 
+                    required=True,
+                    help='The files or dirs to be removed(relative path to he specified level).')
+    parser.add_argument('-rlf',  
+                    default='',
+                    help='run list file name, \
+                            default all runs in subDir(file name).')
+    parser.add_argument('-fsd',  
+                    #required=True,
+                    help='A functional subdir or other subdir(dir name).')
+    parser.add_argument('-v',
+                    action='version',
+                    version = '%(prog)s 0.2')
+    
+    
+    args = parser.parse_args()
+    logger = get_logger('rm-sess.log')
+    logger.debug(args)
+    logger.info('Now, run!')
+
+    #if not os.path.exists(args.df):
+    #    logger.error('{0} does not exist'.format(args.df))
+    #elif not os.path.exists(args.sf):
+    #    logger.error('{0} does not exist'.format(args.sf))        
+         
+    sesspard = args.df.readline().strip()        
+
+    if args.level == 'run':
+        logger.info('remove in run level: {0}'.format(args.rmfile))
+        for sess in args.sf:
+            sess = sess.strip()
+            if not sess:
+                continue
+            fsd = os.path.join(sesspard, sess, args.fsd)
+            for run in get_runs(args.rlf,os.path.join(sesspard, sess, args.fsd)):
+                rmfile = os.path.join(sesspard, sess, args.fsd, run, args.rmfile)
+                print(rmfile)
+                if os.path.isdir(rmfile):
+                    shutil.rmtree(rmfile)
+                else:
+                    for f in glob.glob(rmfile):
+                        os.remove(f)
+                logger.info('{0} was removed for {1}-{2}'.format(args.rmfile, sess, run))
+            
+    elif args.level == 'sess':
+        logger.info('remove in session level: {0}'.format(args.rmfile))
+        for sess in args.sf:
+            sess = sess.strip()
+            if not sess:
+                continue
+            rmfile = os.path.join(sesspard, sess, args.rmfile)
+            if os.path.isdir(rmfile):
+                shutil.rmtree(rmfile)
+            else:
+                for f in glob.glob(rmfile):
+                    os.remove(f)
+            logger.info('{0} was removed for {1}'.format(args.rmfile, sess))
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,338 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import argparse
+import nipype.interfaces.io as nio           # Data i/o
+import nipype.interfaces.fsl as fsl          # fsl
+import nipype.interfaces.utility as util     # utility
+import nipype.pipeline.engine as pe          # pypeline engine
+
+# Setup any package specific configuration. The output file format
+# for FSL routines is being set to uncompressed NIFTI
+
+print fsl.Info.version()
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+def subjrlf(subject_id, data_dir, fsd, rlf, fstem):
+    """
+    Get input file information.
+    """
+    import os
+    frlf = open(os.path.join(data_dir,subject_id,fsd,rlf))
+    run_list = [line.strip() for line in frlf]
+    frlf.close()
+    info = dict(preALFF=[[subject_id,fsd,run_list,fstem]])
+    return info
+
+def savef(in_file, in_file1,filename):
+    """
+    Save results with the name of filename.
+    """
+    import os
+    from numpy import savetxt
+    from nipype.utils.filemanip import copyfile
+    op_strings = []
+
+    if isinstance(in_file, list):
+        in_file = in_file
+    else:
+        in_file = [in_file]
+
+    for i in range(len(in_file)):
+        alffdir = os.path.dirname(in_file[i])+'/alff'
+        if not os.path.exists(alffdir):
+            os.mkdir(alffdir)
+        copyfile(in_file1[i], alffdir+'/'+filename, copy=True, 
+                 hashmethod='content')
+        op_strings.append('cp '+in_file1[i]+' '+alffdir+'/'+filename)
+    # Save command strings
+    out_file = os.path.join(os.getcwd(), 'cmdstrings')
+    op_strings = '\n'.join(op_strings)
+    out_filef = open(out_file,'a')
+    out_filef.write(op_strings)
+    out_filef.close()    
+    return out_file
+
+def getPara(in_files,LP,HP):
+    """
+    Get op_strings for nodes.
+    """
+    from nibabel import load
+    if isinstance(in_files, list):
+        t_mins = []
+        t_sizes = []
+        op_strings = []
+        op_string1s = []
+        for in_file in in_files:
+            hdr = load(in_file).get_header()
+            TR = hdr['pixdim'][4]
+            timepoints = hdr['dim'][4]
+            n_lp = int(LP*timepoints*TR)
+            n_hp = int(HP*timepoints*TR)
+            t_mins.append(n_lp -1)
+            t_sizes.append(n_hp - n_lp + 1)
+            op_strings.append('-Tmean -mul %d'%(n_hp - n_lp + 1))
+            op_string1s.append('-Tmean -mul %d -div 2'%(timepoints))
+    else:
+        hdr = load(in_files).get_header()
+        TR = hdr['pixdim'][4]
+        timepoints = hdr['dim'][4]
+        n_lp = int(LP*timepoints*TR)
+        n_hp = int(HP*timepoints*TR)
+        t_mins = n_lp -1
+        t_sizes = n_hp - n_lp + 1
+        op_strings = '-Tmean -mul %d'%(t_sizes)
+        op_string1s = '-Tmean -mul %d -div 2'%(timepoints)
+    return t_mins, t_sizes, op_strings, op_string1s
+
+
+def main():
+    """
+    usage: alff-sess [-h] (-datadir datadir | -datadirf datadir-file)
+                     (-sess sessid | -sessf sessid-file) -fsd func-subdir -rlf rlf
+                     -fstem func-file
+                     [-bp lower-band higher-band lower-band higher-band]
+                     [-plugin {Linear,Multiproc,IPython}] [-debug] [-v]
+
+    Do ALFF analysis.
+
+    Parameters
+    ----------
+      -h, --help            show this help message and exit
+      -datadir datadir      Source directory contains data file
+      -datadirf datadir-file
+                            File contains the source data directory
+      -sess sessid          Input the sessid
+      -sessf sessid-file    Input the sessid file
+      -fsd func-subdir      Functional sub directory, e.g. bold
+      -rlf rlf              Run list file
+      -fstem func-file      The file name(suffix) of the functional image
+      -bp lower-band higher-band
+                            The band of the ALFF, e.g., -pb 0.01 0.1
+      -plugin {Linear,Multiproc,IPython}
+                            The name of the plugin, the available plugins allow
+                            local and distributed execution of workflows, default
+                            is IPython
+      -debug                Debug mode, save mediate results in present dir
+      -v, --version         show program's version number and exit
+     
+    Examples
+    --------
+    Do alff analysis of S0001's rlt.nii.gz with the frequency band of 
+    0.01-0.08 (default is 0.01-0.1) Hz:
+    alff-sess -datadirf sesspar -sess S0001 -fsd rest -rlf rfMRI.rlf 
+              -fstem rlt -bp 0.01 0.08
+    
+    """
+
+    parser = argparse.ArgumentParser(prog='alff-sess', 
+                                     prefix_chars='-',
+                                     description='Do ALFF analysis.')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('-datadir',
+                        help='Source directory contains data file',
+                        metavar='datadir',
+                        dest='datadir')
+    group1.add_argument('-datadirf',
+                        help='File contains the source data directory',
+                        metavar='datadir-file',
+                        dest='datadirf')
+    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2.add_argument('-sess', 
+                        help='Input the sessid',
+                        metavar='sessid',
+                        dest='sess')
+    group2.add_argument('-sessf', 
+                        help='Input the sessid file',
+                        metavar='sessid-file',
+                        dest='sessf')
+    parser.add_argument('-fsd', 
+                        help='Functional sub directory, e.g. bold',
+                        dest='fsd',
+                        metavar='func-subdir',
+                        required=True)
+    parser.add_argument('-rlf', 
+                        help='Run list file',
+                        dest='rlf',
+                        metavar='rlf',
+                        required=True)
+    parser.add_argument('-fstem', 
+                        help='The file name(suffix) of the functional image',
+                        dest='fstem',
+                        metavar='func-file',
+                        required=True)
+    parser.add_argument('-bp', 
+                        help='The band of the ALFF, e.g., -pb 0.01 0.1',
+                        dest='bp',
+                        nargs=2,
+                        metavar='lower-band higher-band',
+                        default=['0.01', '0.1'])
+    parser.add_argument('-plugin', 
+                        help='The name of the plugin, the available plugins '
+                              'allow local and distributed execution of '
+                              'workflows, default is IPython',
+                        dest='plugin',
+                        default = 'IPython',
+                        choices=['Linear','Multiproc','IPython'])    
+    parser.add_argument('-debug', 
+                        help='Debug mode, save mediate results in present dir',
+                        dest='debug',
+                        default = False,
+                        action='store_true')
+    parser.add_argument('-v','--version',
+                        action='version',
+                        version='%(prog)s 0.1')
+
+    args = parser.parse_args()
+    
+    # Parallel computation exec config
+
+    pluginName = args.plugin
+
+    # Specify the location of the data
+
+    fsessid = args.sessf
+    sessid = args.sess
+    if fsessid:
+        fsessid = open(fsessid)	
+        subject_list  = [line.strip() for line in fsessid]
+    elif sessid:
+        subject_list = [sessid]
+
+    datadir = args.datadir
+    datadirf = args.datadirf
+    if datadir:
+        data_dir = datadir
+    elif datadirf:
+        datadirf = open(datadirf)
+        data_dir = datadirf.readline().strip()
+
+    if args.debug:
+        targetdir = './'
+    elif not args.debug:
+        targetdir = ''
+
+    fsd = args.fsd
+    rlf = args.rlf
+    fstem = args.fstem
+
+    # Setup parameters for data and processing
+
+    LP = float(args.bp[0])
+    HP = float(args.bp[1])
+
+
+    # Set up complete workflow
+ 
+    fALFF = pe.Workflow(name='ALFF')
+
+    # Set up data source
+    
+    infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
+                        name="infosource")
+    infosource.iterables = ('subject_id', subject_list)
+
+    datasource = pe.Node(interface=nio.DataGrabber(infields=['subject_id'],
+                                                   outfields=['preALFF']),
+                         name = 'datasource')
+    datasource.inputs.base_directory = data_dir
+    datasource.inputs.template = '%s/%s/%s/%s.nii.gz'
+    datasource.inputs.sort_filelist = False
+
+    # A pipeline that uses intergrates several interfaces to
+    # perform fALFF on a preprocessed resting data set.
+
+    powerspectrum = pe.MapNode(interface = fsl.PowerSpectrum(), 
+                               iterfield=['in_file'],
+                               name='powerspectrum')
+    
+    # Computing square root of power spectrum
+
+    sqrtpower = pe.MapNode(interface = fsl.ImageMaths(op_string = '-sqrt'),
+                           iterfield=['in_file'],
+                           name = 'sqrtpower')
+
+    # Get parameters for the following nodes
+    
+    getpara = pe.Node(interface=util.Function(input_names=['in_files','LP','HP'],
+                                              output_names=['t_mins','t_sizes','op_strings','op_string1s'],
+                                              function=getPara),
+                      name='getpara')
+    getpara.inputs.LP = LP
+    getpara.inputs.HP = HP
+
+    # Cut the low frequency data from the the whole frequency band
+    
+    extract_band = pe.MapNode(interface=fsl.ExtractROI(),
+                              iterfield=['in_file','t_min','t_size'],
+                              name = 'extractband')
+
+    # Calculate ALFF as the sum of the amplitudes in the low frequency band
+
+    alff = pe.MapNode(interface=fsl.ImageMaths(suffix='_alff'),
+                      iterfield=['in_file','op_string'],
+                      name='alff')
+    
+    # Computing amplitude of total frequency
+    
+    talff = pe.MapNode(interface=fsl.ImageMaths(suffix='_talff'),
+                       iterfield=['in_file','op_string'],
+                       name='talff')
+    
+    # Computing fALFF
+    
+    falff = pe.MapNode(interface = fsl.ImageMaths(op_string = '-div',suffix='_falff'),
+                       iterfield=['in_file','in_file2'],
+                       name = 'falff')
+
+    # Savefile
+    
+    savealff = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savealff')
+    savealff.inputs.filename = fstem+'_alff'+args.bp[0]+'_'+args.bp[1]+'.nii.gz'
+
+    savefalff = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savefalff')
+    savefalff.inputs.filename = fstem+'_falff'+args.bp[0]+'_'+args.bp[1]+'.nii.gz'
+    savetalff = pe.Node(interface=util.Function(input_names=['in_file','in_file1','filename'],
+                                               output_names=['out_file'],
+                                               function=savef),
+                       name='savetalff')
+    savetalff.inputs.filename = fstem+'_talff.nii.gz'
+
+    fALFF.base_dir = os.path.abspath(targetdir)
+    fALFF.connect([(infosource, datasource, [('subject_id', 'subject_id'),
+                                             (('subject_id',subjrlf,data_dir,fsd,rlf,fstem),'template_args')]),
+                   (datasource, powerspectrum, [('preALFF', 'in_file')]),
+                   (powerspectrum,sqrtpower,[('out_file', 'in_file')]),
+                   (sqrtpower,extract_band,[('out_file','in_file')]),
+                   (datasource, getpara, [('preALFF', 'in_files')]),                  
+                   (getpara, extract_band,[('t_mins','t_min'),
+                                           ('t_sizes','t_size')]),
+                   (getpara,alff,[('op_strings','op_string')]),                   
+                   (extract_band,alff,[('roi_file','in_file')]),
+                   (getpara,talff,[('op_string1s','op_string')]),
+                   (sqrtpower,talff,[('out_file','in_file')]),
+                   (alff,falff,[('out_file','in_file')]),
+                   (talff,falff,[('out_file','in_file2')]),
+                 ])
+
+    # Store relevant outputs from various stages of the 1st level analysis
+    fALFF.connect([(datasource, savealff,[('preALFF','in_file')]),
+                   (datasource, savefalff,[('preALFF','in_file')]),
+                   (datasource, savetalff,[('preALFF','in_file')]),
+                   (alff, savealff,[('out_file','in_file1')]),
+                   (falff, savefalff,[('out_file','in_file1')]),
+                   (talff, savetalff,[('out_file','in_file1')]),
+                 ])
+
+    fALFF.run(plugin=pluginName)
+
+if __name__ == '__main__':
+    main()

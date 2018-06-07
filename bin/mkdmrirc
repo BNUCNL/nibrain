@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+"""Setting Up A Configuration File for trac-all From The Scanlist File.
+
+date: 2011-12-17
+email: kongxiangzheng@gmail.com
+
+"""
+
+import os
+import argparse
+import pynit.dti.preparation as prep
+
+def main():
+    parser = argparse.ArgumentParser(description = 'Setting Up A Configuration\
+                                                 File From The Scanlist File.',
+                                     prog = 'mkdmrirc')
+    parser.add_argument('-t', '--template', 
+                    dest='tempFile',
+                    metavar = 'template-file', 
+                    required = True,
+                    help='The template file in which you set up\
+                                            the configuration for trac-all')
+    parser.add_argument('-s', '--scanlist', 
+                    dest='scanlistFile',
+                    metavar = 'scanlist-file', 
+                    required = True,
+                    help='The standard scanlist file')
+    parser.add_argument('-v','--version',
+                    action = 'version',
+                    version = '%(prog)s 0.1')
+
+    args = parser.parse_args()
+
+    if (not os.path.exists(args.tempFile)) or (not os.path.exists(args.scanlistFile)):
+        parser.error('Must specify all the options: -t and -s with existing files')
+    
+    prep.mkdmrirc(args.scanlistFile, args.tempFile)
+
+
+if __name__ == "__main__":
+    main()
