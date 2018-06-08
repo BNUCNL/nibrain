@@ -730,7 +730,7 @@ def leave1out_location_overlap(imgdata1, imgdata2, labels, labelnum = None, inde
         if actdata.ndim == 4:
             actdata = actdata.reshape(actdata.shape[0], actdata.shape[-1])
     output_overlap = []
-    for i in range(imgdata.shape[-1]):
+    for i in range(imgdata1.shape[-1]):
         data_temp = np.delete(imgdata1, i, axis=1)
         testdata = np.expand_dims(imgdata2[:,i],axis=1)
         if actdata is not None:
@@ -971,7 +971,7 @@ def cv_pm_magnitude(pm, test_magdata, index = 'mean', thr_meth = 'prob', thr_ran
                 thrmp[thrmp!=0] = 1
             else:
                 raise Exception('Threshold probability only contains by probability values or vertex numbers')
-            signal_thr.append(surf_tools.get_signals(test_magdata[:,i], thrmp[:,0], method = index))
+            signal_thr.append(get_signals(test_magdata[:,i], thrmp[:,0], method = index))
         signal.append(signal_thr)
     return np.array(signal)
                 
@@ -1076,7 +1076,7 @@ def get_border_vertex(data, faces, n = 2):
     >>> border_vertex = get_border_vertex(data, faces)
     """
     data_vertex = np.where(data!=0)[0]
-    one_ring_neighbor = surf_tools.get_n_ring_neighbor(data_vertex, faces, n)
+    one_ring_neighbor = get_n_ring_neighbor(data_vertex, faces, n)
     border_check = [not np.all(data[list(i)]) for i in one_ring_neighbor]   
     border_vertex = data_vertex[np.array(border_check)]
     return border_vertex

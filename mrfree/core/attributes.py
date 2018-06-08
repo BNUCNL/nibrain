@@ -13,10 +13,10 @@ class Geometry(object):
 
         Parameters
         ----------
-            name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-            coords: coords of vertexes, should be N*3 array.
-            faces: faces of vertexes, should be M*3 array.
-            index: vertexes index in this geometry, should be K*1 array.
+        name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
+        coords: coords of vertexes, should be N*3 array.
+        faces: faces of vertexes, should be M*3 array.
+        index: vertexes index in this geometry, should be K*1 array.
         """
         self._surface_type = ['white', 'pial', 'inflated', 'sphere']
 
@@ -70,11 +70,11 @@ class Geometry(object):
 
         Parameters
         ----------
-            key: name of properties of Geometry, should be one of ['coords', 'faces', index']
+        key: name of properties of Geometry, should be one of ['coords', 'faces', index']
 
         Return
         ------
-            Value of properties.
+        Value of properties.
         """
         if hasattr(self, key):
             return getattr(self, key)
@@ -87,8 +87,8 @@ class Geometry(object):
 
         Parameters
         ----------
-            key: name of properties of Geometry, should be one of ['coords', 'faces', index']
-            value: value of properties that what to set.
+        key: name of properties of Geometry, should be one of ['coords', 'faces', index']
+        value: value of properties that what to set.
         """
         if hasattr(self, key):
             self.__setattr__(key, value)
@@ -102,7 +102,7 @@ class Geometry(object):
 
         Return
         ------
-            cen: an instance of geometry class, centroid of self geometry.
+        cen: an instance of geometry class, centroid of self geometry.
         """
         # FIXME specify meaning of parameters.
         cen = Geometry(name=self.name)
@@ -111,17 +111,17 @@ class Geometry(object):
         cen.index = None
         return cen
 
-    def get_adjmatrix(self, sym=True):
+    def adjmatrix(self, sym=True):
         """
         Get adjacency matrix of Geometry, calculated from faces.
 
         Parameters
         ----------
-            sym: make adjmatrix symmetrical, default is True.
+        sym: make adjmatrix symmetrical, default is True.
 
         Returns
         -------
-            adjm: adjacency matrix of (subj_id, hemi, surf), if mask=None, then shape = (n_vertexes, n_vertexes).
+        adjm: adjacency matrix of (subj_id, hemi, surf), if mask=None, then shape = (n_vertexes, n_vertexes).
         """
         adjm = faces_to_adjmatrix(self.faces, sym=sym)
         return adjm
@@ -132,7 +132,7 @@ class Geometry(object):
 
         Returns
         -------
-            edges: array, edges of brain surface mesh, shape=(n_edges, 2).
+        edges: array, edges of brain surface mesh, shape=(n_edges, 2).
         """
         edges = faces_to_edges(self.faces)
         return edges
@@ -465,6 +465,7 @@ class Scalar(object):
         sa_ins.set(name, div_data)
         return sa_ins
 
+
 class Connection(object):
     def __init__(self, region=None, tract=None):
         """
@@ -472,8 +473,8 @@ class Connection(object):
 
         Parameters
         ----------
-            region: a list of regions.
-            tract: a list of tracts
+        region: a list of regions.
+        tract: a list of tracts
         """
         self.region = region
         self.tract = tract
@@ -500,11 +501,11 @@ class Connection(object):
 
         Parameters
         ----------
-            key: name of properties of Connection, should be one of ['coords', 'faces', index']
+        key: name of properties of Connection, should be one of ['coords', 'faces', index']
 
         Return
         ------
-            Value of properties.
+        Value of properties.
         """
         if key == "region":
             return self.region
@@ -519,8 +520,8 @@ class Connection(object):
 
         Parameters
         ----------
-            key: name of properties of Connection, should be one of ['coords', 'faces', index']
-            value: value of properties that what to set.
+        key: name of properties of Connection, should be one of ['coords', 'faces', index']
+        value: value of properties that what to set.
         """
         if key == "region":
             self.region = value
@@ -535,7 +536,7 @@ class Connection(object):
 
         Parameters
         ----------
-            ca: an instance of Connection class.
+        ca: an instance of Connection class.
         """
         self.region.append(ca.region)
         self.tract.append(ca.tract)

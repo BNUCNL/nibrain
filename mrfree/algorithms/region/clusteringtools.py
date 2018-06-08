@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
+
 from scipy.spatial.distance import cdist
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
 from sklearn.metrics.pairwise import rbf_kernel
@@ -13,9 +14,9 @@ class Clustering(object):
 
     Parameters
     ----------
-        data: input time series array, shape: (n_vertexes, n_features).
-        mask: mask array of data, vertexes that value equals to 0 will not being used in clustering, \
-              shape: (n_vertexes, )
+    data: input time series array, shape: (n_vertexes, n_features).
+    mask: mask array of data, vertexes that value equals to 0 will not being used in clustering, \
+          shape: (n_vertexes, )
     """
     def __init__(self, data, mask):
         self.data = np.nan_to_num(data)
@@ -27,6 +28,21 @@ class Clustering(object):
             self._apply_mask()
 
     def fit(self, parcel_num, method, *args, **kwargs):
+        """
+        Do the parcellation.
+
+        Parameters
+        ----------
+        parcel_num: cluster number.
+        method: specify method name, should be one of:
+            ['KMeans', 'hier_clustering', 'spectral_clustering']
+        args: other params.
+        kwargs: other params.
+
+        Return
+        ------
+        See self.label for result.
+        """
         self.method = method
         self.label = None
 
@@ -54,11 +70,11 @@ class Clustering(object):
 
         Parameters
         ----------
-            n_clusters: the number of clusters, type: int.
+        n_clusters: the number of clusters, type: int.
 
         Return
         ------
-            label: clustering result, shape: (n_vertexes,)
+        label: clustering result, shape: (n_vertexes,)
         """
         kmeans = KMeans(n_clusters, *args, **kwargs)
         kmeans.fit(self.data)
@@ -71,11 +87,11 @@ class Clustering(object):
 
         Parameters
         ----------
-            n_clusters: the number of clusters, type: int.
+        n_clusters: the number of clusters, type: int.
 
         Return
         ------
-            label: clustering result, shape: (n_vertexes,)
+        label: clustering result, shape: (n_vertexes,)
         """
         model = AgglomerativeClustering(n_clusters, *args, **kwargs)
         model.fit(self.data)
@@ -91,11 +107,11 @@ class Clustering(object):
 
         Parameters
         ----------
-            n_clusters: the number of clusters, type: int.
+        n_clusters: the number of clusters, type: int.
 
         Return
         ------
-            label: clustering result, shape: (n_vertexes,)
+        label: clustering result, shape: (n_vertexes,)
         """
         spectral_cluster = SpectralClustering(n_clusters, *args, **kwargs)
         self.label = spectral_cluster.fit(self.data).labels_
@@ -119,8 +135,8 @@ class Clustering(object):
 
         Parameters
         ----------
-            coords: coords of surface.
-            weight: set scale of coords, add_data = coords * weight.
+        coords: coords of surface.
+        weight: set scale of coords, add_data = coords * weight.
         """
         zeros = np.where(self.mask == 0)[0]
         coords = np.delete(coords, zeros, axis=0)
@@ -146,8 +162,8 @@ class Clustering(object):
 
         Parameters
         ----------
-            index: assign index to vertexes that are out of mask, which means vertexes that \
-                   were deleted by self._apply_mask().
+        index: assign index to vertexes that are out of mask, which means vertexes that \
+               were deleted by self._apply_mask().
         """
         zeros = np.where(self.mask == 0)[0]
         label = self.label
@@ -157,22 +173,21 @@ class Clustering(object):
 
     def _knn_mat(self, k=10):
         """
-        Find k nearest neighbor of data and return knn matrix. For more information,
-            see sklearn.neighbors.kneighbors_graph
+        Find k nearest neighbor of data and return knn matrix.
+        For more information, see sklearn.neighbors.kneighbors_graph
 
         Parameters
         ----------
-            k:  the number of nearest neighbors, default is 10.
+        k: the number of nearest neighbors, default is 10.
 
         Return
         ------
-            knn_mat: k nearest neighbor matrix.
+        knn_mat: k nearest neighbor matrix.
         """
         rbf_mat = rbf_kernel(self.data)
         nbrs = kneighbors_graph(X=self.data, n_neighbors=k)
         knn_mat = nbrs.toarray() * rbf_mat
         knn_mat = 0.5 * (knn_mat + knn_mat.T)
-        # print("gamma: {}".format(np.mean(np.min(rbf_mat[np.where(rbf_mat != 0)], axis=0))))
         return knn_mat
 
     def _edist_mat(self, beta=1.0):
@@ -182,11 +197,11 @@ class Clustering(object):
 
         Parameters
         ----------
-            beta: factor of exp, default is 1.0.
+        beta: factor of exp, default is 1.0.
 
         Return
         ------
-            smat: asymmetric similarity matrix.
+        smat: asymmetric similarity matrix.
         """
         dist = cdist(self.data, self.data)
         print("std of dist: {}".format(dist.std()))

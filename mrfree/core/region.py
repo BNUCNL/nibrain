@@ -12,16 +12,16 @@ class Region(object):
 
     Parameters
     ----------
-        name: name of region, type: string.
-        layer: layer number of region, type: string.
-        source: source of region, type: string.
-        space: space of region, type: string
+    name: name of region, type: string.
+    layer: layer number of region, type: string.
+    source: source of region, type: string.
+    space: space of region, type: string
 
-        xform: transform matrix of region
-        anat_coords: coords of region, should be N*3 array.
-        geometry: geometry attributes, should be an instance of class Geometry.
-        scalar: scalar attributes, should be an instance of class Scalar.
-        connection: connection attributes, should be an instance of class Connection.
+    xform: transform matrix of region
+    anat_coords: coords of region, should be N*3 array.
+    geometry: geometry attributes, should be an instance of class Geometry.
+    scalar: scalar attributes, should be an instance of class Scalar.
+    connection: connection attributes, should be an instance of class Connection.
     """
     def __init__(self, name, layer='L1-6', source=None, space='native'):
         """
@@ -29,10 +29,10 @@ class Region(object):
 
         Parameters
         ----------
-            name: name of region, type: string.
-            layer: layer number of region, type: string.
-            source: source of region, type: string.
-            space: space of where this region exists, type: string
+        name: name of region, type: string.
+        layer: layer number of region, type: string.
+        source: source of region, type: string.
+        space: space of where this region exists, type: string
         """
         self.name = name
         self.layer = layer
@@ -46,7 +46,7 @@ class Region(object):
 
         Return
         ------
-            Name of region.
+        Name of region.
         """
         return self._name
 
@@ -57,7 +57,7 @@ class Region(object):
 
         Parameters
         ----------
-            name: name of region, type: string.
+        name: name of region, type: string.
         """
         assert isinstance(name, str), "Input 'name' should be string."
         self._name = name
@@ -134,15 +134,15 @@ class Region(object):
 
         Parameters
         ----------
-            array1: target array that be compared with.
-            array2: source array that used for loop and compare.
-            method: decide to get common part unique part in array2.
-                    keyword: 'unique' for unique row that in array2 and not in array1.
-                    keyword: 'common' for common row that in both array1 and array2.
+        array1: target array that be compared with.
+        array2: source array that used for loop and compare.
+        method: decide to get common part unique part in array2.
+                keyword: 'unique' for unique row that in array2 and not in array1.
+                keyword: 'common' for common row that in both array1 and array2.
 
         Return
         ------
-            index: index of rows that meets requirement in array2.
+        index: index of rows that meets requirement in array2.
         """
         assert isinstance(method, str), 'method should be string.'
         assert method in ['common', 'unique'], 'Wrong method name.'
@@ -163,7 +163,7 @@ class Region(object):
 
         Parameters
         ----------
-            region: an instance of Region class, its layer and space should be the same as this region class.
+        region: an instance of Region class, its layer and space should be the same as this region class.
         """
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
@@ -188,7 +188,7 @@ class Region(object):
 
         Parameters
         ----------
-            region: an instance of Region class, its layer and space should be the same as this region class.
+        region: an instance of Region class, its layer and space should be the same as this region class.
         """
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
@@ -213,7 +213,7 @@ class Region(object):
 
         Parameters
         ----------
-            region: an instance of Region class, its layer and space should be the same as this region class.
+        region: an instance of Region class, its layer and space should be the same as this region class.
         """
         assert self.layer == region.layer, "Layer of regions do not match."
         assert self.space == region.space, "Space of regions do not match."
@@ -239,7 +239,7 @@ class Region(object):
 
         Return
         ------
-            cen: region class that contain properties of center point.
+        cen: region class that contain properties of center point.
         """
         cen = Region(name=self.name, layer=self.layer, source=self.source, space=self.space)
         cen.xform = self.xform
@@ -259,7 +259,7 @@ class Region(object):
 
         Return
         ------
-            cen_anat_coords: centroid of anat_coords in region.
+        cen_anat_coords: centroid of anat_coords in region.
         """
         # TODO specify mean method.
         cen_anat_coords = np.mean(self.anat_coords, axis=1)
@@ -276,9 +276,9 @@ class SurfaceRegion(Region):
 
         Parameters
         ----------
-            name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-            surf_file: Surface file path, specified as a filename (single file).
-            surf_label_file: Surface label file path, specified as a filename (single file).
+        name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
+        surf_file: Surface file path, specified as a filename (single file).
+        surf_label_file: Surface label file path, specified as a filename (single file).
         """
         coords, faces, label = load.load_surf_geom(surf_file, surf_label_file)
         self.geometry = Geometry(name, coords, faces, label)
@@ -289,9 +289,9 @@ class SurfaceRegion(Region):
 
         Parameters
         ----------
-            name: A string or list as identity of scalar data.
-            surf_file: Surface file path, specified as a filename (single file).
-            surf_label_file: Surface label file path, specified as a filename (single file).
+        name: A string or list as identity of scalar data.
+        surf_file: Surface file path, specified as a filename (single file).
+        surf_label_file: Surface label file path, specified as a filename (single file).
         """
         data = load.load_surf_scalar(surf_file, surf_label_file)
         self.scalar = Scalar(name, data)
@@ -310,8 +310,8 @@ class VolumeRegion(Region):
 
         Parameters
         ----------
-            vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-            vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
+        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
+        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
         """
         coords, xform = load.load_vol_geom(vol_file, vol_mask_file)
         self.xform = xform
@@ -323,9 +323,9 @@ class VolumeRegion(Region):
 
         Parameters
         ----------
-            name: A string or list as identity of scalar data.
-            vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-            vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
+        name: A string or list as identity of scalar data.
+        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
+        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
         """
         data = load.load_vol_scalar(vol_file, vol_mask_file)
         self.scalar = Scalar(name, data)
