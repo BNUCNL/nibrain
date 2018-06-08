@@ -1,6 +1,9 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode:nil -*-
 # vi: set ft=python sts=4 sw=4 et:
 
+import os
+import copy
+
 import numpy as np
 from . import tools
 import nibabel as nib
@@ -80,7 +83,7 @@ def get_signals(atlas, mask, method = 'mean', labelnum = None):
     elif method == 'std':
         calfunc = np.nanstd
     elif method == 'ste':
-        calfunc = ste
+        calfunc = tools.ste
     elif method == 'max':
         calfunc = np.max
     elif method == 'voxel':
@@ -1035,7 +1038,7 @@ class MVPA(object):
         assert np.ndim(self._imgdata) == 3, "Dimension of inputdata, imgdata, should be 3 in space mvpa"
         signal1 = get_signals(self._imgdata, roimask1, 'voxel')[0]
         signal2 = get_signals(self._imgdata, roimask2, 'voxel')[0]
-        r, p = stats.pearsonr(signals1, signals2)
+        r, p = stats.pearsonr(signal1, signal2)
         return r, p
  
     def mvpa_space_searchlight(self, voxloc, radius = [2,2,2], thr = 1e-3):

@@ -3,6 +3,8 @@
 """
 Provide tools for get or make matrix, faces, or other forms that reflect adjacent relationships of brain surface.
 """
+from itertools import combinations
+
 import numpy as np
 
 
@@ -136,6 +138,53 @@ def mk_label_adjmatrix(label_image, adjmatrix):
     label_adjmatrix[np.where(label_adjmatrix > 0)] = 1
     label_adjmatrix[range(l), range(l)] = 0
     return label_adjmatrix
+
+
+def _apply_mask(data, mask=None):
+    """
+    Apply mask to faces or edges by delete masked data.
+
+    Parameters
+    ----------
+    data: inout data, should be faces or edges.
+    mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
+
+    Return
+    ------
+    result: return data if no mask, else return masked data, and its shape may change.
+    """
+    if not mask:
+        return data
+
+    mask_1dim = np.reshape(mask, (-1))
+    masked_verts = np.where(mask_1dim == 0)[0]
+    index = []
+    for vert in masked_verts:
+        index = np.concatenate([index, np.where(data == vert)[0]])
+    index = np.unique(index).astype(np.int)
+    result = np.delete(data, index, axis=0)
+    return result
+
+
+def _apply_mask_on_adjm(adjm, mask=None):
+    """
+    Apply mask to adjacency matrix by delete masked data.
+
+    Parameters
+    ----------
+    adjm: input data, should be faces or edges.
+    mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
+
+    Return
+    ------
+    adjm: return data if no mask, else return masked adjmatrix, and its shape may change.
+    """
+    if not mask:
+        return adjm
+
+    adjm = np.delete(adjm, mask, axis=0)
+    adjm = np.delete(adjm, mask, axis=1)
+    return adjm
 
 
 def mk_label_adjfaces(label_image, faces):
