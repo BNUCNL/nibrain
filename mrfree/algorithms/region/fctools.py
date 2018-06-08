@@ -9,6 +9,7 @@ isc: Inter-subject correlation.
 fc: Functional correlation.
 """
 import numpy as np
+
 from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 
@@ -19,17 +20,17 @@ def isfc(data1, data2):
 
     Parameters
     ----------
-        data1: used to calculate functional connectivity, shape = [n_samples1, n_features].
-        data2: used to calculate functional connectivity, shape = [n_samples2, n_features].
+    data1: used to calculate functional connectivity, shape = [n_samples1, n_features].
+    data2: used to calculate functional connectivity, shape = [n_samples2, n_features].
 
     Returns
     -------
-        isfc: functional connectivity map of data1 and data2, shape = [n_samples1, n_samples2].
+    isfc: functional connectivity map of data1 and data2, shape = [n_samples1, n_samples2].
 
     Notes
     -----
-        1. data1 and data2 should both be 2-dimensional.
-        2. n_features should be the same in data1 and data2.
+    1. data1 and data2 should both be 2-dimensional.
+    2. n_features should be the same in data1 and data2.
     """
     return 1 - cdist(data1, data2, metric='correlation')
 
@@ -40,17 +41,17 @@ def isc(data1, data2):
 
     Parameters
     ----------
-        data1: used to calculate functional connectivity, shape = [n_samples, n_features].
-        data2: used to calculate functional connectivity, shape = [n_samples, n_features].
+    data1: used to calculate functional connectivity, shape = [n_samples, n_features].
+    data2: used to calculate functional connectivity, shape = [n_samples, n_features].
 
     Returns
     -------
-        isc: point-to-point functional connectivity list of data1 and data2, shape = [n_samples, ].
+    isc: point-to-point functional connectivity list of data1 and data2, shape = [n_samples, ].
 
     Notes
     -----
-        1. data1 and data2 should both be 2-dimensional.
-        2. [n_samples, n_features] should be the same in data1 and data2.
+    1. data1 and data2 should both be 2-dimensional.
+    2. [n_samples, n_features] should be the same in data1 and data2.
     """
     assert data1.ndim == 2 and data2.ndim == 2 and data1.shape == data2.shape, \
         'data1 and data2 should have the same shape, and both should be 2-d array.\n \' \
@@ -68,14 +69,14 @@ def wsfc(data):
 
     Parameters
     ----------
-        data: used to calculate functional connectivity, shape = [n_samples, n_features].
+    data: used to calculate functional connectivity, shape = [n_samples, n_features].
 
     Returns
     -------
-        wsfc: functional connectivity map of data, shape = [n_samples, n_samples].
+    wsfc: functional connectivity map of data, shape = [n_samples, n_samples].
 
     Notes
     -----
-        1. data should be 2-dimensional.
+    1. data should be 2-dimensional.
     """
     return isfc(data, data)
