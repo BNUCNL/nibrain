@@ -540,7 +540,7 @@ def permutation_cross_validation(estimator, X, y, n_fold=3, isshuffle = True, cv
         pvalues: p value of permutation scores
     """
     try:
-        from sklearn import cross_validation
+        from sklearn import cross_validation, preprocessing
     except ImportError:
         raise Exception('To call this function, please install sklearn')
     if X.ndim == 1:
