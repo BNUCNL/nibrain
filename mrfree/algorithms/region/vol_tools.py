@@ -729,7 +729,7 @@ class ComPatternMap(object):
         distance = np.array(distance)
         return corrmatrix, distance
 
-def dice_map_evaluate(self, data1, data2, filename = 'dice.pkl'):
+def dice_map_evaluate(data1, data2, filename = 'dice.pkl'):
     """
     Evaluate delineation accuracy by dice coefficient
     -------------------------------------------
@@ -749,7 +749,7 @@ def dice_map_evaluate(self, data1, data2, filename = 'dice.pkl'):
         data2 = np.expand_dims(data2, axis = 3)
     dice = []
     for i in range(data1.shape[3]):
-        dice.append(caldice(data1[...,i], data2[...,i], label))
+        dice.append(calc_overlap(data1[...,i], data2[...,i], label1, label2))
     dice = np.array(dice)
     return dice
 

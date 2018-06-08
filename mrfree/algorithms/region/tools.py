@@ -540,7 +540,7 @@ def permutation_cross_validation(estimator, X, y, n_fold=3, isshuffle = True, cv
         pvalues: p value of permutation scores
     """
     try:
-        from sklearn import cross_validation
+        from sklearn import cross_validation, preprocessing
     except ImportError:
         raise Exception('To call this function, please install sklearn')
     if X.ndim == 1:
@@ -1227,7 +1227,6 @@ def icc(Y, methods = '(1,1)'):
         WMS = s2[1]/n_judges
         BMS = s2[0]+s2[1]/n_judges
         F = 1.0*BMS/WMS
-        F = s2[0]/s2[1]
         p = stats.f.sf(F, n_targs-1, n_targs*(n_judges-1))
     elif methods == '(2,1)':
         r = (decomp_var['BMS'] - decomp_var['EMS'])/(decomp_var['BMS']+(n_judges-1)*decomp_var['EMS']+n_judges*(decomp_var['BJMS']-decomp_var['EMS'])/n_targs)
