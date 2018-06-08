@@ -189,3 +189,21 @@ class Clustering(object):
         knn_mat = nbrs.toarray() * rbf_mat
         knn_mat = 0.5 * (knn_mat + knn_mat.T)
         return knn_mat
+
+    def _edist_mat(self, beta=1.0):
+        """
+        Calculate similarity matrix of data by Euclidean distance, see the formula:
+            smat = np.exp(-beta * Edist / Edist.std()), Edist stands for Euclidean distance
+
+        Parameters
+        ----------
+        beta: factor of exp, default is 1.0.
+
+        Return
+        ------
+        smat: asymmetric similarity matrix.
+        """
+        dist = cdist(self.data, self.data)
+        print("std of dist: {}".format(dist.std()))
+        edist = np.exp(-beta * dist / dist.std())
+        return 0.5 * (edist + edist.T)

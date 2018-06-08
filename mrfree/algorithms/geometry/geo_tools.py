@@ -6,17 +6,18 @@ Provide tools for get or make matrix, faces, or other forms that reflect adjacen
 import numpy as np
 
 
-def faces_to_edges(faces):
+def faces_to_edges(faces, mask=None):
     """
     Build edges array from faces.
 
     Parameters
     ----------
-        faces: triangles mesh of brain surface, shape=(n_mesh, 3).
+    faces: triangles mesh of brain surface, shape=(n_mesh, 3).
+    mask: binary array, 1 for region of interest and 0 for others, shape=(n_vertexes,).
 
     Returns
     -------
-        edges: array, edges of brain surface mesh, shape=(n_edges, 2)
+    edges: array, edges of brain surface mesh, shape=(n_edges, 2)
     """
     from itertools import combinations
 
@@ -28,31 +29,33 @@ def faces_to_edges(faces):
             if np.any(np.all(edge[::-1] == edges, axis=1)):  # check whether edge in edges
                 continue
             edges = np.append(edges, np.reshape(edge, (1, 2)),  axis=0)
+    edges = _apply_mask(edges, mask)
     return edges
 
 
-def edges_to_adjmatrix(edges, sym=True):
+def edges_to_adjmatrix(edges, mask=None):
     """
     Build edges array from faces.
 
     Parameters
     ----------
-        edges: edges of brain surface mesh, shape=(n_edges, 2).
-        sym: make adjmatrix symmetrical, default is True.
+    edges: edges of brain surface mesh, shape=(n_edges, 2).
+    mask: binary array, 1 for region of interest and 0 for others, shape=(n_vertexes,).
 
     Returns
     -------
-        adjm: adjm matrix that reflect linkages of edges, shape = (n_vertexes, n_vertexes).
+    adjm: adjacency matrix that reflect linkages of edges, shape = (n_vertexes, n_vertexes).
     """
     vertexes = np.unique(edges)
     n_vertexes = len(vertexes)
     adjm = np.zeros((n_vertexes, n_vertexes))
+
     for edge in edges:
-        adjm[np.where(vertexes == edge[0]), np.where(vertexes == edge[1])] = 1
-    adjm[np.where((adjm + adjm.T) > 0)] = 1
-    if sym:
-        adjm = 0.5 * (adjm + adjm.T)
+        adjm[edge[0], edge[1]] = 1
+        adjm[edge[1], edge[0]] = 1
+    adjm = _apply_mask_on_adjm(adjm, mask=mask)
     return adjm
+
 
 def rings_to_adjmatrix(ring):
     """
@@ -76,26 +79,29 @@ def rings_to_adjmatrix(ring):
              adjmatrix[i,j] = 1
     return adjmatrix
 
-def faces_to_adjmatrix(faces, mask=None, sym=True):
+
+def faces_to_adjmatrix(faces, mask=None):
     """
     Build adjacency matrix by faces.
 
     Parameters
     ----------
-        faces: triangles mesh of brain surface, shape=(n_mesh, 3).
-        mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
-        sym: make adjmatrix symmetrical, default is True.
+    faces: triangles mesh of brain surface, shape=(n_mesh, 3).
+    mask: binary array, 1 for region of interest and 0 for others, shape = (n_vertexes,).
 
     Returns
     -------
-        adjm: adjacency matrix that reflect linkages of faces, shape = (n_vertexes, n_vertexes).
+    adjm: adjacency matrix that reflect linkages of faces, shape = (n_vertexes, n_vertexes).
     """
-    adjm = edges_to_adjmatrix(faces_to_edges(faces))
-    if mask:
-        adjm = np.delete(adjm, mask, axis=0)
-        adjm = np.delete(adjm, mask, axis=1)
-    if sym:
-        adjm = 0.5 * (adjm + adjm.T)
+    vertexes = np.unique(faces)
+    n_vertexes = len(vertexes)
+    adjm = np.zeros((n_vertexes, n_vertexes))
+
+    for face in faces:
+        for edge in combinations(face, 2):
+            adjm[edge[0], edge[1]] = 1
+            adjm[edge[1], edge[0]] = 1
+    adjm = _apply_mask_on_adjm(adjm, mask=mask)
     return adjm
 
 
@@ -105,16 +111,16 @@ def mk_label_adjmatrix(label_image, adjmatrix):
 
     Parameters
     ----------
-        label_image: labels of vertexes, shape = (n, ), n is number of vertexes.
-        adjmatrix: adjacent matrix of vertexes, shape = (n, n).
+    label_image: labels of vertexes, shape = (n, ), n is number of vertexes.
+    adjmatrix: adjacent matrix of vertexes, shape = (n, n).
 
     Returns
     -------
-        label_adjmatrix: adjacent matrix of labels, shape = (l, l), l is number of labels.
+    label_adjmatrix: adjacent matrix of labels, shape = (l, l), l is number of labels.
 
     Notes
     -----
-        1. for large number of vertexes, this method may cause memory error, try to use mk_label_adjfaces().
+    1. for large number of vertexes, this method may cause memory error, try to use mk_label_adjfaces().
     """
     labels = np.unique(label_image)
     l, n = len(labels), len(label_image)
@@ -138,12 +144,12 @@ def mk_label_adjfaces(label_image, faces):
 
     Parameters
     ----------
-        label_image: labels of vertexes, shape = (n, ).
-        faces: faces of vertexes, its shape depends on surface, shape = (m, 3).
+    label_image: labels of vertexes, shape = (n, ).
+    faces: faces of vertexes, its shape depends on surface, shape = (m, 3).
 
-    Returns
-    -------
-        label_faces: faces of labels, shape = (l, 3).
+    Return
+    ------
+    label_faces: faces of labels, shape = (l, 3).
     """
     label_face = np.copy(faces)
     for i in faces:
@@ -156,63 +162,86 @@ def mk_label_adjfaces(label_image, faces):
     return np.array(label_faces)
 
 
-def get_verts_faces(verts, faces):
+def get_verts_faces(vertices, faces, keep_neighbor=False):
     """
     Get faces of verts based on faces of all vertexes.
 
     Parameters
     ----------
-        verts: a set of vertices, shape = (k,)
-        faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    vertices: a set of vertices, shape = (k,)
+    faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    keep_neighbor: whether to keep 1-ring neighbor of verts in the result or not,
+        default is False.
 
-    Returns
-    -------
-        faces of verts, shape = (m, 3)
+    Return
+    ------
+    verts_faces_rde: faces of verts, shape = (m, 3)
     """
     verts_faces = np.empty((0, 3))
-    for vert in verts:
+    for vert in vertices:
         verts_faces = np.append(verts_faces, faces[np.where(faces == vert)[0]], axis=0)
+    # remove duplicate elements
     verts_faces_rde = np.array(list(set([tuple(column) for column in verts_faces])))  # remove duplicate elements
+
+    if not keep_neighbor:
+        verts_all = np.unique(verts_faces_rde)
+        for vert in verts_all:
+            if vert not in vertices:
+                verts_faces_rde = np.delete(verts_faces_rde,
+                                            np.where(verts_faces_rde == vert)[0],
+                                            axis=0)
     return verts_faces_rde
 
 
-def get_verts_edges(verts, edges):
+def get_verts_edges(vertices, edges, keep_neighbor=False):
     """
     Get edges of verts based on edges of all vertexes.
 
     Parameters
     ----------
-        verts: a set of vertices, shape = (k,)
-        edges: edges of brain surface mesh, shape=(n_edges, 2)
+    vertices: a set of vertices, shape = (k,)
+    edges: edges of brain surface mesh, shape=(n_edges, 2)
+    keep_neighbor: whether to keep 1-ring neighbor of vertices in the result or not,
+        default is False.
 
-    Returns
-    -------
-        edges of verts, shape = (m, 2)
+    Return
+    ------
+    verts_edges_rde: edges of verts, shape = (m, 2)
     """
     verts_edges = np.empty((0, 2))
-    for vert in verts:
+    for vert in vertices:
         verts_edges = np.append(verts_edges, edges[np.where(edges == vert)[0]], axis=0)
-    verts_edges_rde = np.array(list(set([tuple(column) for column in verts_edges])))  # remove duplicate elements
+    # remove duplicate elements
+    verts_edges_rde = np.array(list(set([tuple(column) for column in verts_edges])))
+
+    if not keep_neighbor:
+        verts_all = np.unique(verts_edges_rde)
+        for vert in verts_all:
+            if vert not in vertices:
+                verts_edges_rde = np.delete(verts_edges_rde,
+                                            np.where(verts_edges_rde == vert)[0],
+                                            axis=0)
     return verts_edges_rde
 
 
-def nonconnected_labels(labels, faces):
+def nonconnected_labels(labels, faces, showinfo=False):
     """
     Check if every label in labels is a connected component.
 
     Parameters
     ----------
-        labels: cluster labels, shape = [n_samples].
-        faces: contain triangles of brain surface.
+    labels: cluster labels, shape = [n_samples].
+    faces: contain triangles of brain surface.
+    showinfo: whether print details or not, default is False.
 
-    Returns
-    -------
-        label list of nonconnected labels, if None, return [].
+    Return
+    ------
+    label list of nonconnected labels, if not found, return [].
 
     Notes
     -----
-        1. the max label number in labels should be assigned to the medial wall.
-        2. data with the max label number will be omitted.
+    1. the max label number in labels should be assigned to the medial wall.
+    2. data with the max label number will be omitted.
     """
     max_label = np.max(labels)
     label_list = []
@@ -232,7 +261,8 @@ def nonconnected_labels(labels, faces):
 
         for vert in vertexes:
             if vert not in visited:
-                print("Label %i is not a connected component." % i)
+                if showinfo:
+                    print("Label %i is not a connected component." % i)
                 label_list.append(i)
                 break
     return label_list
@@ -244,12 +274,12 @@ def connected_conponents_labeling(vertexes, faces):
 
     Parameters
     ----------
-        vertexes: a set of vertexes that contain several connected component.
-        faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    vertexes: a set of vertexes that contain several connected component.
+    faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
 
     Return
     ------
-        marks: marks of vertexes, used to split vertexes into different connected components.
+    marks: marks of vertexes, used to split vertexes into different connected components.
     """
     mark = 0
     marks = np.zeros_like(vertexes)
@@ -274,18 +304,19 @@ def connected_conponents_labeling(vertexes, faces):
     return marks
 
 
-def split_connected_components(labels, faces):
+def split_connected_components(labels, faces, showinfo=False):
     """
     Split connected components in same label into defferent labels.
 
     Parameters
     ----------
-        labels: labeling of all vertexes, shape = (n_vertexes, ).
-        faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    labels: labeling of all vertexes, shape = (n_vertexes, ).
+    faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    showinfo: whether print details or not, default is False.
 
     Return
     ------
-        result_label: labels after spliting connected components in same label.
+    result_label: labels after spliting connected components in same label.
     """
     nonc_labels = nonconnected_labels(labels, faces)
     new_label = np.max(labels) + 1
@@ -296,15 +327,16 @@ def split_connected_components(labels, faces):
 
         for m in np.unique(marks):
             verts = vertexes[np.where(marks == m)]
-            print("small cluster: {0}: {1}: {2}".format(nonc_label, m, verts.shape))
+            if showinfo:
+                print("small cluster: {0}: {1}: {2}".format(nonc_label, m, verts.shape))
             if m > 1:  # keep label of group m==1.
                 result_label[verts] = new_label
                 new_label = new_label + 1
-    print("Label number: {0}".format(np.max(result_label)))
+    print("Label number after processing: {0}".format(np.max(result_label)))
     return result_label
 
 
-def merge_small_parts(data, labels, faces, parcel_size):
+def merge_small_parts(data, labels, faces, parcel_size, showinfo=False):
     """
     Merge small nonconnected parts of labels to its most correlated neighbor.
 
@@ -314,15 +346,16 @@ def merge_small_parts(data, labels, faces, parcel_size):
 
     Parameters
     ----------
-        data: time series that used to check correlation, shape = (n_vertexes, n_features).
-        labels: labeling of all vertexes, shape = (n_vertexes, ).
-        faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
-        parcel_size: vertex number in a connected component used as threshold, if size of a parcel smaller than
-                     parcel_size, then this parcel will be merged.
+    data: time series that used to check correlation, shape = (n_vertexes, n_features).
+    labels: labeling of all vertexes, shape = (n_vertexes, ).
+    faces: faces of vertexes, its shape depends on surface, shape = (n_faces, 3).
+    parcel_size: vertex number in a connected component used as threshold, if size of a parcel smaller than
+                 parcel_size, then this parcel will be merged.
+    showinfo: whether print details or not, default is False.
 
     Return
     ------
-        result_label: labels after merging small parcel.
+    result_label: labels after merging small parcel.
     """
     nonc_labels = nonconnected_labels(labels, faces)
     result_label = np.copy(labels)
@@ -332,7 +365,8 @@ def merge_small_parts(data, labels, faces, parcel_size):
 
         for m in np.unique(marks):
             verts = vertexes[np.where(marks == m)]
-            print("small cluster: {0}: {1}: {2}".format(nonc_label, m, verts.shape))
+            if showinfo:
+                print("small cluster: {0}: {1}: {2}".format(nonc_label, m, verts.shape))
 
             if verts.shape[0] < parcel_size:
                 verts_data = np.mean(data[verts], axis=0)
@@ -347,6 +381,7 @@ def merge_small_parts(data, labels, faces, parcel_size):
                     if neigh_corr > temp_corr:
                         temp_corr = neigh_corr
                         labelid = neigh_label
-                print("Set label {0} to verts, correlation: {1}.".format(labelid, temp_corr))
+                if showinfo:
+                    print("Set label {0} to verts, correlation: {1}.".format(labelid, temp_corr))
                 result_label[verts] = labelid
     return result_label
