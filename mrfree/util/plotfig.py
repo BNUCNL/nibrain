@@ -150,7 +150,7 @@ class _FigureFactory(object):
             if self._isshow is True:
                 plt.show()
 
-        def _bar_plotting(self, data, title = '', xlabels = '', ylabels = '', legendname = None, legendpos = 'upper left', err=None):
+        def _bar_plotting(self, data, title = '', xlabels = '', ylabels = '', legendname = None, legendpos = 'upper left', rotation = 'vertical', err=None):
             """
             Do barplot
             --------------------------
@@ -159,6 +159,8 @@ class _FigureFactory(object):
                 title: title of figures
                 xlabels, ylabels: xlabel and ylabel of figures
                 legendname: identified legend name
+                legendpos: by default is 'upper left'
+                rotation: by default is 'vertical', you can write degree number to control label angles.
                 err: error of data estimation. Used for errorbar
             Example:
                 >>> plotbar(data, title = titletxt, xlabels = xlabel, ylabels = ylabel, legendname = legendnametxt, err = errdata)
@@ -195,12 +197,12 @@ class _FigureFactory(object):
             y0, y1 = ax.get_ylim()
             ax.set_aspect((x1-x0)/(y1-y0))
             ax.set_ylabel(ylabels)
-            ax.set_xticks(ind + width)
+            ax.set_xticks(ind + width*(i+1)/2)
             if np.min(data)<0:
                 ax.set_ylim([1.33*np.min(data), 1.33*np.max(data)])
             else:
                 ax.set_ylim([0, 1.33*np.max(data)])
-            plt.xticks(rotation = 45)
+            plt.xticks(rotation=rotation)
             ax.set_xticklabels(xlabels)
             ax.set_title(title, fontsize=12)
 
