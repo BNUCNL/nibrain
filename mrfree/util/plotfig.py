@@ -197,7 +197,7 @@ class _FigureFactory(object):
             y0, y1 = ax.get_ylim()
             ax.set_aspect((x1-x0)/(y1-y0))
             ax.set_ylabel(ylabels)
-            ax.set_xticks(ind + width*(i+1)/2)
+            ax.set_xticks(ind + width*i/2)
             if np.min(data)<0:
                 ax.set_ylim([1.33*np.min(data), 1.33*np.max(data)])
             else:
