@@ -395,6 +395,8 @@ class _FigureFactory(object):
             grp_label: group label
             fontsize: fontsize
             """
+            if isinstance(data, list) is True:
+                data = np.array(data)
             if data.ndim == 1:
                 data = np.expand_dims(data, axis=-1)
             pt_N = data.shape[0]
@@ -429,7 +431,8 @@ class _FigureFactory(object):
                 ax.fill(angles, tmp_data, 'b', alpha=0.1)
 
             # Add legend
-            ax.legend(grp_label, loc=[0.9,0.9])
+            if grp_N > 1:
+                ax.legend(grp_label, loc=[0.9,0.9])
             
             if self._isshow is True: 
                 plt.show()
