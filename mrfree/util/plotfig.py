@@ -21,6 +21,7 @@ def make_figfunction(figuretype, isshow = True):
                 'line', line maps
                 'scatter', scatter maps
                 'violin', violin maps
+                'radar', radar chart
                 'montage', montage maps
     isshow: whether to show plot or not. 
             if isshow is False, output plot can be combined together
@@ -61,6 +62,8 @@ class _FigureFactory(object):
                         'hierarchy', hierarchy maps
                         'line', line maps
                         'scatter', scatter maps
+                        'violin', violin maps
+                        'radar', radar chart
                         'montage', montage maps
         """
         figure = self._Figures(isshow = self._isshow)
@@ -80,6 +83,8 @@ class _FigureFactory(object):
             figuror = figure._scatter_plotting
         elif figuretype == 'violin':
             figuror = figure._violin_plotting
+        elif figuretype == 'radar':
+            figuror = figure._radar_plotting
         elif figuretype == 'montage':
             figuror = figure._montage_plotting
         else:
@@ -378,6 +383,57 @@ class _FigureFactory(object):
             if self._isshow is True:
                 plt.show()
 
+        def _radar_plotting(self, data, xlabel = '', ylabel = '', grp_label = '', fontsize = 12):
+            """
+            Show radar chart
+        
+            Parameters:
+            ------------
+            data: M*N series point, not recommend to read more than 3 groups in one radar chart. N means the number of group.
+            xlabel: label in x-axis
+            ylabel: label in y-axis
+            grp_label: group label
+            fontsize: fontsize
+            """
+            if data.ndim == 1:
+                data = np.expand_dims(data, axis=-1)
+            pt_N = data.shape[0]
+            grp_N = data.shape[1]
+            if grp_label == '':
+                grp_label = ['']*grp_N
+            # Background
+            angles = [n/float(pt_N)*2*np.pi for n in range(pt_N)]
+            angles += angles[:1]
+
+            ax = plt.subplot(111, polar=True)
+            # Set theta direction and its offset
+            ax.set_theta_offset(np.pi/2)
+            ax.set_theta_direction(-1)
+            # Draw xlabels
+            plt.xticks(angles[:-1], xlabel, color = 'black', fontsize=fontsize)
+            # Draw ylabels
+            ax.set_rlabel_position(0)
+            ax.set_ylabel(ylabel, color='black', fontsize=fontsize)
+            if (np.min(data)<0) & (np.max(data)<0):
+                ax.set_ylim([1.33*np.min(data), 0])
+            elif (np.min(data)<0) & (np.max(data)>0):
+                ax.set_ylim([1.33*np.min(data), 1.33*np.max(data)])
+            else:
+                ax.set_ylim([0, 1.33*np.max(data)])
+
+            # Add plots
+            for i in range(grp_N):
+                tmp_data = data[:,i].tolist()
+                tmp_data += tmp_data[:1]
+                ax.plot(angles, tmp_data, linewidth=1, linestyle='solid', label=grp_label[i])
+                ax.fill(angles, tmp_data, 'b', alpha=0.1)
+
+            # Add legend
+            ax.legend(grp_label, loc=[0.9,0.9])
+            
+            if self._isshow is True: 
+                plt.show()
+          
 
         def _montage_plotting(self, pic_path, column_num, row_num, text_list = None, text_loc = (0,50), fontsize = 12, fontcolor = 'w'):
             """
