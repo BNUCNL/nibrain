@@ -312,7 +312,6 @@ class _CIFTI(object):
         """
         Save scalar data using a existed header
         Information of brain_model in existed header will be used.
-        For simplication, data in subregion won't be stored.
 
 
         Parameters:
@@ -332,11 +331,11 @@ class _CIFTI(object):
 
         index_map1 = header.get_index_map(1)
         brain_models = [i for i in index_map1.brain_models]
-        # For data in left & right hemisphere cortex
-        brain_models = brain_models[:2]
+        
         mimcls1 = cifti2.Cifti2MatrixIndicesMap([1], 'CIFTI_INDEX_TYPE_BRAIN_MODELS')
         for bm in brain_models:
             mimcls1.append(bm)
+        mimcls1.append(index_map1.volume)
         
         matrix = cifti2.Cifti2Matrix()
         matrix.append(mimcls0)
