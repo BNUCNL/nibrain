@@ -3,13 +3,13 @@
 
 import os
 import copy
-
 import numpy as np
-from . import tools
 import nibabel as nib
-from scipy.spatial.distance import pdist
+
 from scipy import stats
-from os.path import join as pjoin
+from scipy.spatial.distance import pdist
+from . import tools
+
 
 def vox2MNI(vox, affine):
     """
