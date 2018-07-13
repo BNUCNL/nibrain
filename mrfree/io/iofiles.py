@@ -372,12 +372,12 @@ class _GIFTI(object):
         if len(img.darrays) == 1:
             data = img.darrays[0].data
         else:
-            data = []
-            for i in range(0,len(img.darrays)):#files named *.midthickness may have two elements in darrays. one represents the mesh, and one represents the coordinates of vertex
-                data.append(img.darrays[i].data)
+            # Geometry files whose name endswith '.surf.gii' have two elements in darrays.
+            # One represents the coordinates of vertices, the other represents the mesh
+            data = [darray.data for darray in img.darrays]
         return data
 
-    def save(self, data, hemisphere = None):
+    def save(self, data, hemisphere=None):
         """
         A method to save vector data as gifti image
 
@@ -411,7 +411,7 @@ class _LABEL(object):
         label = nib.freesurfer.read_label(self._comp_file)
         return label
 
-    def save(self, label, coords, scalar_data = None):
+    def save(self, label, coords, scalar_data=None):
         """
         Save label data
 
