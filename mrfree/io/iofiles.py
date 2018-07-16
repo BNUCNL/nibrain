@@ -257,7 +257,7 @@ class _CIFTI(object):
         -------
         brain_structure[list]: brain_structure
         """
-        img = nib.load(self._comp_file)
+        img = cifti2.load(self._comp_file)
 
         header = img.header
         index_map = header.get_index_map(1)
@@ -282,7 +282,7 @@ class _CIFTI(object):
 
         """
 
-        img = nib.load(self._comp_file)
+        img = cifti2.load(self._comp_file)
         data = img.get_data()
 
         if structure is None:
@@ -318,7 +318,7 @@ class _CIFTI(object):
         """
         Get header
         """
-        img = nib.load(self._comp_file)
+        img = cifti2.load(self._comp_file)
         header = img.get_header()
         return header
 
