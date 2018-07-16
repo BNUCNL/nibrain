@@ -266,7 +266,7 @@ class _CIFTI(object):
 
         return brain_structure                
 
-    def load(self, structure=None):
+    def load_raw_data(self, structure=None):
         """
         Read cifti data. If your cifti data contains multiple contrast, you can input your contrast number and get value of this contrast.
  
@@ -301,7 +301,7 @@ class _CIFTI(object):
 
         return data, vxidx
 
-    def load2(self, structure=None):
+    def load_zeroized_data(self, structure=None):
         """
         load data after filling zeros for the missing vertices
         :param structure: str
