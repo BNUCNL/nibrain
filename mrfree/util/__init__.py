@@ -1,7 +1,5 @@
+from . import decorators
+from . import plotfig
+from . import fileoperate
+from . import extcsv
 __all__ = ['decorators', 'plotfig', 'fileoperate', 'extcsv']
-
-import decorators
-import plotfig
-import fileoperate
-import extcsv
-

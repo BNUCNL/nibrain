@@ -1,18 +1,17 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 
+import os
+import csv
+import pickle
 import numpy as np
 import nibabel as nib
+
 from nibabel import cifti2
-import os
-import pickle
 from scipy.io import savemat, loadmat
-import csv
-import copy
 
-pjoin = os.path.join
 
-def make_ioinstance(filename, filepath = '.'):
+def make_ioinstance(filename, filepath='.'):
     """
     A function to pack IO factory, make it easier to use
 
@@ -32,6 +31,7 @@ def make_ioinstance(filename, filepath = '.'):
     """
     factory = _IOFactory()
     return factory.createfactory(filename, filepath)
+
 
 class _IOFactory(object):
     """
@@ -54,7 +54,7 @@ class _IOFactory(object):
             What support now is .csv, .pkl, .mat .nifti, .label
             # Note, we can read .gifti & .cifti data but can't save that
         """
-        _comp_file = pjoin(filepath, filename)
+        _comp_file = os.path.join(filepath, filename)
         _lbl_cifti = False
         if _comp_file.endswith('csv'):
             return _CSV(_comp_file)
@@ -76,11 +76,12 @@ class _IOFactory(object):
         else:
             return None
 
+
 class _CSV(object):
     def __init__(self, _comp_file):
-	    self._comp_file = _comp_file
+        self._comp_file = _comp_file
 
-    def save(self, data, labels = None):
+    def save(self, data, labels=None):
         """
         Save a np array into a csv file.
         ---------------------------------------------
@@ -90,7 +91,7 @@ class _CSV(object):
         """
         if isinstance(data, np.ndarray):
             if data.ndim == 1:
-                data = np.expand_dims(data,axis=1)
+                data = np.expand_dims(data, axis=1)
             try:
                 f = open(self._comp_file, 'w')
             except IOError:
@@ -108,7 +109,7 @@ class _CSV(object):
         else:
             raise Exception('Input must be a numpy array.')
 
-    def load(self, dtype = 'float'):
+    def load(self, dtype='float'):
         """
         Read data from .csv
         ----------------------------------
@@ -123,6 +124,7 @@ class _CSV(object):
         outdata = np.array(outdata)
         outdata = outdata.astype(dtype)
         return outdata
+
 
 class _TXT(object):
     def __init__(self, _comp_file):
@@ -144,6 +146,7 @@ class _TXT(object):
         ------------------------
         """
         return np.loadtxt(self._comp_file)
+
 
 class _PKL(object):
     def __init__(self, _comp_file):
@@ -198,6 +201,7 @@ class _MAT(object):
         """
         return loadmat(self._comp_file)
 
+
 class _NIFTI(object):
     def __init__(self, _comp_file):
         self._comp_file = _comp_file
@@ -205,7 +209,7 @@ class _NIFTI(object):
     def save(self, data, header):
         """
         Save nifti data
-	Parameters:
+        Parameters:
             data: saving data
         """
         img = nib.Nifti1Image(data, None, header)
@@ -235,6 +239,7 @@ class _NIFTI(object):
             raise Exception('Wrong datatype input')
         return outdata
 
+
 class _CIFTI(object):
 
     def __init__(self, _comp_file):
@@ -261,13 +266,13 @@ class _CIFTI(object):
 
         return brain_structure                
 
-    def load(self, structure = None):
+    def load_raw_data(self, structure=None):
         """
         Read cifti data. If your cifti data contains multiple contrast, you can input your contrast number and get value of this contrast.
  
         Parameters:
         --------------
-        structure[string]: structure name
+        structure[string]: brain structure name
 
         Return:
         -------
@@ -280,25 +285,34 @@ class _CIFTI(object):
         img = nib.load(self._comp_file)
         data = img.get_data()
 
-
-        header = img.header
-        index_map = header.get_index_map(1)
-        brain_models = [i for i in index_map.brain_models]
-
-        brain_structure = [i.brain_structure for i in brain_models]
-        index_count = [i.index_count for i in brain_models]
-        index_offset = [i.index_offset for i in brain_models]
-        vertex_indices = [i.vertex_indices for i in brain_models]
         if structure is None:
             vxidx = None
-        if structure in brain_structure:
-            idx = brain_structure.index(structure)
-            data = data[:, (index_offset[idx]):(index_offset[idx]+index_count[idx])]
-            vxidx = vertex_indices[idx]
         else:
-            raise Exception('No such a structure in brain model')
+            try:
+                brain_model = [i for i in img.header.get_index_map(1).brain_models
+                               if i.brain_structure == structure][0]
+            except IndexError:
+                raise Exception('No such a structure in brain model')
+
+            offset = brain_model.index_offset
+            count = brain_model.index_count
+            data = data[:, offset:offset+count]
+            vxidx = brain_model.vertex_indices
 
         return data, vxidx
+
+    def load_zeroized_data(self, structure=None):
+        """
+        load data after filling zeros for the missing vertices
+        :param structure: str
+            specify a brain structure, or get all structures by default
+        :return: data: numpy array
+        """
+        _data, vxidx = self.load(structure)
+        n_vtx = max(list(vxidx)) + 1
+        data = np.zeros((_data.shape[0], n_vtx), _data.dtype)
+        data[:, list(vxidx)] = _data
+        return data
   
     def get_header(self):
         """
@@ -308,7 +322,7 @@ class _CIFTI(object):
         header = img.get_header()
         return header
 
-    def save_from_existed_header(self, header, data, map_name = None):
+    def save_from_existed_header(self, header, data, map_name=None):
         """
         Save scalar data using a existed header
         Information of brain_model in existed header will be used.
@@ -322,7 +336,7 @@ class _CIFTI(object):
         """
         if map_name is None:
             map_name = ['']*data.shape[0]
-	assert data.shape[0] == len(map_name), "Map_name and data mismatched."
+        assert data.shape[0] == len(map_name), "Map_name and data mismatched."
         index_map0 = header.get_index_map(0)
         mimcls0 = cifti2.Cifti2MatrixIndicesMap([0], 'CIFTI_INDEX_TYPE_SCALARS')
         for mn in map_name:
@@ -344,7 +358,8 @@ class _CIFTI(object):
         header_new = cifti2.Cifti2Header(matrix)
         img = nib.Cifti2Image(data, header_new)
         img.to_filename(self._comp_file)
- 
+
+
 class _GIFTI(object):
     def __init__(self, _comp_file):
         self._comp_file = _comp_file
@@ -357,12 +372,12 @@ class _GIFTI(object):
         if len(img.darrays) == 1:
             data = img.darrays[0].data
         else:
-            data = []
-            for i in range(0,len(img.darrays)):#files named *.midthickness may have two elements in darrays. one represents the mesh, and one represents the coordinates of vertex
-                data.append(img.darrays[i].data)
+            # Geometry files whose name endswith '.surf.gii' have two elements in darrays.
+            # One represents the coordinates of vertices, the other represents the mesh
+            data = [darray.data for darray in img.darrays]
         return data
 
-    def save(self, data, hemisphere = None):
+    def save(self, data, hemisphere=None):
         """
         A method to save vector data as gifti image
 
@@ -396,7 +411,7 @@ class _LABEL(object):
         label = nib.freesurfer.read_label(self._comp_file)
         return label
 
-    def save(self, label, coords, scalar_data = None):
+    def save(self, label, coords, scalar_data=None):
         """
         Save label data
 
@@ -415,4 +430,3 @@ class _LABEL(object):
             for lbl in label:
                 x, y, z = coords[lbl]
                 f.write('%d %f %f %f %f\n' % (lbl, x, y, z, scalar_data.flatten()[lbl]))
-
