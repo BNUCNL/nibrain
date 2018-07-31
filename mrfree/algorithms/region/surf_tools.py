@@ -1081,5 +1081,53 @@ def get_border_vertex(data, faces, n = 2):
     border_vertex = data_vertex[np.array(border_check)]
     return border_vertex
     
+def get_local_extrema(scalar_data, faces, surf_dist, n_extrema = None, mask = None, option = 'maxima'):
+    """
+    Get local extrema from scalar data 
+
+    Parameters:
+    -----------
+    scalar_data[array]: scalar data that used for local extrema.
+    faces[array]: nfaces * 3 array of defining mesh triangules.
+    surf_dist[int]: the minimum distance between extrema of surface. Its value could be 1, 2, 3, etc..., as n ring neighbour.
+    n_extrema: by default is None. Set the number of extrema point you'd like to get.
+    mask[array]: by default is None. if not None, local extrema will be found in mask. Note that mask should have same shape like scalar_data.
+    option[string]: 'maxima', find the maxima.
+            'minima', find the minima.
+
+    Returns:
+    ---------
+    extre_points[list]: vertex number of local extrema points.
+
+    Example:
+    --------
+    >>> extre_points = get_local_extrema(scalar_data, faces, surf_dist=3)
+    """
+    if option == 'maxima':
+        temp_scalar = scalar_data - np.min(scalar_data)
+        argextre = np.argmax
+    elif option == 'minima':
+        temp_scalar = scalar_data - np.max(scalar_data)
+        argextre = np.argmin
+    else:   
+        raise Exception('please input maxima or minima in option.') 
+    if mask is not None:
+        assert scalar_data.shape == mask.shape, "Mask should have same shape like scalar_data."
+        temp_scalar = temp_scalar * (mask!=0)
+    extre_points = []
+    # median_value = np.abs(np.median(temp_scalar[temp_scalar!=0]))
+    while np.any(temp_scalar):
+        # if np.max(np.abs(temp_scalar))<median_value:
+        #     break
+        if (n_extrema is not None) & (len(extre_points)>=n_extrema):
+            break
+        temp_extre_point = argextre(temp_scalar)
+        extre_points.append(temp_extre_point)
+        ringlist = get_n_ring_neighbor(temp_extre_point, faces, n=surf_dist)
+        temp_scalar[list(ringlist[0])] = 0
+    return extre_points    
+
+
+
 
 
