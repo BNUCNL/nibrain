@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 # attributes class
-
 import numpy as np
+import dipy.tracking.streamline.ArraySequence as ArraySequence
 
 class Geometry(object):
-    def __init__(self, data=None, id=None, gtype='volume', src=None):
+    def __init__(self, data=None, id=None, src=None):
         """
         Init Geometry.
 
@@ -13,24 +13,12 @@ class Geometry(object):
         ----------
         data: geometry data, a squeeze of array.
         id: the id for each array.
-        gtype: geometry type, a string: volume and streamline.
         src: source of the geometry data, a string.
         """
-        self.gtype = gtype
         self.data  = data
         self.id = id
         self.src = src
 
-    @property
-    def gtype(self):
-        return self._gtype
-
-    @gtype.setter
-    def gtype(self, gtype):
-        assert isinstance(gtype, str), "Input 'gtype' should be string."
-        known_gtype = ('volume', 'streamline')
-        assert gtype in known_gtype, "gtype should be in {0}".format(known_gtype)
-        self._gtype = gtype
 
     @property
     def data(self):
@@ -38,8 +26,6 @@ class Geometry(object):
 
     @data.setter
     def data(self, data):
-        assert data.ndim == 2, "Input should be 2-dim."
-        assert data.shape[1] == 3, "The shape of input should be (N, 3)."
         self._data = data
 
     @property
@@ -48,8 +34,6 @@ class Geometry(object):
 
     @id.setter
     def id(self, id):
-        assert id.ndim == 2, "Input should be 2-dim."
-        assert id.shape[1] == 3, "The shape of input should be (N, 3)."
         self._id = id
 
     @property
@@ -58,36 +42,63 @@ class Geometry(object):
 
     @src.setter
     def src(self, src):
-        assert isinstance(src, list) or isinstance(src, np.ndarray), "Input should be list or numpy array"
-        self._src = np.array(src)
+        self._src = src
 
-
-
-    def skeletonize(self):
-        """
-        Get centroid of self geometry.
-
-        Return
-        ------
-        cen: an instance of geometry class, centroid of self geometry.
-        """
+    def merge(self, another_geo):
         pass
 
-    def merge(self):
+
+class RegionGeometry(Geometry):
+    def __init__(self, data=None, id=None, src=None):
+        super(RegionGeometry, self).__init__(data, id, src)
         pass
 
-    def intersect(self):
+    @data.setter
+    def data(self, data):
+        assert isinstance(data,np),"data should be a ArraySequence."
+        super(RegionGeometry,self)._data = data
+
+    @id.setter
+    def id(self, id):
+        assert isinstance(id,list),"id should be a list."
+        super(RegionGeometry, self)._id = id
+
+    def merge(self, another_geo):
+        assert isinstance(another_geo, Geometry), "another_geo should be the same class"
+        pass
+
+    def intersect(self,another_geo):
+        assert isinstance(another_geo, Geometry), "another_geo should be the same class"
         pass
 
     def subtract(self):
         pass
 
-    def equidistant_resample(self):
+    def center(self):
         pass
 
 
 
+class TractGeometry(Geometry):
+    def __init__(self, data=None, id=None, src=None):
+        super(TractGeometry, self).__init__(data, id, src)
 
+    def merge(self, another_geo):
+        assert isinstance(another_geo, Geometry),"another_geo should be the same class"
+        pass
+
+
+    def equidistant_resample(self):
+        pass
+
+
+    def skeleton(self):
+        pass
+
+
+
+if __name__ == "__main__":
+    pass
 
 
 
