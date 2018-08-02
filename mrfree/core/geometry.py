@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
-# attributes class
 import numpy as np
 import dipy.tracking.streamline.ArraySequence as ArraySequence
+
 
 class RegionGeometry(object):
     def __init__(self, data=None, id=None, src=None):
         """
-        Init Geometry.
-
         Parameters
         ----------
         data: geometry data, a squeeze of array.
@@ -25,6 +23,7 @@ class RegionGeometry(object):
 
     @data.setter
     def data(self, data):
+        assert data.ndim == 2 and data.shape[1] == 3, "data should be N x 3 np array."
         self._data = data
 
     @property
@@ -43,12 +42,12 @@ class RegionGeometry(object):
     def src(self, src):
         self._src = src
 
-    def merge(self, another_geo):
-        assert isinstance(another_geo, RegionGeometry), "another_geo should be the same class"
+    def merge(self, rg):
+        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
         pass
 
-    def intersect(self,another_geo):
-        assert isinstance(another_geo, RegionGeometry), "another_geo should be the same class"
+    def intersect(self,rg):
+        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
         pass
 
     def subtract(self):
@@ -61,8 +60,6 @@ class RegionGeometry(object):
 class TractGeometry(object):
     def __init__(self, data=None, id=None, src=None):
         """
-        Init Geometry.
-
         Parameters
         ----------
         data: geometry data, a squeeze of array.
@@ -98,18 +95,15 @@ class TractGeometry(object):
         self._src = src
 
 
-def merge(self, another_geo):
-        assert isinstance(another_geo, TractGeometry),"another_geo should be the same class"
-        pass
-
+def merge(self, tg):
+    assert isinstance(tg, TractGeometry),"tg should be a TractGeometry object"
+    pass
 
     def equidistant_resample(self):
         pass
 
-
     def skeleton(self):
         pass
-
 
 if __name__ == "__main__":
     pass
