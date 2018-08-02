@@ -3,7 +3,7 @@
 # attributes class
 
 import numpy as np
-from mrfree.algorithms.geometry.geo_tools import faces_to_edges, faces_to_adjmatrix
+from mrfree.mrfree.algorithms.geometry.geo_tools import faces_to_edges, faces_to_adjmatrix
 
 
 class Geometry(object):
