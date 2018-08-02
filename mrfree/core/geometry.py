@@ -11,7 +11,7 @@ class Geometry(object):
 
         Parameters
         ----------
-        data: the geometry data, a squeeze of array.
+        data: geometry data, a squeeze of array.
         id: the id for each array.
         gtype: geometry type, a string: volume, surface and streamline.
         src: source of the geometry data, a string.
@@ -30,7 +30,7 @@ class Geometry(object):
     @gtype.setter
     def gtype(self, gtype):
         assert isinstance(gtype, str), "Input 'gtype' should be string."
-        assert gtype in self._surface_type, "gtype should be in {0}".format(self._surface_type)
+        assert gtype in self._gtype, "gtype should be in {0}".format(self._gtype)
         self._gtype = gtype
 
     @property
