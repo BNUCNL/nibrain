@@ -5,7 +5,7 @@
 import numpy as np
 
 class Geometry(object):
-    def __init__(self, data=None, id=None, gtype='volume',src=None):
+    def __init__(self, data=None, id=None, gtype='volume', src=None):
         """
         Init Geometry.
 
@@ -13,11 +13,9 @@ class Geometry(object):
         ----------
         data: geometry data, a squeeze of array.
         id: the id for each array.
-        gtype: geometry type, a string: volume, surface and streamline.
+        gtype: geometry type, a string: volume and streamline.
         src: source of the geometry data, a string.
         """
-        self._gtype = ['volume', 'surface', 'streamline']
-
         self.gtype = gtype
         self.data  = data
         self.id = id
@@ -30,18 +28,19 @@ class Geometry(object):
     @gtype.setter
     def gtype(self, gtype):
         assert isinstance(gtype, str), "Input 'gtype' should be string."
-        assert gtype in self._gtype, "gtype should be in {0}".format(self._gtype)
+        known_gtype = ('volume', 'streamline')
+        assert gtype in known_gtype, "gtype should be in {0}".format(known_gtype)
         self._gtype = gtype
 
     @property
-    def coords(self):
-        return self._coords
+    def data(self):
+        return self._data
 
-    @coords.setter
-    def coords(self, coords):
-        assert coords.ndim == 2, "Input should be 2-dim."
-        assert coords.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._coords = coords
+    @data.setter
+    def data(self, data):
+        assert data.ndim == 2, "Input should be 2-dim."
+        assert data.shape[1] == 3, "The shape of input should be (N, 3)."
+        self._data = data
 
     @property
     def id(self):
@@ -54,47 +53,17 @@ class Geometry(object):
         self._id = id
 
     @property
-    def index(self):
-        return self._index
+    def src(self):
+        return self._src
 
-    @index.setter
-    def index(self, index):
-        assert isinstance(index, list) or isinstance(index, np.ndarray), "Input should be list or numpy array"
-        self._index = np.array(index)
+    @src.setter
+    def src(self, src):
+        assert isinstance(src, list) or isinstance(src, np.ndarray), "Input should be list or numpy array"
+        self._src = np.array(src)
 
-    def get(self, key):
-        """
-        Get property of Geometry by key.
 
-        Parameters
-        ----------
-        key: name of properties of Geometry, should be one of ['coords', 'faces', index']
 
-        Return
-        ------
-        Value of properties.
-        """
-        if hasattr(self, key):
-            return getattr(self, key)
-        else:
-            raise ValueError('{} is not found.'.format(key))
-
-    def set(self, key, value):
-        """
-        Set value to the property of Geometry by key.
-
-        Parameters
-        ----------
-        key: name of properties of Geometry, should be one of ['coords', 'faces', index']
-        value: value of properties that what to set.
-        """
-        if hasattr(self, key):
-            self.__setattr__(key, value)
-        else:
-            raise ValueError('{} is not found.'.format(key))
-
-    @property
-    def centroid(self):
+    def skeletonize(self):
         """
         Get centroid of self geometry.
 
@@ -102,12 +71,23 @@ class Geometry(object):
         ------
         cen: an instance of geometry class, centroid of self geometry.
         """
-        # FIXME specify meaning of parameters.
-        cen = Geometry(name=self.name)
-        cen.coords = np.mean(self.coords, axis=0)
-        cen.faces = None
-        cen.index = None
-        return cen
+        pass
+
+    def merge(self):
+        pass
+
+    def intersect(self):
+        pass
+
+    def subtract(self):
+        pass
+
+    def equidistant_resample(self):
+        pass
+
+
+
+
 
 
 
