@@ -11,12 +11,12 @@ class Geometry(object):
 
         Parameters
         ----------
-        name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-        coords: coords of vertexes, should be N*3 array.
-        faces: faces of vertexes, should be M*3 array.
-        index: vertexes index in this geometry, should be K*1 array.
+        data: the geometry data, a squeeze of array.
+        id: the id for each array.
+        gtype: geometry type, a string: volume, surface and streamline.
+        src: source of the geometry data, a string.
         """
-        self._gtype = ['volume', 'surface', 'tract']
+        self._gtype = ['volume', 'surface', 'streamline']
 
         self.gtype = gtype
         self.data  = data
@@ -24,14 +24,14 @@ class Geometry(object):
         self.src = src
 
     @property
-    def name(self):
-        return self._name
+    def gtype(self):
+        return self._gtype
 
-    @name.setter
-    def name(self, name):
-        assert isinstance(name, str), "Input 'name' should be string."
-        assert name in self._surface_type, "Name should be in {0}".format(self._surface_type)
-        self._name = name
+    @gtype.setter
+    def gtype(self, gtype):
+        assert isinstance(gtype, str), "Input 'gtype' should be string."
+        assert gtype in self._surface_type, "gtype should be in {0}".format(self._surface_type)
+        self._gtype = gtype
 
     @property
     def coords(self):
@@ -44,14 +44,14 @@ class Geometry(object):
         self._coords = coords
 
     @property
-    def faces(self):
-        return self._faces
+    def id(self):
+        return self._id
 
-    @faces.setter
-    def faces(self, faces):
-        assert faces.ndim == 2, "Input should be 2-dim."
-        assert faces.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._faces = faces
+    @id.setter
+    def id(self, id):
+        assert id.ndim == 2, "Input should be 2-dim."
+        assert id.shape[1] == 3, "The shape of input should be (N, 3)."
+        self._id = id
 
     @property
     def index(self):
