@@ -3,11 +3,9 @@
 # attributes class
 
 import numpy as np
-from mrfree.algorithms.geometry.geo_tools import faces_to_edges, faces_to_adjmatrix
-
 
 class Geometry(object):
-    def __init__(self, name, coords=None, faces=None, index=None):
+    def __init__(self, gtype=None, data=None, id=None, src=None):
         """
         Init Geometry.
 
@@ -20,10 +18,10 @@ class Geometry(object):
         """
         self._surface_type = ['white', 'pial', 'inflated', 'sphere']
 
-        self.name = name
-        self.coords = coords
-        self.faces = faces
-        self.index = index
+        self.gtype = gtype
+        self.data  = data
+        self.id = id
+        self.src = src
 
     @property
     def name(self):
