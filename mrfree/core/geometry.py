@@ -4,7 +4,7 @@
 import numpy as np
 import dipy.tracking.streamline.ArraySequence as ArraySequence
 
-class Geometry(object):
+class RegionGeometry(object):
     def __init__(self, data=None, id=None, src=None):
         """
         Init Geometry.
@@ -18,7 +18,6 @@ class Geometry(object):
         self.data  = data
         self.id = id
         self.src = src
-
 
     @property
     def data(self):
@@ -45,30 +44,11 @@ class Geometry(object):
         self._src = src
 
     def merge(self, another_geo):
-        pass
-
-
-class RegionGeometry(Geometry):
-    def __init__(self, data=None, id=None, src=None):
-        super(RegionGeometry, self).__init__(data, id, src)
-        pass
-
-    @data.setter
-    def data(self, data):
-        assert isinstance(data,np),"data should be a ArraySequence."
-        super(RegionGeometry,self)._data = data
-
-    @id.setter
-    def id(self, id):
-        assert isinstance(id,list),"id should be a list."
-        super(RegionGeometry, self)._id = id
-
-    def merge(self, another_geo):
-        assert isinstance(another_geo, Geometry), "another_geo should be the same class"
+        assert isinstance(another_geo, RegionGeometry), "another_geo should be the same class"
         pass
 
     def intersect(self,another_geo):
-        assert isinstance(another_geo, Geometry), "another_geo should be the same class"
+        assert isinstance(another_geo, RegionGeometry), "another_geo should be the same class"
         pass
 
     def subtract(self):
@@ -78,13 +58,48 @@ class RegionGeometry(Geometry):
         pass
 
 
-
-class TractGeometry(Geometry):
+class TractGeometry(object):
     def __init__(self, data=None, id=None, src=None):
-        super(TractGeometry, self).__init__(data, id, src)
+        """
+        Init Geometry.
 
-    def merge(self, another_geo):
-        assert isinstance(another_geo, Geometry),"another_geo should be the same class"
+        Parameters
+        ----------
+        data: geometry data, a squeeze of array.
+        id: the id for each array.
+        src: source of the geometry data, a string.
+        """
+        self.data = data
+        self.id = id
+        self.src = src
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, id):
+        self._id = id
+
+    @property
+    def src(self):
+        return self._src
+
+    @src.setter
+    def src(self, src):
+        self._src = src
+
+
+def merge(self, another_geo):
+        assert isinstance(another_geo, TractGeometry),"another_geo should be the same class"
         pass
 
 
@@ -94,7 +109,6 @@ class TractGeometry(Geometry):
 
     def skeleton(self):
         pass
-
 
 
 if __name__ == "__main__":
