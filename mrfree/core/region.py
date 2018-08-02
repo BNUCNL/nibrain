@@ -2,7 +2,7 @@
 
 # region class
 import numpy as np
-from mrfree.core.attributes import Geometry, Scalar, Connection
+from mrfree.core.geometry import Geometry, Scalar, Connection
 from mrfree.io import load
 
 
