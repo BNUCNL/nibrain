@@ -5,7 +5,7 @@
 import numpy as np
 
 class Geometry(object):
-    def __init__(self, gtype=None, data=None, id=None, src=None):
+    def __init__(self, data=None, id=None, gtype='volume',src=None):
         """
         Init Geometry.
 
@@ -16,7 +16,7 @@ class Geometry(object):
         faces: faces of vertexes, should be M*3 array.
         index: vertexes index in this geometry, should be K*1 array.
         """
-        self._surface_type = ['white', 'pial', 'inflated', 'sphere']
+        self._gtype = ['volume', 'surface', 'tract']
 
         self.gtype = gtype
         self.data  = data
