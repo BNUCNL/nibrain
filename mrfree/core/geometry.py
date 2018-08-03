@@ -2,7 +2,7 @@
 
 import numpy as np
 import dipy.tracking.streamline.ArraySequence as ArraySequence
-from base import intersect2d,subtract2d
+from base import intersect2d,exclude2d
 
 
 class RegionGeometry(object):
@@ -47,18 +47,22 @@ class RegionGeometry(object):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
         self.data = np.vstack(self.data)
         self.data = np.unique(self.data,axis=0)
+        return self
 
     def intersect(self,rg):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
         self.data = intersect2d(self.data, rg.data)
+        return self
 
-    def subtract(self):
+    def exclude(self):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
-        self.data = subtract2d(self.data, rg.data)
+        self.data = exclude2d(self.data, rg.data)
+        return self
 
 
-    def center(self):
-        return np.mean(self.data,axis=0)
+    def centralize(self):
+        self.data = np.mean(self.data,axis=0)
+        return self
 
 
 class TractGeometry(object):
