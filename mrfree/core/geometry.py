@@ -2,6 +2,7 @@
 
 import numpy as np
 import dipy.tracking.streamline.ArraySequence as ArraySequence
+from base import intersect2d,subtract2d
 
 
 class RegionGeometry(object):
@@ -44,17 +45,20 @@ class RegionGeometry(object):
 
     def merge(self, rg):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
-        pass
+        self.data = np.vstack(self.data)
+        self.data = np.unique(self.data,axis=0)
 
     def intersect(self,rg):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
-        pass
+        self.data = intersect2d(self.data, rg.data)
 
     def subtract(self):
-        pass
+        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
+        self.data = subtract2d(self.data, rg.data)
+
 
     def center(self):
-        pass
+        return np.mean(self.data,axis=0)
 
 
 class TractGeometry(object):
@@ -107,21 +111,16 @@ def merge(self, tg):
 
 
 if __name__ == "__main__":
-
-    """Test RegionGeometry"""
-    # creat object
+    # Test RegionGeometry
     data = np.random.rand(10,3)
     id = 1
     src = "Faked region geometry"
     rg = RegionGeometry(data, id,src)
-
-    # test set and get
     rg.data = np.random.rand(5,3)
     rg.id = 2
     rg.src = "New faked region geometry"
 
-    """Test TractGeometry"""
-    # creat object
+    # Test TractGeometry
     data = [np.array([[0, 0., 0.9],
                       [1.9, 0., 0.]]),
             np.array([[0.1, 0., 0],
@@ -129,12 +128,9 @@ if __name__ == "__main__":
                       [0, 2., 2.]]),
             np.array([[2, 2, 2],
                       [3, 3, 3]])]
-
     id = np.arange(len(data))
     src = "Faked tract geometry"
     rg = TractGeometry(data, id, src)
-
-    # test set and get
     rg.data =  rg.data.remove(1)
     rg.id = np.delete(rg.id,1)
     rg.src = "New faked tract geometry"
