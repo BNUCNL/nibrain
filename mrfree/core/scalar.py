@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# Scalar class
-
-
 
 class Scalar(object):
     """

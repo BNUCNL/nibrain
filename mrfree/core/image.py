@@ -1,17 +1,11 @@
 #!/usr/bin/env python
 
-# attributes class
-
-
-
 import numpy as np
 
 
-class image(object):
+class Image(object):
     def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
         """
-              Init image
-
               Parameters
               ----------
               data: image data, a 3d or 4d array

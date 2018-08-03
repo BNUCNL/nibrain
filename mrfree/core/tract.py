@@ -52,7 +52,7 @@ class Tract(object):
     @name.setter
     def name(self,set_name):
         """Set the name of fiber tract."""
-        if input_name:
+        if set_name:
             assert isinstance(set_name,str), "Input name must be string."
         self._name = set_name
 
