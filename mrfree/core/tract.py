@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  tract class
 
-from geometry import TractGeometry
+from geometry import Lines
 from scalar import Scalar
 from connection import Connection
 from image import Image
@@ -81,7 +81,7 @@ class Tract(object):
     @geometry.setter
     def geometry_load(self,source):
         source = self._source
-        self._geometry = TractGeometry(source)
+        self._geometry = Lines(source)
 
     @property
     def scalar(self):

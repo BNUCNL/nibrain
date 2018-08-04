@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import numpy as np
+from base import intersect2d,exclude2d
 
-class RegionGeometry(object):
+class Points(object):
     def __init__(self, data=None, id=None, src=None):
         """
         Parameters
@@ -41,18 +42,18 @@ class RegionGeometry(object):
         self._src = src
 
     def merge(self, rg):
-        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
+        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
         self.data = np.vstack(self.data)
         self.data = np.unique(self.data,axis=0)
         return self
 
     def intersect(self,rg):
-        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
+        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
         self.data = intersect2d(self.data, rg.data)
         return self
 
     def exclude(self):
-        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
+        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
         self.data = exclude2d(self.data, rg.data)
         return self
 
@@ -62,7 +63,7 @@ class RegionGeometry(object):
         return self
 
 
-class TractGeometry(object):
+class Lines(object):
     def __init__(self,source=None):
         """
         Parameters
@@ -97,7 +98,7 @@ class TractGeometry(object):
         self._id = id
 
 def merge(self, tg):
-    assert isinstance(tg, TractGeometry),"tg should be a TractGeometry object"
+    assert isinstance(tg, Lines), "tg should be a TractGeometry object"
     pass
 
 def equidistant_resample(self):
@@ -111,11 +112,11 @@ if __name__ == "__main__":
     # Test RegionGeometry
     data = np.random.rand(10,3)
     id = 1
-    src = "Faked region geometry"
-    rg = RegionGeometry(data, id,src)
+    src = "Faked points"
+    rg = Points(data, id, src)
     rg.data = np.random.rand(5,3)
     rg.id = 2
-    rg.src = "New faked region geometry"
+    rg.src = "New faked points"
 
     # Test TractGeometry
     data = [np.array([[0, 0., 0.9],
@@ -126,10 +127,10 @@ if __name__ == "__main__":
             np.array([[2, 2, 2],
                       [3, 3, 3]])]
     id = np.arange(len(data))
-    src = "Faked tract geometry"
-    rg = TractGeometry(data, id, src)
+    src = "Faked lines"
+    rg = Lines(data, id, src)
     rg.data =  rg.data.remove(1)
     rg.id = np.delete(rg.id,1)
-    rg.src = "New faked tract geometry"
+    rg.src = "New faked lines"
 
 
