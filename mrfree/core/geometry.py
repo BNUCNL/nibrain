@@ -41,22 +41,21 @@ class Points(object):
     def src(self, src):
         self._src = src
 
-    def merge(self, rg):
-        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
+    def merge(self, other):
+        assert isinstance(other, Points), "other should be a Points object"
         self.data = np.vstack(self.data)
         self.data = np.unique(self.data,axis=0)
         return self
 
-    def intersect(self,rg):
-        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
-        self.data = intersect2d(self.data, rg.data)
+    def intersect(self,other):
+        assert isinstance(other, Points), "other should be a Points object"
+        self.data = intersect2d(self.data, other.data)
         return self
 
-    def exclude(self):
-        assert isinstance(rg, Points), "rg should be a RegionGeometry object"
-        self.data = exclude2d(self.data, rg.data)
+    def exclude(self, other):
+        assert isinstance(other, Points), "other should be a Points object"
+        self.data = exclude2d(self.data, other.data)
         return self
-
 
     def centralize(self):
         self.data = np.mean(self.data,axis=0)
@@ -97,7 +96,7 @@ class Lines(object):
     def id(self, id):
         self._id = id
 
-def merge(self, tg):
+def meothere(self, tg):
     assert isinstance(tg, Lines), "tg should be a TractGeometry object"
     pass
 
@@ -109,7 +108,7 @@ def skeleton(self):
 
 
 if __name__ == "__main__":
-    # Test RegionGeometry
+    # Test Points
     data = np.random.rand(10,3)
     id = 1
     src = "Faked points"
