@@ -81,22 +81,27 @@ class Region(object):
         assert isinstance(ca, Connection), "ca should be a Connection object."
         self._ca = ca
 
-    def merge(self, other):
+    def merge(self, other, axis=0):
         """ Merge other region into the region.
 
         Parameters
         ----------
         other: a Region object, another region
+        axis: integer, 0 or 1
 
         Return
         ----------
         self: merged region
         """
         assert isinstance(other, Region), "other should be a other obejct."
-        if hasattr(self, 'ga'):
-            self.ga = self.ga.merge(other.ga)
+        if axis == 0: # merge both ga and sa in rows
+            if hasattr(self, 'ga'):
+                self.ga = self.ga.merge(other.ga)
             if hasattr(self, 'sa'):
-                self.sa = self.sa.append(None, other.sa)
+                self.sa = self.sa.append(other.sa)
+        else: # only merge sa in column
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.join(other.sa)
 
         return  self
 

@@ -39,6 +39,10 @@ class Scalar(object):
         self.shape = self.data.shape
         self.ndim = self.data.ndim
 
+    def __getitem__(self, item):
+        index, columns = item
+        self.data.iloc(index, columns)
+
     @property
     def index(self):
         return self._index
@@ -94,7 +98,7 @@ class Scalar(object):
         Return
         ----------
         a DataFrame object
-        
+
         """
         
         return self.data.iloc[index, columns]
@@ -275,6 +279,9 @@ class Scalar(object):
         """
         self.data.append(other.data, ignore_index, verify_integrity)
         return self
+
+    def join(self, other, on=None, how='left', lsuffix='', rsuffix='', sort=False):
+        self.data.join(other, on, how, lsuffix, rsuffix, sort)
 
     def remove(self, labels=None, axis=0, index=None, columns=None, level=None, inplace=False, errors='raise'):
         """Drop specified labels from rows or columns.
