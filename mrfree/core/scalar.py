@@ -32,9 +32,12 @@ class Scalar(object):
         Column labels to use for resulting frame. Will default to RangeIndex (0, 1, 2, ¡­, n) 
         if no column labels are provided
         """
-        self.index = index
-        self.columns = columns
+
         self.data = pd.DataFrame(data, index, columns)
+        self.index = self.data.index
+        self.columns = self.data.columns
+        self.shape = self.data.shape
+        self.ndim = self.data.ndim
 
     @property
     def index(self):
@@ -236,6 +239,7 @@ class Scalar(object):
     def zscore(self):
         self.data.apply(zscore)
 
+    @property
     def shape(self):
         """
         Return
@@ -244,6 +248,7 @@ class Scalar(object):
         """
         return self.data.shape
 
+    @property
     def ndim(self):
         """
         Return

@@ -2,7 +2,7 @@
 
 # region class
 
-from geometry import RegionGeometry
+from geometry import Points
 from scalar import Scalar
 from connection import Connection
 from mrfree.mrfree.io import load
@@ -76,7 +76,7 @@ class Region(object):
 
     @ga.setter
     def ga(self, ga):
-        assert isinstance(ga, RegionGeometry), "ga should be a RegionGeometry obejct."
+        assert isinstance(ga, Points), "ga should be a RegionGeometry obejct."
         self._ga = ga
 
     @property
