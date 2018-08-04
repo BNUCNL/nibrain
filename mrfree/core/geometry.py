@@ -63,7 +63,7 @@ class Points(object):
 
 
 class Lines(object):
-    def __init__(self,source=None):
+    def __init__(self, data, id, source=None):
         """
         Parameters
         ----------
@@ -71,14 +71,17 @@ class Lines(object):
         id: the id for each array.
         source: source of the geometry data, a string.
         """
-        self._src = source
-        self._data = None
-        self._id = None
-        self._shape = None
+        self.data = data
+        self.id = id
+        self.src = source
 
     @property
-    def source(self):
+    def src(self):
         return self._src
+
+    @src.setter
+    def src(self,src):
+        self._src = src
 
     @property
     def data(self):
@@ -96,15 +99,15 @@ class Lines(object):
     def id(self, id):
         self._id = id
 
-def meothere(self, tg):
-    assert isinstance(tg, Lines), "tg should be a TractGeometry object"
-    pass
+    def merge(self, other):
+        assert isinstance(other, Lines), "other should be a Lines object"
+        pass
 
-def equidistant_resample(self):
-    pass
+    def equidistant_resample(self, num_segment):
+        pass
 
-def skeleton(self):
-    pass
+    def skeleton(self):
+        pass
 
 
 if __name__ == "__main__":
@@ -117,7 +120,7 @@ if __name__ == "__main__":
     rg.id = 2
     rg.src = "New faked points"
 
-    # Test TractGeometry
+    # Test Lines
     data = [np.array([[0, 0., 0.9],
                       [1.9, 0., 0.]]),
             np.array([[0.1, 0., 0],
@@ -127,9 +130,9 @@ if __name__ == "__main__":
                       [3, 3, 3]])]
     id = np.arange(len(data))
     src = "Faked lines"
-    rg = Lines(data, id, src)
-    rg.data =  rg.data.remove(1)
-    rg.id = np.delete(rg.id,1)
-    rg.src = "New faked lines"
+    lg = Lines(data, id, src)
+    lg.data =  rg.data.remove(1)
+    lg.id = np.delete(rg.id,1)
+    lg.src = "New faked lines"
 
 
