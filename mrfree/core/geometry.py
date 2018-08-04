@@ -96,18 +96,15 @@ class TractGeometry(object):
     def id(self, id):
         self._id = id
 
-
-
-
 def merge(self, tg):
     assert isinstance(tg, TractGeometry),"tg should be a TractGeometry object"
     pass
 
-    def equidistant_resample(self):
-        pass
+def equidistant_resample(self):
+    pass
 
-    def skeleton(self):
-        pass
+def skeleton(self):
+    pass
 
 
 if __name__ == "__main__":
