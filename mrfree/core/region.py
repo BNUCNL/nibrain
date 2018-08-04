@@ -4,34 +4,32 @@
 
 from geometry import Points
 from scalar import Scalar
+from image import Image
 from connection import Connection
-from mrfree.mrfree.io import load
 
 class Region(object):
-    """
-    Region class that stores data and provides analysis methods.
+    """ A class for brain region/area analysis.
 
-    Parameters
+    Attributes 
     ----------
-    name: name of region, type: string.
-    layer: layer number of region, type: string.
-    source: source of region, type: string.
-    space: space of region, type: string
-
-    xform: transform matrix of region
-    anat_coords: coords of region, should be N*3 array.
-    geometry: geometry attributes, should be an instance of class Geometry.
-    scalar: scalar attributes, should be an instance of class Scalar.
-    connection: connection attributes, should be an instance of class Connection.
+    name: a str, region name
+    ia: Image object, image attributes of the region
+    ga: Points object, geometry attributs of the region
+    sa: Scalar object, scalar attributes of the region.
+    ca: Connection object, connection attributes of the region
     """
     def __init__(self, name, ia=None, ga=None, sa=None, ca=None):
-        """
-        Init Region for further usage.
-
-        Parameters
+        """ init the region with image, geometry, scalar and connection attributes
+        
+        Parameters 
         ----------
-        name: name of region, type: string.
+        name: a str, region name
+        ia: Image object, image attributes of the region
+        ga: Points object, geometry attributs of the region
+        sa: Scalar object, scalar attributes of the region.
+        ca: Connection object, connection attributes of the region
         """
+        
         self.name = name
         self.ia = ia
         self.ga = ga
@@ -40,24 +38,10 @@ class Region(object):
 
     @property
     def name(self):
-        """
-        Get name of region.
-
-        Return
-        ------
-        Name of region.
-        """
         return self._name
 
     @name.setter
     def name(self, name):
-        """
-        Set name of region, input should be string.
-
-        Parameters
-        ----------
-        name: name of region, type: string.
-        """
         assert isinstance(name, str), "Input 'name' should be string."
         self._name = name
 
@@ -97,40 +81,65 @@ class Region(object):
         assert isinstance(ca, Connection), "ca should be a Connection object."
         self._ca = ca
 
-    def merge(self, region):
-        """
-        Merge another region into self.
+    def merge(self, other):
+        """ Merge other region into the region.
 
         Parameters
         ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
+        other: a Region object, another region
+
+        Return
+        ----------
+        self: merged region
         """
-        assert isinstance(region, Region), "region should be a Region obejct."
+        assert isinstance(other, Region), "other should be a other obejct."
         if hasattr(self, 'ga'):
-            self.ga = self.ga.merge(region.ga)
+            self.ga = self.ga.merge(other.ga)
             if hasattr(self, 'sa'):
-                self.sa = self.sa.append(None, region.sa)
+                self.sa = self.sa.append(None, other.sa)
 
         return  self
 
-    def intersect(self, region):
-        assert isinstance(region, Region), "region should be a Region obejct."
+    def intersect(self, other):
+        """ Intersect with other region
+
+        Parameters
+        ----------
+        other: a Region object, another region
+
+        Return
+        ----------
+        self: the intersected region
+        """
+
+        assert isinstance(other, Region), "other should be a other obejct."
         if hasattr(self, 'ga'):
-            self.ga, idx = self.ga.intersect(region.ga)
+            self.ga, idx = self.ga.intersect(other.ga)
             if hasattr(self, 'sa'):
                 self.sa = self.sa.remove(idx)
 
         return self
 
-    def exclude(self, region):
-        assert isinstance(region, Region), "region should be a Region obejct."
-        if hasattr(self, 'ga'):
-            self.ga, idx = self.ga.exclude(region)
-            if hasattr(self, 'sa'):
-                self.sa = self.sa.remove('xx',idx)
+    def exclude(self, other):
+        """ Exclude other region from the region.
 
-        if hasattr(self, 'connection'):
-            pass
+        Parameters
+        ----------
+        other: a Region object, another region
+
+        Return
+        ----------
+        self: the left region
+        """
+
+        assert isinstance(other, Region), "other should be a other obejct."
+        if hasattr(self, 'ga'):
+            self.ga, idx = self.ga.exclude(other)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.remove(idx)
+
+            if hasattr(self, 'connection'):
+                pass
 
         return  self
 
@@ -139,75 +148,6 @@ class Region(object):
         if hasattr(self, 'ga'):
             self.ga = self.ga.centralize()
         if hasattr(self,'sa'):
-            self.sa = self.sa.xx
+            self.sa = self.sa.mean()
 
         return self
-
-
-
-class SurfaceRegion(Region):
-    """
-
-    """
-    def load_geometry(self, name, surf_file, surf_label_file=None):
-        """
-        Load surf info into Geometry by load function.
-
-        Parameters
-        ----------
-        name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-        surf_file: Surface file path, specified as a filename (single file).
-        surf_label_file: Surface label file path, specified as a filename (single file).
-        """
-        coords, faces, label = load.load_surf_geom(surf_file, surf_label_file)
-        self.geometry = Geometry(name, coords, faces, label)
-
-    def load_scalar(self, name, surf_file, surf_label_file=None):
-        """
-        Load scalar data into Scalar by load function.
-
-        Parameters
-        ----------
-        name: A string or list as identity of scalar data.
-        surf_file: Surface file path, specified as a filename (single file).
-        surf_label_file: Surface label file path, specified as a filename (single file).
-        """
-        data = load.load_surf_scalar(surf_file, surf_label_file)
-        self.scalar = Scalar(name, data)
-
-    def save(self, save_path):
-        pass
-
-
-class VolumeRegion(Region):
-    """
-
-    """
-    def load_geometry(self, vol_file, vol_mask_file=None):
-        """
-        Load volume geometry by load function.
-
-        Parameters
-        ----------
-        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
-        """
-        coords, xform = load.load_vol_geom(vol_file, vol_mask_file)
-        self.xform = xform
-        self.anat_coords = coords
-
-    def load_scalar(self, name, vol_file, vol_mask_file=None):
-        """
-        Load volume scalar by load function.
-
-        Parameters
-        ----------
-        name: A string or list as identity of scalar data.
-        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
-        """
-        data = load.load_vol_scalar(vol_file, vol_mask_file)
-        self.scalar = Scalar(name, data)
-
-    def save(self, save_path):
-        pass
