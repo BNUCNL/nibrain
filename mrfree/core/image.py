@@ -2,7 +2,6 @@
 
 import numpy as np
 
-
 class Image(object):
     def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
         """

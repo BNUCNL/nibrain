@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 
 import numpy as np
-import dipy.tracking.streamline.ArraySequence as ArraySequence
-from base import intersect2d,exclude2d
-
 
 class RegionGeometry(object):
     def __init__(self, data=None, id=None, src=None):
         """
         Parameters
         ----------
-        data: geometry data, a squeeze of array.
+        data: geometry data, a sequence of array.
         id: the id for each array.
         src: source of the geometry data, a string.
         """
@@ -66,17 +63,22 @@ class RegionGeometry(object):
 
 
 class TractGeometry(object):
-    def __init__(self, data=None, id=None, src=None):
+    def __init__(self,source=None):
         """
         Parameters
         ----------
-        data: geometry data, a squeeze of array.
+        data: geometry data, a sequence of array.
         id: the id for each array.
-        src: source of the geometry data, a string.
+        source: source of the geometry data, a string.
         """
-        self.data = data
-        self.id = id
-        self.src = src
+        self._src = source
+        self._data = None
+        self._id = None
+        self._shape = None
+
+    @property
+    def source(self):
+        return self._src
 
     @property
     def data(self):
@@ -94,13 +96,7 @@ class TractGeometry(object):
     def id(self, id):
         self._id = id
 
-    @property
-    def src(self):
-        return self._src
 
-    @src.setter
-    def src(self, src):
-        self._src = src
 
 
 def merge(self, tg):
@@ -138,6 +134,5 @@ if __name__ == "__main__":
     rg.data =  rg.data.remove(1)
     rg.id = np.delete(rg.id,1)
     rg.src = "New faked tract geometry"
-
 
 

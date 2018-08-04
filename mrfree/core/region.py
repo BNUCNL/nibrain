@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
 # region class
-import numpy as np
-from mrfree.core.geometry import RegionGeometry
-from mrfree.core.scalar import Scalar
-from mrfree.core.connection import Connection
-from mrfree.core.image import Image
-from mrfree.io import load
 
+from geometry import RegionGeometry
+from scalar import Scalar
+from connection import Connection
+from mrfree.mrfree.io import load
 
 class Region(object):
     """
