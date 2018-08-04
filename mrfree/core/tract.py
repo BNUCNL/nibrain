@@ -45,6 +45,22 @@ class Tract(object):
             assert isinstance(source, str), "Input 'source' should be string."
         self._source = source
 
+
+=======
+
+    @property
+    def name(self):
+        """Get the name of fiber tract."""
+        return self._name
+
+    @name.setter
+    def name(self,set_name):
+        """Set the name of fiber tract."""
+        if set_name:
+            assert isinstance(set_name,str), "Input name must be string."
+        self._name = set_name
+
+
     @property
     def source(self):
         """Get the source of fiber tract."""

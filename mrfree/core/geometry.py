@@ -42,17 +42,24 @@ class RegionGeometry(object):
 
     def merge(self, rg):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
-        pass
+        self.data = np.vstack(self.data)
+        self.data = np.unique(self.data,axis=0)
+        return self
 
     def intersect(self,rg):
         assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
-        pass
+        self.data = intersect2d(self.data, rg.data)
+        return self
 
-    def subtract(self):
-        pass
+    def exclude(self):
+        assert isinstance(rg, RegionGeometry), "rg should be a RegionGeometry object"
+        self.data = exclude2d(self.data, rg.data)
+        return self
 
-    def center(self):
-        pass
+
+    def centralize(self):
+        self.data = np.mean(self.data,axis=0)
+        return self
 
 
 class TractGeometry(object):
@@ -102,7 +109,30 @@ def merge(self, tg):
     def skeleton(self):
         pass
 
+
 if __name__ == "__main__":
-    pass
+    # Test RegionGeometry
+    data = np.random.rand(10,3)
+    id = 1
+    src = "Faked region geometry"
+    rg = RegionGeometry(data, id,src)
+    rg.data = np.random.rand(5,3)
+    rg.id = 2
+    rg.src = "New faked region geometry"
+
+    # Test TractGeometry
+    data = [np.array([[0, 0., 0.9],
+                      [1.9, 0., 0.]]),
+            np.array([[0.1, 0., 0],
+                      [0, 1., 1.],
+                      [0, 2., 2.]]),
+            np.array([[2, 2, 2],
+                      [3, 3, 3]])]
+    id = np.arange(len(data))
+    src = "Faked tract geometry"
+    rg = TractGeometry(data, id, src)
+    rg.data =  rg.data.remove(1)
+    rg.id = np.delete(rg.id,1)
+    rg.src = "New faked tract geometry"
 
 

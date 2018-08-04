@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 # region class
-import numpy as np
-from mrfree.mrfree.core.geometry import RegionGeometry
-from mrfree.mrfree.core.scalar import Scalar
-from mrfree.mrfree.core.connection import Connection
-from mrfree.mrfree.io import load
 
+from geometry import RegionGeometry
+from scalar import Scalar
+from connection import Connection
+from mrfree.mrfree.io import load
 
 class Region(object):
     """
@@ -25,21 +24,19 @@ class Region(object):
     scalar: scalar attributes, should be an instance of class Scalar.
     connection: connection attributes, should be an instance of class Connection.
     """
-    def __init__(self, name, layer='L1-6', source=None, space='native'):
+    def __init__(self, name, ia=None, ga=None, sa=None, ca=None):
         """
         Init Region for further usage.
 
         Parameters
         ----------
         name: name of region, type: string.
-        layer: layer number of region, type: string.
-        source: source of region, type: string.
-        space: space of where this region exists, type: string
         """
         self.name = name
-        self.layer = layer
-        self.source = source
-        self.space = space
+        self.ia = ia
+        self.ga = ga
+        self.sa = sa
+        self.ca = ca
 
     @property
     def name(self):
@@ -65,101 +62,42 @@ class Region(object):
         self._name = name
 
     @property
-    def layer(self):
-        return self._layer
+    def ia(self):
+        return self._ia
 
-    @layer.setter
-    def layer(self, layer):
-        self._layer = str(layer)
-
-    @property
-    def source(self):
-        return self._source
-
-    @source.setter
-    def source(self, source):
-        if source:
-            assert isinstance(source, str), "Input 'source' should be string."
-        self._source = source
+    @ia.setter
+    def ia(self, ia):
+        assert isinstance(ia, Image), "ia should be a Image object"
+        self._ia = ia
 
     @property
-    def xform(self):
-        return self._xform
+    def ga(self):
+        return self._ga
 
-    @xform.setter
-    def xform(self, xform):
-        assert xform.shape == (4, 4), "Shape of xform should be (4, 4)"
-        self._xform = xform
-
-    @property
-    def anat_coords(self):
-        return self._anat_coords
-
-    @anat_coords.setter
-    def anat_coords(self, anat_coords):
-        assert anat_coords.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._anat_coords = anat_coords
+    @ga.setter
+    def ga(self, ga):
+        assert isinstance(ga, RegionGeometry), "ga should be a RegionGeometry obejct."
+        self._ga = ga
 
     @property
-    def geometry(self):
-        return self._geometry
+    def sa(self):
+        return self._sa
 
-    @geometry.setter
-    def geometry(self, geometry):
-        assert isinstance(geometry, Geometry), "Input 'geometry' should be an instance of Geometry."
-        self._geometry = geometry
-
-    @property
-    def scalar(self):
-        return self._scalar
-
-    @scalar.setter
-    def scalar(self, scalar):
-        assert isinstance(scalar, Scalar), "Input 'scalar' should be an instance of Scalar."
-        self._scalar = scalar
+    @sa.setter
+    def sa(self, sa):
+        assert isinstance(sa, Scalar), "sa should be a Scalar object"
+        self._sa = sa
 
     @property
-    def connection(self):
-        return self._connection
+    def ca(self):
+        return self._ca
 
-    @connection.setter
-    def connection(self, connection):
-        assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
-        self._connection = connection
+    @ca.setter
+    def ca(self, ca):
+        assert isinstance(ca, Connection), "ca should be a Connection object."
+        self._ca = ca
 
-    @staticmethod
-    def extract(array1, array2, method='unique'):
-        """
-        Compare and extract rows from array2 if it suits requirement.
-        Notice that compare is affected by the order of row in array1 and array2, for example:
-            [1, 2, 3] and [3, 2, 1] is different in this method.
-
-        Parameters
-        ----------
-        array1: target array that be compared with.
-        array2: source array that used for loop and compare.
-        method: decide to get common part unique part in array2.
-                keyword: 'unique' for unique row that in array2 and not in array1.
-                keyword: 'common' for common row that in both array1 and array2.
-
-        Return
-        ------
-        index: index of rows that meets requirement in array2.
-        """
-        assert isinstance(method, str), 'method should be string.'
-        assert method in ['common', 'unique'], 'Wrong method name.'
-
-        index = []
-        for i, n in enumerate(array2):
-            if method == 'common':
-                if np.any(np.all(n == array1, axis=1)):  # equal
-                    index.append(i)
-            if method == 'unique':
-                if not np.any(np.all(n == array1, axis=1)):  # unique
-                    index.append(i)
-        return np.array(index)
-
-    def union(self, region):
+    def merge(self, region):
         """
         Merge another region into self.
 
@@ -167,105 +105,44 @@ class Region(object):
         ----------
         region: an instance of Region class, its layer and space should be the same as this region class.
         """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
+        assert isinstance(region, Region), "region should be a Region obejct."
+        if hasattr(self, 'ga'):
+            self.ga = self.ga.merge(region.ga)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.append(None, region.sa)
 
-        idx = self.extract(self.anat_coords, region.anat_coords, method='unique')
-        self.anat_coords = np.append(self.anat_coords, region.anat_coords[idx], axis=0)
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = np.append(self.geometry.coords, region.geometry.coords[idx], axis=0)
-            self.geometry.faces = np.append(self.geometry.faces, region.geometry.faces[idx], axis=0)
-            self.geometry.index = np.append(self.geometry.index, region.geometry.index[idx], axis=0)
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = np.append(self.scalar.data, region.scalar.data[idx], axis=0)
-
-        if hasattr(self, 'connection'):
-            pass
+        return  self
 
     def intersect(self, region):
-        """
-        Intersect another region into self.
+        assert isinstance(region, Region), "region should be a Region obejct."
+        if hasattr(self, 'ga'):
+            self.ga, idx = self.ga.intersect(region.ga)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.remove(idx)
 
-        Parameters
-        ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
-        """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
-
-        idx = self.extract(region.anat_coords, self.anat_coords, method='common')
-        self.anat_coords = self.anat_coords[idx]
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[idx]
-            self.geometry.faces = self.geometry.faces[idx]
-            self.geometry.index = self.geometry.index[idx]
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[idx]
-
-        if hasattr(self, 'connection'):
-            pass
+        return self
 
     def exclude(self, region):
-        """
-        Exclude another region out of self, which also means keep the unique part of self.
-
-        Parameters
-        ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
-        """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
-
-        idx = self.extract(region.anat_coords, self.anat_coords, method='unique')
-        self.anat_coords = self.anat_coords[idx]
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[idx]
-            self.geometry.faces = self.geometry.faces[idx]
-            self.geometry.index = self.geometry.index[idx]
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[idx]
+        assert isinstance(region, Region), "region should be a Region obejct."
+        if hasattr(self, 'ga'):
+            self.ga, idx = self.ga.exclude(region)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.remove('xx',idx)
 
         if hasattr(self, 'connection'):
             pass
 
-    @property
-    def centroid(self):
-        """
-        Calculate centroid of region in its property.
-
-        Return
-        ------
-        cen: region class that contain properties of center point.
-        """
-        cen = Region(name=self.name, layer=self.layer, source=self.source, space=self.space)
-        cen.xform = self.xform
-        cen.anat_coords = self.centroid_anat_coords
-        if hasattr(self, 'geometry'):
-            cen.geometry = self.geometry.centroid
-
-        # TODO scalar.centroid, connection.centroid
-        cen.scalar = self.scalar.centroid
-        cen.connection = self.connection.centroid
-        return cen
+        return  self
 
     @property
-    def centroid_anat_coords(self):
-        """
-        Calculate centroid of region's anat_coords.
+    def centralize(self):
+        if hasattr(self, 'ga'):
+            self.ga = self.ga.centralize()
+        if hasattr(self,'sa'):
+            self.sa = self.sa.xx
 
-        Return
-        ------
-        cen_anat_coords: centroid of anat_coords in region.
-        """
-        # TODO specify mean method.
-        cen_anat_coords = np.mean(self.anat_coords, axis=1)
-        return cen_anat_coords
+        return self
+
 
 
 class SurfaceRegion(Region):
