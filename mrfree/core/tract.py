@@ -1,7 +1,10 @@
 #!/usr/bin/env python
-
 #  tract class
-from mrfree.mrfree.core.attributes import Geometry, Scalar, Connection
+
+from geometry import TractGeometry
+from scalar import Scalar
+from connection import Connection
+from image import Image
 
 class Tract(object):
     """
@@ -10,10 +13,9 @@ class Tract(object):
     Attributes:
     -----------
     name: name of tract, type: string
-    source: source of region, type :string tck file path or ArraySequence
-    space: space of region, type: string, 'Native' or 'MNI'
+    source: source of region, type :string tck file path
 
-    img:
+    img: image attributes, such as space, itype, ras2vox, voxsize, dims
 
     geometry: geometry attributes of tract,such as xform, coordinates, lengths_mix, length_max,
               per_streamlines_id...
@@ -27,7 +29,7 @@ class Tract(object):
     connection:
     """
 
-    def __init__(self,source=None,name=None):
+    def __init__(self,source,name=None):
         """
         Init Tract for further usage
 
@@ -38,23 +40,10 @@ class Tract(object):
         """
         if name:
             assert isinstance(name,str), "Input name must be string."
-        self._name = name
+        self.name = name
         if source:
             assert isinstance(source, str), "Input 'source' should be string."
         self._source = source
-
-
-    @property
-    def name(self):
-        """Get the name of fiber tract."""
-        return self._name
-
-    @name.setter
-    def name(self,set_name):
-        """Set the name of fiber tract."""
-        if input_name:
-            assert isinstance(set_name,str), "Input name must be string."
-        self._name = set_name
 
     @property
     def source(self):
@@ -63,7 +52,9 @@ class Tract(object):
 
     @source.setter
     def source(self,set_source):
-        """Set the source of fiber tract.Only first setting be permitted."""
+        """Set the source of fiber tract.
+           Only first setting be permitted.
+        """
         if not self._source:
             assert isinstance(set_source, str), "Input 'source' should be string."
             self._source = set_source
@@ -75,34 +66,30 @@ class Tract(object):
         return self._geometry
 
     @geometry.setter
-    def geometry(self, geometry):
-        assert isinstance(geometry, Geometry), "Input 'geometry' should be an instance of Geometry."
-        self._geometry = geometry
+    def geometry_load(self,source):
+        source = self._source
+        self._geometry = TractGeometry(source)
 
     @property
     def scalar(self):
         return self._scalar
 
     @scalar.setter
-    def scalar(self, scalar):
-        assert isinstance(scalar, Scalar), "Input 'scalar' should be an instance of Scalar."
-        self._scalar = scalar
+    def scalar(self):
+        self._scalar = Scalar()
 
     @property
     def connection(self):
         return self._connection
 
     @connection.setter
-    def connection(self, connection):
-        assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
-        self._connection = connection
+    def connection(self):
+        self._connection = Connection()
 
-    @property
-    def img(self):
-        return self._img
-
-    @img.setter
-    def img(self,img):
-        self._img = img
-
-
+    # @property
+    # def img(self):
+    #     return self._img
+    #
+    # @img.setter
+    # def img(self):
+    #     self._img = Image()

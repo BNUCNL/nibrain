@@ -2,8 +2,10 @@
 
 # region class
 import numpy as np
-from mrfree.core.geometry import Geometry, Scalar, Connection
-from mrfree.io import load
+from mrfree.mrfree.core.geometry import RegionGeometry
+from mrfree.mrfree.core.scalar import Scalar
+from mrfree.mrfree.core.connection import Connection
+from mrfree.mrfree.io import load
 
 
 class Region(object):
