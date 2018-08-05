@@ -378,21 +378,85 @@ class Scalar(object):
       return self
 
     def read_from_cifti(self):
+        """ Construct Scalar object by reading a CIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
+
         pass
 
-    def save_to_cifti(self):
+    def save_to_cifti(self, filename):
+        """ Save Scalar object to a CIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+
+        """
         pass
 
-    def read_from_nifti(self):
+    def read_from_nifti(self, filename):
+        """ Construct Scalar object by reading a NIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_nifti(self):
+    def save_to_nifti(self, filename):
+        """ Save Scalar object to a NIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+       """
         pass
 
-    def read_from_gifti(self):
+
+    def read_from_gifti(self, filename):
+        """ Construct Scalar object by reading a GIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a GIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_gifti(self):
+    def save_to_gifti(self, filename):
+        """ Save Scalar object to a GIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a GIFTI file
+
+        Returns
+        -------
+       """
         pass
-
-

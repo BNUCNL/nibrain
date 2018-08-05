@@ -62,21 +62,86 @@ class Points(object):
         return self
 
     def read_from_cifti(self):
+        """ Construct Scalar object by reading a CIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
+
         pass
 
-    def save_to_cifti(self):
+    def save_to_cifti(self, filename):
+        """ Save Points object to a CIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+
+        """
         pass
 
-    def read_from_nifti(self):
+    def read_from_nifti(self, filename):
+        """ Construct Scalar object by reading a NIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_nifti(self):
+    def save_to_nifti(self, filename):
+        """ Save Points object to a NIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+       """
         pass
 
-    def read_from_gifti(self):
+    def read_from_gifti(self, filename):
+        """ Construct Scalar object by reading a GIFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a GIFTI file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_gifti(self):
+    def save_to_gifti(self, filename):
+        """ Save Points object to a GFTI file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a GIFTI file
+
+        Returns
+        -------
+        """
         pass
 
 
@@ -121,28 +186,100 @@ class Lines(object):
         assert isinstance(other, Lines), "other should be a Lines object"
         pass
 
+    def intersect(self,other):
+        pass
+
+    def exclude(self, other):
+        pass
+
     def equidistant_resample(self, num_segment):
         pass
 
     def skeleton(self):
         pass
 
-    def read_from_tck(self):
+    def read_from_tck(self, filename):
+        """ Construct Lines object by reading a TCK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a TCK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_tck(self):
+    def save_to_tck(self, filename):
+        """ Save Lines object to a TCK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a TCK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def read_from_trk(self):
+    def read_from_trk(self, filename):
+        """ Construct Lines object by reading a TRK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a TRK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_trk(self):
+    def save_to_trk(self, filename):
+        """ Save Lines object to a TRK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a TRK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def read_from_vtk(self):
+    def read_from_vtk(self, filename):
+        """ Construct Lines object by reading a VTK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a VTK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
-    def save_to_vtk(self):
+    def save_to_vtk(self, filename):
+        """ Save Lines object to a VTK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a VTK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
 
 
