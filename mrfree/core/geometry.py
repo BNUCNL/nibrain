@@ -4,6 +4,8 @@ import numpy as np
 from base import intersect2d,exclude2d
 
 class Points(object):
+    """
+    """
     def __init__(self, data=None, id=None, src=None):
         """
         Parameters

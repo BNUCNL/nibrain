@@ -5,19 +5,30 @@ import nibabel as nib
 
 
 class Image(object):
-    def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
-        """ Image class was designed to represent brain image data from neuroimaging study.
+    """ Image class was designed to represent brain image data from neuroimaging study.
 
-              Parameters
-              ----------
-              data: image data, a 3d or 4d array
-              space: a string, native, mni152
-              itype: image type, a string.
-              ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
-              voxsize: voxel size, a 3x1 array
-              dims: image dimensions, a 3x1 or 4x1 array
-              src: source of the image data, a string.
-              """
+          Attributes
+          ----------
+          data: image data, a 3d or 4d array
+          space: a string, native, mni152
+          itype: image type, a string.
+          ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
+          voxsize: voxel size, a 3x1 array
+          dims: image dimensions, a 3x1 or 4x1 array
+          src: source of the image data, a string.
+          """
+    def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
+        """
+        Parameters
+        ----------
+        data: image data, a 3d or 4d array
+        space: a string, native, mni152
+        itype: image type, a string.
+        ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
+        voxsize: voxel size, a 3x1 array
+        dims: image dimensions, a 3x1 or 4x1 array
+        src: source of the image data, a string.
+        """
 
         self.data = data
         self.space = space
@@ -91,6 +102,48 @@ class Image(object):
     def src(self, src):
         assert isinstance(src,basestring), "src should be a string."
         self._src = src
+
+    def __add__(self, other):
+        self.data = np.add(self.data, other.data)
+
+    def __sub__(self, other):
+        self.data = np.subtract(self.data, other.data)
+
+    def __mul__(self, other):
+        self.data = np.multiply(self.data, other.data)
+
+    def __div__(self, other):
+        self.data = np.divide(self.data, other.data)
+
+
+
+    def get_coords(self, mask):
+        """ Get the spatial coords of the voxels within the mask roi
+
+        Parameters
+        ----------
+        mask
+
+        Returns
+        -------
+        coords: Nx3 numpy array
+        """
+        pass
+
+
+    def get_value(self, mask):
+        """ Get the values of the voxels within the mask roi
+
+        Parameters
+        ----------
+        mask
+
+        Returns
+        -------
+        values: NxT numpy array, scalar value from the mask roi
+        """
+        pass
+
 
     def read_from_cifti(self, filename):
         """ Read image from a CIFIT file

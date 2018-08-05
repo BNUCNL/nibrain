@@ -19,7 +19,7 @@ class Tract(object):
     """
 
     def __init__(self, name, ia=None, ga=None, sa=None):
-        """ init the tract with image, geometry, scalar attributes
+        """ init the tract with image, geometry, and scalar attributes
 
         Parameters 
         ----------
