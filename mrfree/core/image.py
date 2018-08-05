@@ -6,7 +6,8 @@ import nibabel as nib
 
 class Image(object):
     def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
-        """
+        """ Image class was designed to represent brain image data from neuroimaging study.
+
               Parameters
               ----------
               data: image data, a 3d or 4d array
@@ -91,11 +92,88 @@ class Image(object):
         assert isinstance(src,basestring), "src should be a string."
         self._src = src
 
-    def read_cifti(self):
+    def read_from_cifti(self, filename):
+        """ Read image from a CIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+        self: an Image obejct
+        """
         pass
 
-    def read_gifti(self):
+    def save_to_cifti(self, filename):
+        """ Save the Image obejct to a CIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+
+        """
+
         pass
 
-    def read_nifti(self):
+    def read_from_nifti(self, filename):
+        """ Read image from a NIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+        self: an Image obejct
+        """
+
+        pass
+
+    def save_to_nifti(self, filename):
+        """ Save the Image obejct to a NIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a NIFTI file
+
+        Returns
+        -------
+
+        """
+        pass
+
+    def read_from_gifti(self, filename):
+        """ Read image from a NIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a CIFTI file
+
+        Returns
+        -------
+        self: an Image obejct
+        """
+        pass
+
+    def save_to_gifti(self, filename):
+        """ Save the Image obejct to a GIFIT file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a GIFTI file
+
+        Returns
+        -------
+
+        """
         pass
