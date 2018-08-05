@@ -115,6 +115,36 @@ class Image(object):
     def __div__(self, other):
         self.data = np.divide(self.data, other.data)
 
+
+
+    def get_coords(self, mask):
+        """ Get the spatial coords of the voxels within the mask roi
+
+        Parameters
+        ----------
+        mask
+
+        Returns
+        -------
+        coords: Nx3 numpy array
+        """
+        pass
+
+
+    def get_value(self, mask):
+        """ Get the values of the voxels within the mask roi
+
+        Parameters
+        ----------
+        mask
+
+        Returns
+        -------
+        values: NxT numpy array, scalar value from the mask roi
+        """
+        pass
+
+
     def read_from_cifti(self, filename):
         """ Read image from a CIFIT file
 
