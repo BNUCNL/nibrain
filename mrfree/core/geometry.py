@@ -61,6 +61,24 @@ class Points(object):
         self.data = np.mean(self.data,axis=0)
         return self
 
+    def read_from_cifti(self):
+        pass
+
+    def save_to_cifti(self):
+        pass
+
+    def read_from_nifti(self):
+        pass
+
+    def save_to_nifti(self):
+        pass
+
+    def read_from_gifti(self):
+        pass
+
+    def save_to_gifti(self):
+        pass
+
 
 class Lines(object):
     def __init__(self, data, id, source=None):
@@ -109,6 +127,28 @@ class Lines(object):
     def skeleton(self):
         pass
 
+    def read_from_tck(self):
+        pass
+
+    def save_to_tck(self):
+        pass
+
+    def read_from_trk(self):
+        pass
+
+    def save_to_trk(self):
+        pass
+
+    def read_from_vtk(self):
+        pass
+
+    def save_to_vtk(self):
+        pass
+
+
+class surface(object):
+    def __init__(self):
+        pass
 
 if __name__ == "__main__":
     # Test Points

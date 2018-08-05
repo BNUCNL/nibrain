@@ -377,6 +377,22 @@ class Scalar(object):
       self.data.sort_value(by, axis, ascending, inplace, kind, na_position)
       return self
 
+    def read_from_cifti(self):
+        pass
 
+    def save_to_cifti(self):
+        pass
+
+    def read_from_nifti(self):
+        pass
+
+    def save_to_nifti(self):
+        pass
+
+    def read_from_gifti(self):
+        pass
+
+    def save_to_gifti(self):
+        pass
 
 

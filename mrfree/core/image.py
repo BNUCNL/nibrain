@@ -91,11 +91,20 @@ class Image(object):
         assert isinstance(src,basestring), "src should be a string."
         self._src = src
 
-    def read_cifti(self):
+    def read_from_cifti(self):
         pass
 
-    def read_gifti(self):
+    def save_to_cifti(self):
         pass
 
-    def read_nifti(self):
+    def read_from_nifti(self):
+        pass
+
+    def save_to_nifti(self):
+        pass
+
+    def read_from_gifti(self):
+        pass
+
+    def save_to_gifti(self):
         pass
