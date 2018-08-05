@@ -6,103 +6,176 @@ from scalar import Scalar
 from connection import Connection
 from image import Image
 
+
 class Tract(object):
-    """
-    Tract class that stores fiber data and provides analysis methods.
+    """ Tract class was designed to represent data related to white matter tract of the brain.
 
-    Attributes:
-    -----------
-    name: name of tract, type: string
-    source: source of region, type :string tck file path
-
-    img: image attributes, such as space, itype, ras2vox, voxsize, dims
-
-    geometry: geometry attributes of tract,such as xform, coordinates, lengths_mix, length_max,
-              per_streamlines_id...
-              It should be a instance of class Geometry_tract.
-
-    scalar: scalar attributes, such as FA, MD...
-            name: A list of attributes to identify scalar_value.
-            scalar_value: MxN metric, M points of streamlines and value of N attributes of fiber tract.
-            It should be an instance of class Scalar.
-
-    connection:
+    Attributes 
+    ----------
+    name: a str, tract name
+    ia: Image object, image attributes of the tract
+    ga: Lines object, geometry attributs of the tract
+    sa: Scalar object, scalar attributes of the tract.
     """
 
-    def __init__(self,source,name=None):
-        """
-        Init Tract for further usage
+    def __init__(self, name, ia=None, ga=None, sa=None):
+        """ init the tract with image, geometry, scalar attributes
 
-        Parameter:
-        ----------------------
-        source: Tck file path, type: string
-        name: name of tract, type: string
+        Parameters 
+        ----------
+        name: a str, tract name
+        ia: Image object, image attributes of the tract
+        ga: Lines object, geometry attributs of the tract
+        sa: Scalar object, scalar attributes of the tract.
+        ca: Connection object, connection attributes of the tract
         """
-        if name:
-            assert isinstance(name,str), "Input name must be string."
+
         self.name = name
-        if source:
-            assert isinstance(source, str), "Input 'source' should be string."
-        self._source = source
+        self.ia = ia
+        self.ga = ga
+        self.sa = sa
 
     @property
     def name(self):
-        """Get the name of fiber tract."""
         return self._name
 
     @name.setter
-    def name(self,set_name):
-        """Set the name of fiber tract."""
-        if set_name:
-            assert isinstance(set_name,str), "Input name must be string."
-        self._name = set_name
-
+    def name(self, name):
+        assert isinstance(name, str), " name should be string."
+        self._name = name
 
     @property
-    def source(self):
-        """Get the source of fiber tract."""
-        return self._source
+    def ia(self):
+        return self._ia
 
-    @source.setter
-    def source(self,set_source):
-        """Set the source of fiber tract.
-           Only first setting be permitted.
+    @ia.setter
+    def ia(self, ia):
+        assert isinstance(ia, Image), "ia should be a Image object"
+        self._ia = ia
+
+    @property
+    def ga(self):
+        return self._ga
+
+    @ga.setter
+    def ga(self, ga):
+        assert isinstance(ga, Lines), "ga should be a Lines obejct."
+        self._ga = ga
+
+    @property
+    def sa(self):
+        return self._sa
+
+    @sa.setter
+    def sa(self, sa):
+        assert isinstance(sa, Scalar), "sa should be a Scalar object"
+        self._sa = sa
+
+    def merge(self, other, axis=0):
+        """ Merge other tract into the tract based on the line id from geometry attributes.
+
+        Parameters
+        ----------
+        other: a tract object, another tract
+        axis: integer, 0 or 1
+
+        Return
+        ----------
+        self: merged tract
         """
-        if not self._source:
-            assert isinstance(set_source, str), "Input 'source' should be string."
-            self._source = set_source
-        else:
-            raise ValueError("Source shouldn't be modified")
+        assert isinstance(other, Tract), "other should be a Tract obejct."
+        if axis == 0:  # merge both ga and sa in rows
+            if hasattr(self, 'ga'):
+                self.ga = self.ga.merge(other.ga)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.append(other.sa)
+        else:  # only merge sa in column
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.join(other.sa)
 
-    @property
-    def geometry(self):
-        return self._geometry
+        return self
 
-    @geometry.setter
-    def geometry_load(self,source):
-        source = self._source
-        self._geometry = Lines(source)
+    def intersect(self, other):
+        """ Intersect with other tract based on the line id from geometry attributes.
 
-    @property
-    def scalar(self):
-        return self._scalar
+        Parameters
+        ----------
+        other: a tract object, another tract
 
-    @scalar.setter
-    def scalar(self):
-        self._scalar = Scalar()
+        Return
+        ----------
+        self: the intersected tract
+        """
 
-    @property
-    def connection(self):
-        return self._connection
+        assert isinstance(other, Tract), "other should be a Tract obejct."
+        pass
 
-    @connection.setter
-    def connection(self):
-        self._connection = Connection()
+    def exclude(self, other):
+        """ Exclude other tract from the tract based on the line id from geometry attributes.
 
-    # @property
-    # def img(self):
-    #     return self._img
-    #
-    # @img.setter
-    # def img(self):
-    #     self._img = Image()
+        Parameters
+        ----------
+        other: a tract object, another tract
+
+        Return
+        ----------
+        self: the left tract
+        """
+
+        assert isinstance(other, Tract), "other should be a Tract obejct."
+        pass
+
+    def skeleton(self):
+        if hasattr(self, 'ga'):
+            self.ga = self.ga.skeleton()
+        if hasattr(self, 'sa'):
+            self.sa = self.sa.mean()
+
+        return self
+
+    def create_from_scratch(self, ref_image=None, scalar_image=None, tractograph=None):
+        """ Create tract object from raw data which contain the image, geometry and scalar information of the tract
+
+        Parameters
+        ----------
+        ref_image: a nifit image pathstr or a Image object
+            The refer image for the tract
+        scalar_image: a nifti image pathstr or a Scalar object
+            The scalar image, representing some scalar information of the tract
+        tractograph: a tractograph pathstr or a Lines object
+            The tractograph from fiber tracking, carrying the geometry information of the tract
+
+        Returns
+        -------
+        self: created tract object
+        """
+        pass
+
+    def load(self, filename):
+        """ Load tract object from serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a tract serializing persistence file
+        Returns
+        -------
+        self: Tract object
+
+        """
+        pass
+
+    def save(self, filename):
+        """ save tract object to a serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a tract serializing persistence file
+
+        Returns
+        -------
+
+        """
+
+        pass

@@ -5,10 +5,10 @@
 from geometry import Points
 from scalar import Scalar
 from image import Image
-from connection import Connection
+
 
 class Region(object):
-    """ A class for brain region/area analysis.
+    """ Region class was designed to represent data related to anatomical and functional regions of the brain.
 
     Attributes 
     ----------
@@ -16,10 +16,10 @@ class Region(object):
     ia: Image object, image attributes of the region
     ga: Points object, geometry attributs of the region
     sa: Scalar object, scalar attributes of the region.
-    ca: Connection object, connection attributes of the region
     """
-    def __init__(self, name, ia=None, ga=None, sa=None, ca=None):
-        """ init the region with image, geometry, scalar and connection attributes
+
+    def __init__(self, name, ia=None, ga=None, sa=None):
+        """ init the region with image, geometry, scalar attributes
         
         Parameters 
         ----------
@@ -27,14 +27,12 @@ class Region(object):
         ia: Image object, image attributes of the region
         ga: Points object, geometry attributs of the region
         sa: Scalar object, scalar attributes of the region.
-        ca: Connection object, connection attributes of the region
         """
         
         self.name = name
         self.ia = ia
         self.ga = ga
         self.sa = sa
-        self.ca = ca
 
     @property
     def name(self):
@@ -42,7 +40,7 @@ class Region(object):
 
     @name.setter
     def name(self, name):
-        assert isinstance(name, str), "Input 'name' should be string."
+        assert isinstance(name, str), "name should be string."
         self._name = name
 
     @property
@@ -60,7 +58,7 @@ class Region(object):
 
     @ga.setter
     def ga(self, ga):
-        assert isinstance(ga, Points), "ga should be a RegionGeometry obejct."
+        assert isinstance(ga, Points), "ga should be a Points obejct."
         self._ga = ga
 
     @property
@@ -71,15 +69,6 @@ class Region(object):
     def sa(self, sa):
         assert isinstance(sa, Scalar), "sa should be a Scalar object"
         self._sa = sa
-
-    @property
-    def ca(self):
-        return self._ca
-
-    @ca.setter
-    def ca(self, ca):
-        assert isinstance(ca, Connection), "ca should be a Connection object."
-        self._ca = ca
 
     def merge(self, other, axis=0):
         """ Merge other region into the region.
@@ -93,7 +82,7 @@ class Region(object):
         ----------
         self: merged region
         """
-        assert isinstance(other, Region), "other should be a other obejct."
+        assert isinstance(other, Region), "other should be a Region obejct."
         if axis == 0: # merge both ga and sa in rows
             if hasattr(self, 'ga'):
                 self.ga = self.ga.merge(other.ga)
@@ -117,7 +106,7 @@ class Region(object):
         self: the intersected region
         """
 
-        assert isinstance(other, Region), "other should be a other obejct."
+        assert isinstance(other, Region), "other should be a Region obejct."
         if hasattr(self, 'ga'):
             self.ga, idx = self.ga.intersect(other.ga)
             if hasattr(self, 'sa'):
@@ -137,7 +126,7 @@ class Region(object):
         self: the left region
         """
 
-        assert isinstance(other, Region), "other should be a other obejct."
+        assert isinstance(other, Region), "other should be a Region obejct."
         if hasattr(self, 'ga'):
             self.ga, idx = self.ga.exclude(other)
             if hasattr(self, 'sa'):
@@ -148,7 +137,6 @@ class Region(object):
 
         return  self
 
-    @property
     def centralize(self):
         if hasattr(self, 'ga'):
             self.ga = self.ga.centralize()
@@ -156,3 +144,51 @@ class Region(object):
             self.sa = self.sa.mean()
 
         return self
+
+    def create_from_scratch(self, ref_image=None, scalar_image=None, mask_image=None):
+        """ Create region object from raw data which contain the image, geometry and scalar information of the region
+
+        Parameters
+        ----------
+        ref_image: a nifit image pathstr or a Image object
+            The refer image for the tract
+        scalar_image: a nifti image pathstr or a Scalar object
+            The scalar image, representing some scalar information of the region
+        mask_image: a nifti image pathstr or a Image object
+            The mask image, representing spatial location of the region
+
+
+        Returns
+        -------
+        self: created region object
+        """
+        pass
+
+    def load(self, filename):
+        """ Load region object from serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a region serializing persistence file
+        Returns
+        -------
+        self: Region object
+
+        """
+        pass
+
+    def save(self, filename):
+        """ save region object to a serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a region serializing persistence file
+
+        Returns
+        -------
+
+        """
+
+        pass
