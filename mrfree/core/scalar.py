@@ -5,13 +5,14 @@ import pandas as pd
 from scipy.stats import zscore
 
 class Scalar(object):
-    """
-     Class to pack scalar 2d data. The implementation is based on the pands DataFrame class
+    """ Scalar represent 2d data with row and column labels. The implementation is based on the pands DataFrame class
 
     Attributes:
-        index : Index or array-like. Row labels to use for resulting frame.
-        columns : Index or array-like.Column labels to use for resulting frame.
-        data: a pands DataFrame to contain scalar data
+    data: a pands DataFrame to contain scalar data
+    index : Index or array-like. Row labels to use for resulting frame.
+    columns : Index or array-like.Column labels to use for resulting frame.
+    shape: shaple of the data frame
+    ndim: dimension of the data frame
     """
 
     def __init__(self, data=None, index=None, columns=None):
@@ -58,8 +59,7 @@ class Scalar(object):
     def loc(self, index=None, columns=None):
         """ Access a group of rows and columns by label(s) or a boolean array.
         .loc[] is primarily label based, but may also be used with a boolean array.
-        
-        
+
         Parameters
         ----------
         index : Index or array-like. Row labels to use for resulting frame. Allowed inputs are: 
@@ -191,6 +191,19 @@ class Scalar(object):
         """
         self.data.div(other.data,axis, level, fill_value)
         return  self
+
+    def __add__(self, other):
+        self.add(other)
+
+    def __sub__(self, other):
+        self.sub(other)
+
+    def __mul__(self, other):
+        self.mul(other)
+
+
+    def __div__(self, other):
+        self.div(other)
 
     def abs(self):
         """Return a Series/DataFrame with absolute numeric value of each element.
