@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
+import nibabel as nib
+
 
 class Image(object):
     def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
@@ -88,3 +90,12 @@ class Image(object):
     def src(self, src):
         assert isinstance(src,basestring), "src should be a string."
         self._src = src
+
+    def read_cifti(self):
+        pass
+
+    def read_gifti(self):
+        pass
+
+    def read_nifti(self):
+        pass

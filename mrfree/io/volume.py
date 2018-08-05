@@ -430,3 +430,110 @@ class _LABEL(object):
             for lbl in label:
                 x, y, z = coords[lbl]
                 f.write('%d %f %f %f %f\n' % (lbl, x, y, z, scalar_data.flatten()[lbl]))
+
+
+def load_vol_geom(vol_file, vol_mask_file=None):
+    """
+    Load volume geometry.
+
+    Parameters
+    ----------
+    vol_file : Volume file path
+            Nifti dataset, specified as a filename (single file).
+    vol_mask_file: Volume mask file path
+                Nifti dataset, specified as a filename (single file).
+
+    Return
+    ------
+    Volume data, xform
+
+    """
+
+    if (vol_file.endswith('.nii.gz')) | (vol_file.endswith('.nii') & vol_file.count('.') == 1):
+        img = nib.load(vol_file)
+        coords = img.get_data()
+        xform = img.affine
+    else:
+        suffix = os.path.split(vol_file)[1].split('.')[-1]
+        raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
+    if vol_mask_file is not None:
+        mask = _load_vol_mask(vol_mask_file)
+        if coords.shape == mask.shape:
+            i, j, k = np.where(mask != 0)
+            coords_ijk = zip(i, j, k)
+            coords_ijk = np.append(coords_ijk, 1)
+            mni = np.dot(img.affine, coords_ijk)
+            return mni, xform
+        else:
+            raise ValueError("Data dimension does not match.")
+
+    else:
+        return coords, xform
+
+
+
+def load_vol_scalar(vol_scalar_file, vol_mask_file=None):
+    """
+    Load volume scalar.
+
+    Parameters
+    ----------
+    vol_scalar_file : Volume scalar file path
+            Nifti dataset, specified as a filename (single file).
+    vol_mask_file: Volume mask file path
+                Nifti dataset, specified as a filename (single file).
+
+    Return
+    ------
+    Volume scalar data
+
+    """
+
+    if (vol_scalar_file.endswith('.nii.gz')) | (vol_scalar_file.endswith('.nii') & vol_scalar_file.count('.') == 1):
+        img = nib.load(vol_scalar_file)
+        data = img.get_data()
+    elif vol_scalar_file.endswith(('.mgz', '.mgh')):
+        data = nib.load(vol_scalar_file).get_data()
+        data = data.reshape((data.shape[0], data.shape[-1]))
+    elif vol_scalar_file.endswith(('.dscalar.nii', '.dseries.nii')):
+        data = nib.load(vol_scalar_file).get_data()
+        data = data.T
+    elif vol_scalar_file.endswith('.dlabel.nii'):
+        data = nib.load(vol_scalar_file).get_data().T
+    else:
+        suffix = os.path.split(vol_scalar_file)[1].split('.')[-1]
+        raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
+    if vol_mask_file is not None:
+        mask = _load_vol_mask(vol_mask_file)
+        if data.shape == mask.shape:
+            data = data[mask > 0]
+            return data
+        else:
+            raise ValueError("Data dimension does not match.")
+
+    else:
+        return data
+
+def _load_vol_mask(vol_mask_file):
+    """
+    Load label or mask of volume.
+
+    Parameters
+    ----------
+    vol_mask_file: Volume mask file path
+                Nifti dataset, specified as a filename (single file).
+
+    Return
+    ------
+    label or mask of volume.
+    """
+    if (vol_mask_file.endswith('.nii.gz')) | (vol_mask_file.endswith('.nii') & vol_mask_file.count('.') == 1):
+        img = nib.load(vol_mask_file)
+        data = img.get_data()
+    else:
+        suffix = os.path.split(vol_mask_file)[1].split('.')[-1]
+        raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
+    return data
