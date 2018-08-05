@@ -5,19 +5,30 @@ import nibabel as nib
 
 
 class Image(object):
-    def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
-        """ Image class was designed to represent brain image data from neuroimaging study.
+    """ Image class was designed to represent brain image data from neuroimaging study.
 
-              Parameters
-              ----------
-              data: image data, a 3d or 4d array
-              space: a string, native, mni152
-              itype: image type, a string.
-              ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
-              voxsize: voxel size, a 3x1 array
-              dims: image dimensions, a 3x1 or 4x1 array
-              src: source of the image data, a string.
-              """
+          Attributes
+          ----------
+          data: image data, a 3d or 4d array
+          space: a string, native, mni152
+          itype: image type, a string.
+          ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
+          voxsize: voxel size, a 3x1 array
+          dims: image dimensions, a 3x1 or 4x1 array
+          src: source of the image data, a string.
+          """
+    def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
+        """
+        Parameters
+        ----------
+        data: image data, a 3d or 4d array
+        space: a string, native, mni152
+        itype: image type, a string.
+        ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
+        voxsize: voxel size, a 3x1 array
+        dims: image dimensions, a 3x1 or 4x1 array
+        src: source of the image data, a string.
+        """
 
         self.data = data
         self.space = space
