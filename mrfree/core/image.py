@@ -92,6 +92,18 @@ class Image(object):
         assert isinstance(src,basestring), "src should be a string."
         self._src = src
 
+    def __add__(self, other):
+        self.data = np.add(self.data, other.data)
+
+    def __sub__(self, other):
+        self.data = np.subtract(self.data, other.data)
+
+    def __mul__(self, other):
+        self.data = np.multiply(self.data, other.data)
+
+    def __div__(self, other):
+        self.data = np.divide(self.data, other.data)
+
     def read_from_cifti(self, filename):
         """ Read image from a CIFIT file
 
