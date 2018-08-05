@@ -201,7 +201,6 @@ class Scalar(object):
     def __mul__(self, other):
         self.mul(other)
 
-
     def __div__(self, other):
         self.div(other)
 
