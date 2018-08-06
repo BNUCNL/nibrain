@@ -148,7 +148,7 @@ class Points(object):
 
 
 class Lines(object):
-    def __init__(self, data, id, source=None):
+    def __init__(self,source):
         """
         Parameters
         ----------
@@ -156,37 +156,35 @@ class Lines(object):
         id: the id for each array.
         source: source of the geometry data, a string.
         """
-        self.data = data
-        self.id = id
-        self.src = source
+        assert isinstance(source, str), "Input 'source' should be a string of tck file path."
+        self._src = []
+        self._src.append(source)
+        self._data = None
+        self._id = None
+        #Reason for changed:the way of 'self.name' can be modified arbitrarily and doesn't need @property.
 
     @property
     def src(self):
         return self._src
-
-    @src.setter
-    def src(self,src):
-        self._src = src
+    #Reason for changed:source shouldn't be modified arbitrarily.
 
     @property
     def data(self):
         return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
+    #Reason for changed:data can read from load source file.
 
     @property
     def id(self):
         return self._id
+    # Reason for changed:id can acquire from the data.
 
-    @id.setter
-    def id(self, id):
-        self._id = id
-
-    def merge(self, other):
+    def merge(self, other_lines):
         assert isinstance(other, Lines), "other should be a Lines object"
-        pass
+        self._src.append(other_lines.src)
+        other_lines_id = [i+len(self._id) for i in other_lines.id]
+        self._id.extend(other_lines_id)
+        #self._data.extend(other_lines_data)
+        #A arraysequence method can be used for this situation.
 
     def intersect(self,other):
         pass
@@ -200,7 +198,8 @@ class Lines(object):
     def skeleton(self):
         pass
 
-    def read_from_tck(self, filename):
+    @data.setter
+    def read_from_tck(self):
         """ Construct Lines object by reading a TCK file
 
         Parameters
@@ -212,7 +211,9 @@ class Lines(object):
         -------
         self: a Lines object
         """
-        pass
+        self._tract = streamlines.TckFile.load(self._src)
+        self._data = self._tract.streamlines
+        self._id = list(range(len(self._data)))
 
     def save_to_tck(self, filename):
         """ Save Lines object to a TCK file
