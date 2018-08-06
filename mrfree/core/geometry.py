@@ -4,15 +4,21 @@ import numpy as np
 from base import intersect2d,exclude2d
 
 class Points(object):
-    """
+    """Points represent a collection of spatial ponits
+    
+    Attributes
+    ----------
+    data:  Nx3 numpy array, points coordinates
+    id: Nx1 numpy array, id for each point
+    src: str, source of the points data
     """
     def __init__(self, data=None, id=None, src=None):
         """
         Parameters
         ----------
-        data: geometry data, a sequence of array.
-        id: the id for each array.
-        src: source of the geometry data, a string.
+        data:  Nx3 numpy array, points coordinates
+        id: Nx1 numpy array, id for each point
+        src: str, source of the points data
         """
         self.data  = data
         self.id = id
@@ -44,26 +50,69 @@ class Points(object):
         self._src = src
 
     def merge(self, other):
+        """ Merge other Points object into self
+        
+        Parameters
+        ----------
+        other: Points object to be merged
+
+        Returns
+        -------
+        self: the merged object
+
+        """
         assert isinstance(other, Points), "other should be a Points object"
         self.data = np.vstack(self.data)
         self.data = np.unique(self.data,axis=0)
         return self
 
     def intersect(self,other):
+        """ Intersect with other Points object
+
+        Parameters
+        ----------
+        other: Points object to be intersectd with this object
+
+        Returns
+        -------
+        self: the intersected object
+
+        """
         assert isinstance(other, Points), "other should be a Points object"
         self.data = intersect2d(self.data, other.data)
         return self
 
     def exclude(self, other):
+        """ Exclude other Points object from this object
+
+        Parameters
+        ----------
+        other: Points object to be merged
+
+        Returns
+        -------
+        self: the object after excluding others
+
+        """
         assert isinstance(other, Points), "other should be a Points object"
         self.data = exclude2d(self.data, other.data)
         return self
 
-    def centralize(self):
-        self.data = np.mean(self.data,axis=0)
-        return self
+    def get_center(self):
+        """ Get the center of the points set
+        
+        Parameters
+        ----------
 
-    def read_from_cifti(self):
+        Returns
+        -------
+        center: 1x3 numpy array, the center coordinates
+
+        """
+        
+        return np.mean(self.data,axis=0)
+
+    def update_from_cifti(self):
         """ Construct Scalar object by reading a CIFTI file
 
         Parameters
@@ -92,7 +141,7 @@ class Points(object):
         """
         pass
 
-    def read_from_nifti(self, filename):
+    def update_from_nifti(self, filename):
         """ Construct Scalar object by reading a NIFTI file
 
         Parameters
@@ -119,7 +168,7 @@ class Points(object):
        """
         pass
 
-    def read_from_gifti(self, filename):
+    def update_from_gifti(self, filename):
         """ Construct Scalar object by reading a GIFTI file
 
         Parameters
@@ -179,6 +228,17 @@ class Lines(object):
     # Reason for changed:id can acquire from the data.
 
     def merge(self, other_lines):
+        """ Merge other tract into the Lines based on the line id.
+
+        Parameters
+        ----------
+        other: Lines object, another lines
+        axis: integer, 0 or 1
+
+        Return
+        ----------
+        self: merged Lines
+        """
         assert isinstance(other, Lines), "other should be a Lines object"
         self._src.append(other_lines.src)
         other_lines_id = [i+len(self._id) for i in other_lines.id]
@@ -187,21 +247,59 @@ class Lines(object):
         #A arraysequence method can be used for this situation.
 
     def intersect(self,other):
+        """ Intersect with other Lines based on the line id.
+
+        Parameters
+        ----------
+        other: Lines object, another Lines 
+
+        Return
+        ----------
+        self with intersection from two Lines
+        """
         pass
 
     def exclude(self, other):
+        """ Exclude other Lines from the current Lines based on the line id.
+
+        Parameters
+        ----------
+        other: Lines object, another Lines 
+
+        Return
+        ----------
+        self:  The Lines after excluding other Lines
+        """
         pass
 
     def equidistant_resample(self, num_segment):
+        """ Resample the Lines with equidistantance
+        
+        Parameters
+        ----------
+        num_segment: int, number of segment to be sampled
+
+        Returns
+        -------
+        
+        self: a resampled Lines
+
+        """
         pass
 
     def skeleton(self):
+        """Find the skeletion of the line set
+        
+        Returns
+        -------
+        skeleton: a Line object
+
+        """
         pass
-
-    @data.setter
-    def read_from_tck(self):
+      
+    def update_from_tck(self, filename):
         """ Construct Lines object by reading a TCK file
-
+    
         Parameters
         ----------
         filename: str
@@ -229,7 +327,7 @@ class Lines(object):
         """
         pass
 
-    def read_from_trk(self, filename):
+    def update_from_trk(self, filename):
         """ Construct Lines object by reading a TRK file
 
         Parameters
@@ -257,7 +355,7 @@ class Lines(object):
         """
         pass
 
-    def read_from_vtk(self, filename):
+    def update_from_vtk(self, filename):
         """ Construct Lines object by reading a VTK file
 
         Parameters
@@ -286,9 +384,44 @@ class Lines(object):
         pass
 
 
-class surface(object):
-    def __init__(self):
+class Mesh(object):
+    """Mesh class represents geometry mesh
+    
+        Attributes
+        ----------
+        vertices
+        faces
+        edges
+    
+    """
+    
+    def __init__(self, vertices, faces, edges):
+        self.vertices = vertices
+        self.faces = faces
+        self.edges = edges
+    
+    def __eq__(self, other):
+        return  np.array_equal(self.vertices, self.vertices)
+    
+    
+    def update_from_freesurfer(self):
+        pass 
+    
+    
+    def update_from_gifti(self, filename):
+        """ Construct Lines object by reading a TCK file
+
+        Parameters
+        ----------
+        filename: str
+            Pathstr to a TCK file
+
+        Returns
+        -------
+        self: a Lines object
+        """
         pass
+    
 
 if __name__ == "__main__":
     # Test Points

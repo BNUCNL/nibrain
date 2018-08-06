@@ -389,7 +389,7 @@ class Scalar(object):
       self.data.sort_value(by, axis, ascending, inplace, kind, na_position)
       return self
 
-    def read_from_cifti(self):
+    def update_from_cifti(self):
         """ Construct Scalar object by reading a CIFTI file
 
         Parameters
@@ -418,7 +418,7 @@ class Scalar(object):
         """
         pass
 
-    def read_from_nifti(self, filename):
+    def update_from_nifti(self, filename):
         """ Construct Scalar object by reading a NIFTI file
 
         Parameters
@@ -446,7 +446,7 @@ class Scalar(object):
         pass
 
 
-    def read_from_gifti(self, filename):
+    def update_from_gifti(self, filename):
         """ Construct Scalar object by reading a GIFTI file
 
         Parameters

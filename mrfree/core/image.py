@@ -5,7 +5,7 @@ import nibabel as nib
 
 
 class Image(object):
-    """ Image class was designed to represent brain image data from neuroimaging study.
+    """ Image class represents brain image data from neuroimaging study.
 
           Attributes
           ----------
@@ -115,8 +115,6 @@ class Image(object):
     def __div__(self, other):
         self.data = np.divide(self.data, other.data)
 
-
-
     def get_coords(self, mask):
         """ Get the spatial coords of the voxels within the mask roi
 
@@ -145,7 +143,7 @@ class Image(object):
         pass
 
 
-    def read_from_cifti(self, filename):
+    def update_from_cifti(self, filename):
         """ Read image from a CIFIT file
 
         Parameters
@@ -174,7 +172,7 @@ class Image(object):
 
         pass
 
-    def read_from_nifti(self, filename):
+    def update_from_nifti(self, filename):
         """ Read image from a NIFIT file
 
         Parameters
@@ -203,7 +201,7 @@ class Image(object):
         """
         pass
 
-    def read_from_gifti(self, filename):
+    def update_from_gifti(self, filename):
         """ Read image from a NIFIT file
 
         Parameters
