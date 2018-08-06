@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#  tract class
 
 from geometry import Lines
 from scalar import Scalar
