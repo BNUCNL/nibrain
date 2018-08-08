@@ -9,19 +9,20 @@ class Image(object):
 
           Attributes
           ----------
-          data: image data, a 3d or 4d array
+          image: nibabel image object
           space: a string, native, mni152
           itype: image type, a string.
           ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
           voxsize: voxel size, a 3x1 array
           dims: image dimensions, a 3x1 or 4x1 array
+          header: header 
           src: source of the image data, a string.
           """
-    def __init__(self, data, space, itype, ras2vox, voxsize, dims, src=None):
+    def __init__(self, image, space=None, itype=None, src=None):
         """
         Parameters
         ----------
-        data: image data, a 3d or 4d array
+        nib_image: nibabel image object or a pathstr to a nibabel image file
         space: a string, native, mni152
         itype: image type, a string.
         ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
@@ -30,17 +31,17 @@ class Image(object):
         src: source of the image data, a string.
         """
 
-        self.data = data
+        self.image = image
         self.space = space
         self.itype = itype
-        self.ras2vox = ras2vox
-        self.voxsize = voxsize
-        self.dims = dims
-        self.src = src 
+        self.ras2vox = nib_image.affine
+        self.voxsize = nib_image.header.pixdim
+        self.dims = nib_image.header.im
+        self.src = src
 
     @property
     def data(self):
-        return self._data
+        return self.image.get_fdata()
 
     @data.setter
     def data(self, data):
@@ -201,30 +202,3 @@ class Image(object):
         """
         pass
 
-    def update_from_gifti(self, filename):
-        """ Read image from a NIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-        self: an Image obejct
-        """
-        pass
-
-    def save_to_gifti(self, filename):
-        """ Save the Image obejct to a GIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a GIFTI file
-
-        Returns
-        -------
-
-        """
-        pass

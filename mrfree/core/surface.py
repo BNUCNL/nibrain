@@ -77,7 +77,7 @@ class Surface(object):
     
 
     def update_mesh_from_freesurfer(self, filename):
-        """ Read image from a CIFIT file
+        """ Update the mesh from a CIFIT file
 
         Parameters
         ----------
@@ -86,12 +86,12 @@ class Surface(object):
 
         Returns
         -------
-        an Mesh obejct
+        Self: an Surface object
         """
         pass
     
     def save_mesh_to_freesurfer(self, filename):
-        """ Read image from a CIFIT file
+        """ Save the mesh to a freesurfer format file
 
         Parameters
         ----------
@@ -105,7 +105,7 @@ class Surface(object):
         pass
     
     def update_data_from_freesurfer(self, filename):
-        """ Read image from a CIFIT file
+        """ Update the data from a freesurfer scalar file
 
         Parameters
         ----------
@@ -114,12 +114,12 @@ class Surface(object):
 
         Returns
         -------
-        self: an NxT Image obejct
+        self: a Surface obejct
         """
         pass
 
     def save_data_to_freesurfer(self, filename):
-        """ Read image from a CIFIT file
+        """ Save the data to a freesurfer scalar file
 
         Parameters
         ----------
@@ -128,41 +128,41 @@ class Surface(object):
 
         Returns
         -------
-        self: an Image obejct
+
         """
         pass
     
 
     def update_mesh_from_gifti(self, filename):
-        """ Read image from a CIFIT file
+        """ Update the mesh a GIFIT file
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a GIFTI file
 
         Returns
         -------
-        self: an Image obejct
+        self: an Surface obejct
         """
         pass
     
     def save_mesh_to_gifti(self, filename):
-        """ Read image from a CIFIT file
+        """ Save the mesh to a gifti surface file
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a GIFTI file
 
         Returns
         -------
-        self: an Image obejct
+
         """
         pass
 
     def update_data_from_gifti(self, filename):
-        """ Read image from a CIFIT file
+        """ Update the data from a GIFIT scalar file
 
         Parameters
         ----------
@@ -171,12 +171,13 @@ class Surface(object):
 
         Returns
         -------
-        self: an Image obejct
+        self: an Surface obejct
+
         """
         pass
     
     def save_data_to_gifti(self, filename):
-        """ Read scalar data from a GIFIT file
+        """ Save the data to a GIFIT scalar file
 
         Parameters
         ----------
@@ -185,11 +186,10 @@ class Surface(object):
 
         Returns
         -------
-        self: an Surface obejct
+
         """
         pass
-    
-    
+
     def update_data_from_cifti(self, filename):
         """ Read image from a CIFIT file
 
@@ -200,6 +200,6 @@ class Surface(object):
 
         Returns
         -------
-        self: an Image obejct
+        self: an Surface obejct
         """
         pass
