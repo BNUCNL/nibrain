@@ -132,22 +132,6 @@ class Points(object):
         self.data = image.get_coords()
 
 
-    def save_to_cifti(self, filename):
-        """ Save Points object to a CIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-
-        """
-        pass
-
-
-
 class Lines(object):
     def __init__(self, data, id, source=None):
         """
@@ -251,90 +235,6 @@ class Lines(object):
         """
         pass
 
-    def update_from_tck(self, filename):
-        """ Construct Lines object by reading a TCK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a TCK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-    def save_to_tck(self, filename):
-        """ Save Lines object to a TCK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a TCK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-    def update_from_trk(self, filename):
-        """ Construct Lines object by reading a TRK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a TRK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-    def save_to_trk(self, filename):
-        """ Save Lines object to a TRK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a TRK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-    def update_from_vtk(self, filename):
-        """ Construct Lines object by reading a VTK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a VTK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-    def save_to_vtk(self, filename):
-        """ Save Lines object to a VTK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a VTK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
 
 class Mesh(object):
     """Mesh class represents geometry mesh
@@ -354,11 +254,9 @@ class Mesh(object):
     
     def __eq__(self, other):
         return  np.array_equal(self.vertices, self.vertices)
-    
-    
+
     def update_from_freesurfer(self):
         pass 
-    
     
     def update_from_gifti(self, filename):
         """ Construct Lines object by reading a TCK file
