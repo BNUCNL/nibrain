@@ -75,8 +75,7 @@ class Surface(object):
     def get_coords(self, mask):
         pass
     
-
-    def update_mesh_from_freesurfer(self, filename):
+    def reload_mesh(self, filename):
         """ Update the mesh from a CIFIT file
 
         Parameters
@@ -90,7 +89,7 @@ class Surface(object):
         """
         pass
     
-    def save_mesh_to_freesurfer(self, filename):
+    def save_mesh(self, filename):
         """ Save the mesh to a freesurfer format file
 
         Parameters
@@ -104,7 +103,7 @@ class Surface(object):
         """
         pass
     
-    def update_data_from_freesurfer(self, filename):
+    def reload_data(self, filename):
         """ Update the data from a freesurfer scalar file
 
         Parameters
@@ -118,7 +117,7 @@ class Surface(object):
         """
         pass
 
-    def save_data_to_freesurfer(self, filename):
+    def save_data(self, filename):
         """ Save the data to a freesurfer scalar file
 
         Parameters
@@ -129,77 +128,5 @@ class Surface(object):
         Returns
         -------
 
-        """
-        pass
-    
-
-    def update_mesh_from_gifti(self, filename):
-        """ Update the mesh a GIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a GIFTI file
-
-        Returns
-        -------
-        self: an Surface obejct
-        """
-        pass
-    
-    def save_mesh_to_gifti(self, filename):
-        """ Save the mesh to a gifti surface file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a GIFTI file
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def update_data_from_gifti(self, filename):
-        """ Update the data from a GIFIT scalar file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-        self: an Surface obejct
-
-        """
-        pass
-    
-    def save_data_to_gifti(self, filename):
-        """ Save the data to a GIFIT scalar file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a scalar GIFTI file
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def update_data_from_cifti(self, filename):
-        """ Read image from a CIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-        self: an Surface obejct
         """
         pass
