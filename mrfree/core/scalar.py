@@ -4,6 +4,7 @@
 import pandas as pd
 from scipy.stats import zscore
 
+
 class Scalar(object):
     """ Scalar represent 2d data with row and column labels. The implementation is based on the pands DataFrame class
 
@@ -404,19 +405,6 @@ class Scalar(object):
 
         pass
 
-    def save_to_cifti(self, filename):
-        """ Save Scalar object to a CIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-
-        """
-        pass
 
     def update_from_nifti(self, filename):
         """ Construct Scalar object by reading a NIFTI file
@@ -432,19 +420,6 @@ class Scalar(object):
         """
         pass
 
-    def save_to_nifti(self, filename):
-        """ Save Scalar object to a NIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a NIFTI file
-
-        Returns
-        -------
-       """
-        pass
-
 
     def update_from_gifti(self, filename):
         """ Construct Scalar object by reading a GIFTI file
@@ -458,17 +433,4 @@ class Scalar(object):
         -------
         self: a Lines object
         """
-        pass
-
-    def save_to_gifti(self, filename):
-        """ Save Scalar object to a GIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a GIFTI file
-
-        Returns
-        -------
-       """
         pass
