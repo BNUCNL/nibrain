@@ -11,7 +11,6 @@ class Points(object):
     ----------
     data:  Nx3 numpy array, points coordinates
     id: Nx1 numpy array, id for each point
-    src: str, source of the points data
     """
     def __init__(self, data=None, id=None, src=None):
         """
@@ -23,7 +22,6 @@ class Points(object):
         """
         self.data  = data
         self.id = id
-        self.src = src
 
     @property
     def data(self):
@@ -41,14 +39,6 @@ class Points(object):
     @id.setter
     def id(self, id):
         self._id = id
-
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self, src):
-        self._src = src
 
     def merge(self, other):
         """ Merge other Points object into self
@@ -257,7 +247,7 @@ class Mesh(object):
 
     def update_from_freesurfer(self):
         pass 
-    
+
     def update_from_gifti(self, filename):
         """ Construct Lines object by reading a TCK file
 
