@@ -131,7 +131,7 @@ class Image(object):
         """
         pass
 
-    def reload(self, filename):
+    def load(self, filename):
         """ Read image from a CIFIT file
 
         Parameters

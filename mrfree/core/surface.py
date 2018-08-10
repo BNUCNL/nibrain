@@ -74,8 +74,8 @@ class Surface(object):
     
     def get_coords(self, mask):
         pass
-    
-    def reload_mesh(self, filename):
+
+    def load_mesh(self, filename):
         """ Update the mesh from a CIFIT file
 
         Parameters
@@ -103,7 +103,7 @@ class Surface(object):
         """
         pass
     
-    def reload_data(self, filename):
+    def load_data(self, filename):
         """ Update the data from a freesurfer scalar file
 
         Parameters
