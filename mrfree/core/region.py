@@ -9,11 +9,10 @@ from surface import Surface
 
 
 class Region(object):
-    """ Region class was designed to represent data related to anatomical and functional regions of the brain.
+    """ Region class represents data related to anatomical and functional regions of the brain.
 
     Attributes 
     ----------
-    name: a str, region name
     gs: Image or Surface object, source for geometry attributes
     ss: Image or Surface object, source for scalar attributes
     ga: Points object, geometry attributs of the region
@@ -142,24 +141,23 @@ class Region(object):
 
     def centralize(self):
         if hasattr(self, 'ga'):
-            self.ga = self.ga.centralize()
+            self.ga = self.ga.get_center()
         if hasattr(self,'sa'):
             self.sa = self.sa.mean()
 
         return self
 
-    def create_from_scratch(self, ref_image=None, scalar_image=None, mask_image=None):
+    def create_from_scratch(self, gs=None, ss=None, mask=None):
         """ Create region object from raw data which contain the image, geometry and scalar information of the region
 
         Parameters
         ----------
-        ref_image: a nifit image pathstr or a Image object
-            The refer image for the tract
-        scalar_image: a nifti image pathstr or a Scalar object
-            The scalar image, representing some scalar information of the region
-        mask_image: a nifti image pathstr or a Image object
+        gs:  a Image or Surface object, or a pathstr to a surface or image file
+            The source for ga
+        ss:  a Image or Surface object, or a pathstr to a surface or image file
+            The source for sa
+        mask:  a Image or Surface object, or a pathstr to a surface or image file
             The mask image, representing spatial location of the region
-
 
         Returns
         -------
@@ -167,8 +165,8 @@ class Region(object):
         """
         pass
 
-    def load(self, filename):
-        """ Load region object from serializing persistence file(Jason or pickle file)
+    def save_ga(self, filename):
+        """ Save geometry attributes(ga) to persistence according to the geometry source(gs)
 
         Parameters
         ----------
@@ -181,17 +179,16 @@ class Region(object):
         """
         pass
 
-    def save(self, filename):
-        """ save region object to a serializing persistence file(Jason or pickle file)
+    def save_sa(self, filename):
+        """ Save scalar attributes(sa) to persistence according to the scalar source(gs)
 
         Parameters
         ----------
         filename: str
             File pathstr to a region serializing persistence file
-
         Returns
         -------
+        bool: successful or not
 
         """
-
         pass
