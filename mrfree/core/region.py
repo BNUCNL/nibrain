@@ -5,6 +5,7 @@
 from geometry import Points
 from scalar import Scalar
 from image import Image
+from surface import Surface
 
 
 class Region(object):
@@ -13,44 +14,46 @@ class Region(object):
     Attributes 
     ----------
     name: a str, region name
-    ia: Image object, image attributes of the region
+    gs: Image or Surface object, source for geometry attributes
+    ss: Image or Surface object, source for scalar attributes
     ga: Points object, geometry attributs of the region
     sa: Scalar object, scalar attributes of the region.
     """
 
-    def __init__(self, name, ia=None, ga=None, sa=None):
+    def __init__(self, name, ga=None, sa=None, gs=None, ss=None):
         """ init the region with image, geometry, scalar attributes
         
         Parameters 
         ----------
-        name: a str, region name
-        ia: Image object, image attributes of the region
+        gs: Image or Surface object, source for geometry attributes
+        ss: Image or Surface object, source for scalar attributes
         ga: Points object, geometry attributs of the region
         sa: Scalar object, scalar attributes of the region.
         """
         
-        self.name = name
-        self.ia = ia
         self.ga = ga
         self.sa = sa
+        self.gs = gs
+        self.ss = ss
+
 
     @property
-    def name(self):
-        return self._name
+    def gs(self):
+        return self._gs
 
-    @name.setter
-    def name(self, name):
-        assert isinstance(name, str), "name should be string."
-        self._name = name
+    @gs.setter
+    def gs(self, gs):
+        assert isinstance(gs, Image) or isinstance(gs, Surface), "gs should a Image or Surface object."
+        self._gs = gs
 
     @property
-    def ia(self):
-        return self._ia
+    def ss(self):
+        return self._ss
 
-    @ia.setter
-    def ia(self, ia):
-        assert isinstance(ia, Image), "ia should be a Image object"
-        self._ia = ia
+    @ss.setter
+    def ss(self, ss):
+        assert isinstance(ss, Image) or isinstance(ss, Surface), "ss should be a Image or Surface object"
+        self._ss = ss
 
     @property
     def ga(self):
