@@ -15,29 +15,26 @@ class Image(object):
           ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
           voxsize: voxel size, a 3x1 array
           dims: image dimensions, a 3x1 or 4x1 array
-          header: header 
-          src: source of the image data, a string.
           """
-    def __init__(self, image, space=None, itype=None, src=None):
+
+    def __init__(self, image, space=None, itype=None):
         """
         Parameters
         ----------
-        nib_image: nibabel image object or a pathstr to a nibabel image file
+        image: nibabel image object or a pathstr to a nibabel image file
         space: a string, native, mni152
         itype: image type, a string.
         ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
         voxsize: voxel size, a 3x1 array
         dims: image dimensions, a 3x1 or 4x1 array
-        src: source of the image data, a string.
         """
 
         self.image = image
         self.space = space
         self.itype = itype
-        self.ras2vox = nib_image.affine
-        self.voxsize = nib_image.header.pixdim
-        self.dims = nib_image.header.im
-        self.src = src
+        self.ras2vox = image.affine
+        self.voxsize = image.header.pixdim
+        self.dims = image.header.im
 
     @property
     def data(self):
@@ -95,15 +92,6 @@ class Image(object):
         assert dims.ndim == 1 and dims.shape[0] <= 4, "dims should be 1x3 or 1x4 numpy array."
         self._dims = dims
 
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self, src):
-        assert isinstance(src,basestring), "src should be a string."
-        self._src = src
-
     def __add__(self, other):
         self.data = np.add(self.data, other.data)
 
@@ -143,8 +131,7 @@ class Image(object):
         """
         pass
 
-
-    def update_from_cifti(self, filename):
+    def reload(self, filename):
         """ Read image from a CIFIT file
 
         Parameters
@@ -158,7 +145,7 @@ class Image(object):
         """
         pass
 
-    def save_to_cifti(self, filename):
+    def save(self, filename):
         """ Save the Image obejct to a CIFIT file
 
         Parameters
@@ -172,33 +159,3 @@ class Image(object):
         """
 
         pass
-
-    def update_from_nifti(self, filename):
-        """ Read image from a NIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a NIFTI file
-
-        Returns
-        -------
-        self: an Image obejct
-        """
-
-        pass
-
-    def save_to_nifti(self, filename):
-        """ Save the Image obejct to a NIFIT file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a NIFTI file
-
-        Returns
-        -------
-
-        """
-        pass
-
