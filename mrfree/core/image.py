@@ -104,12 +104,12 @@ class Image(object):
     def __div__(self, other):
         self.data = np.divide(self.data, other.data)
 
-    def get_coords(self, mask):
-        """ Get the spatial coords of the voxels within the mask roi
+    def get_roi_coords(self, roi):
+        """ Get the spatial coords of the voxels within a roi
 
         Parameters
         ----------
-        mask
+        roi
 
         Returns
         -------
@@ -117,13 +117,12 @@ class Image(object):
         """
         pass
 
-
-    def get_value(self, mask):
-        """ Get the values of the voxels within the mask roi
+    def get_roi_data(self, roi=None):
+        """ Get the data of the voxels within a roi
 
         Parameters
         ----------
-        mask
+        roi
 
         Returns
         -------
@@ -132,12 +131,12 @@ class Image(object):
         pass
 
     def load(self, filename):
-        """ Read image from a CIFIT file
+        """ Read image from a image file include nifti and cifti
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a image file
 
         Returns
         -------
@@ -146,12 +145,12 @@ class Image(object):
         pass
 
     def save(self, filename):
-        """ Save the Image obejct to a CIFIT file
+        """ Save the image to a image file
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a image file
 
         Returns
         -------
