@@ -8,15 +8,13 @@ class Surface(object):
         data: image data, a 3d or 4d array
         space: a string, native, mni152
         dims: image dimensions, a 3x1 or 4x1 array
-        src: source of the image data, a string.
         """
 
-    def __init__(self, mesh=None, data=None, space=None, src=None):
+    def __init__(self, mesh=None, data=None, space=None):
         self.mesh = mesh
         self.data = data
         self.space = space 
-        self.src = src
-    
+
     @property
     def mesh(self):
         return self._mesh
@@ -24,14 +22,6 @@ class Surface(object):
     @mesh.setter
     def mesh(self, mesh):
         self.mesh = mesh
-    
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self,src):
-        self._src = src
 
     @property
     def data(self):
@@ -57,26 +47,10 @@ class Surface(object):
     
     def __mul__(self, other):
         if self.mesh == other.mesh:
-            self.data = self.data/other.data  
-
-    def get_value(self, mask):
-        """ Get the values of the voxels within the mask roi
-
-        Parameters
-        ----------
-        mask
-
-        Returns
-        -------
-        values: NxT numpy array, scalar value from the mask roi
-        """
-        pass
-    
-    def get_coords(self, mask):
-        pass
+            self.data = self.data/other.data
 
     def load_mesh(self, filename):
-        """ Update the mesh from a CIFIT file
+        """ Load mesh from surface mesh file
 
         Parameters
         ----------
@@ -90,7 +64,7 @@ class Surface(object):
         pass
     
     def save_mesh(self, filename):
-        """ Save the mesh to a freesurfer format file
+        """ Save the mesh to a surface mesh file
 
         Parameters
         ----------
@@ -104,12 +78,12 @@ class Surface(object):
         pass
     
     def load_data(self, filename):
-        """ Update the data from a freesurfer scalar file
+        """ Load the data from a surface scalar file
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a surface scalar file
 
         Returns
         -------
@@ -118,15 +92,41 @@ class Surface(object):
         pass
 
     def save_data(self, filename):
-        """ Save the data to a freesurfer scalar file
+        """ Save the data to a surface scalar file
 
         Parameters
         ----------
         filename: str
-            Pathstr to a CIFTI file
+            Pathstr to a surface scalar file
 
         Returns
         -------
 
+        """
+        pass
+
+    def get_roi_data(self, roi=None):
+        """ Get the data of the vertex within a roi
+
+        Parameters
+        ----------
+        roi, a roi object with the same type as
+        if roi == None, return data from all vertices on the surface
+        Returns
+        -------
+        values: NxT numpy array, scalar value from the mask roi
+        """
+        pass
+
+    def get_roi_coords(self, roi=None):
+        """ Get the coordinates of the vertex within a roi
+
+        Parameters
+        ----------
+        roi
+
+        Returns
+        -------
+        coords: Nx3 numpy array, scalar value from the roi
         """
         pass
