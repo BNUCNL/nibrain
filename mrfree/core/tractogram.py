@@ -16,12 +16,12 @@ class Tractogram(object):
         self.space = space
 
     def load_tractogram(self, filename):
-        """ Construct Lines object by reading a TCK file
+        """ Load tractogram from a tractogram file, include tck, trk, vtk
 
         Parameters
         ----------
         filename: str
-            Pathstr to a TCK file
+            Pathstr to a tractogram file
 
         Returns
         -------
@@ -30,12 +30,12 @@ class Tractogram(object):
         pass
 
     def save_tractogram(self, filename):
-        """ Save Lines object to a TCK file
+        """ Save tractogram to a tractogram file, include tck, trk, vtk
 
         Parameters
         ----------
         filename: str
-            Pathstr to a TCK file
+            Pathstr to a tractogram file
 
         Returns
         -------
@@ -44,8 +44,7 @@ class Tractogram(object):
         pass
 
     def load_data(self, filename):
-        """ Construct Lines object by reading a TRK file
-
+        """ Load tractogram scalar data from a tractogram scalar file
         Parameters
         ----------
         filename: str
@@ -58,8 +57,7 @@ class Tractogram(object):
         pass
 
     def save_data(self, filename):
-        """ Save Lines object to a TRK file
-
+        """ Save tractogram scalar data from a tractogram scalar file
         Parameters
         ----------
         filename: str
@@ -68,5 +66,32 @@ class Tractogram(object):
         Returns
         -------
         self: a Lines object
+        """
+        pass
+    
+    
+    def get_toi_data(self, toi=None):
+        """ Get the data of the node within a toi
+
+        Parameters
+        ----------
+        toi, a toi object with the same type as
+        if toi == None, return data from all vertices on the surface
+        Returns
+        -------
+        values: NxT numpy array, scalar value from the toi
+        """
+        pass
+
+    def get_toi_coords(self, toi=None):
+        """ Get the coordinates of the node within a toi
+
+        Parameters
+        ----------
+        toi
+
+        Returns
+        -------
+        coords: Nx3 numpy array, scalar value from the toi
         """
         pass
