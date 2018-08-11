@@ -11,7 +11,7 @@ class Tractogram(object):
         """
 
     def __init__(self, tractogram=None, data=None, space=None):
-        self.tractogram  = tractogram
+        self.tractogram = tractogram
         self.data = data
         self.space = space
 
@@ -52,7 +52,7 @@ class Tractogram(object):
 
         Returns
         -------
-        self: a Lines object
+        self: a Surface object
         """
         pass
 
@@ -65,7 +65,7 @@ class Tractogram(object):
 
         Returns
         -------
-        self: a Lines object
+        bool: sucessful or not
         """
         pass
     
@@ -75,7 +75,7 @@ class Tractogram(object):
 
         Parameters
         ----------
-        toi, a toi object with the same type as
+        toi, a toi include the fiber id of interest
         if toi == None, return data from all vertices on the surface
         Returns
         -------
@@ -88,10 +88,10 @@ class Tractogram(object):
 
         Parameters
         ----------
-        toi
+        toi, a toi include the fiber id of interest
 
         Returns
         -------
-        coords: Nx3 numpy array, scalar value from the toi
+        coords: Nx3 numpy array, coords value from the toi
         """
         pass
