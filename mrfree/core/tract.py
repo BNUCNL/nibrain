@@ -2,7 +2,6 @@
 
 from geometry import Lines
 from scalar import Scalar
-from connection import Connection
 from image import Image
 
 
@@ -27,8 +26,6 @@ class Tract(object):
         ga: Lines object, geometry attributs of the tract
         sa: Scalar object, scalar attributes of the tract.
         """
-
-
         self.ga = ga
         self.sa = sa
         self.gs = gs
@@ -132,17 +129,13 @@ class Tract(object):
 
         return self
 
-    def create_from_scratch(self, ref_image=None, scalar_image=None, tractograph=None):
-        """ Create tract object from raw data which contain the image, geometry and scalar information of the tract
+    def create_from_scratch(self, gs=None, ss=None, toi=None):
+        """ Create tract object from geometry and scalar source data
 
         Parameters
         ----------
-        ref_image: a nifit image pathstr or a Image object
-            The refer image for the tract
-        scalar_image: a nifti image pathstr or a Scalar object
-            The scalar image, representing some scalar information of the tract
-        tractograph: a tractograph pathstr or a Lines object
-            The tractograph from fiber tracking, carrying the geometry information of the tract
+        gs: Tractogram object, source for geometry attributes
+        ss: Image or Tractogram object, source for scalar attributes
 
         Returns
         -------
@@ -163,7 +156,6 @@ class Tract(object):
 
         """
         pass
-
 
     def save(self, filename):
         """ save tract object to a serializing persistence file(Jason or pickle file)
@@ -194,7 +186,6 @@ class Tract(object):
         """
 
         pass
-
 
     def save_ga(self, filename):
         """ save tract geometry attributes to a tractogram file according to the geometry source(gs)
