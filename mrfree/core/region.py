@@ -147,7 +147,7 @@ class Region(object):
 
         return self
 
-    def create_from_scratch(self, gs=None, ss=None, mask=None):
+    def create_from_scratch(self, gs=None, ss=None, roi=None):
         """ Create region object from raw data which contain the image, geometry and scalar information of the region
 
         Parameters
@@ -156,7 +156,7 @@ class Region(object):
             The source for ga
         ss:  a Image or Surface object, or a pathstr to a surface or image file
             The source for sa
-        mask:  a Image or Surface object, or a pathstr to a surface or image file
+        roi:  a Image or Surface object, or a pathstr to a surface or image file
             The mask image, representing spatial location of the region
 
         Returns
@@ -192,3 +192,30 @@ class Region(object):
 
         """
         pass
+    
+    def load(self, filename):
+        """ Load region object from serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a region serializing persistence file
+        Returns
+        -------
+        self: Tract object
+
+        """
+        pass
+
+    def save(self, filename):
+        """ save region object to a serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a region serializing persistence file
+
+        Returns
+        -------
+
+        """

@@ -4,18 +4,26 @@ class Tractogram(object):
 
         Attributes
         ----------
-        mesh: Mesh object, brain surface
+        lines: streamline object from nibabel
         data: image data, a 3d or 4d array
         space: a string, native, mni152
         dims: image dimensions, a 3x1 or 4x1 array
         """
 
-    def __init__(self, tractogram=None, data=None, space=None):
-        self.tractogram = tractogram
+    def __init__(self, lines=None, data=None, space=None):
+        """
+
+        Parameters
+        ----------
+        lines: a Lines object
+        data: the scalar image data
+        space: str, native,mni152
+        """
+        self.lines = lines
         self.data = data
         self.space = space
 
-    def load_tractogram(self, filename):
+    def load_lines(self, filename):
         """ Load tractogram from a tractogram file, include tck, trk, vtk
 
         Parameters
@@ -29,7 +37,7 @@ class Tractogram(object):
         """
         pass
 
-    def save_tractogram(self, filename):
+    def save_lines(self, filename):
         """ Save tractogram to a tractogram file, include tck, trk, vtk
 
         Parameters
@@ -48,11 +56,11 @@ class Tractogram(object):
         Parameters
         ----------
         filename: str
-            Pathstr to a TRK file
+            Pathstr to a tractogram file
 
         Returns
         -------
-        self: a Surface object
+        self: a Tractogram object
         """
         pass
 
@@ -61,7 +69,7 @@ class Tractogram(object):
         Parameters
         ----------
         filename: str
-            Pathstr to a TRK file
+            Pathstr to a corresponding file
 
         Returns
         -------
@@ -71,7 +79,7 @@ class Tractogram(object):
     
     
     def get_toi_data(self, toi=None):
-        """ Get the data of the node within a toi
+        """ Get the scalar data of the fiber within a toi
 
         Parameters
         ----------
@@ -79,11 +87,11 @@ class Tractogram(object):
         if toi == None, return data from all vertices on the surface
         Returns
         -------
-        values: NxT numpy array, scalar value from the toi
+        data: NxT numpy array, scalar value from the toi
         """
         pass
 
-    def get_toi_coords(self, toi=None):
+    def get_toi_lines(self, toi=None):
         """ Get the coordinates of the node within a toi
 
         Parameters
@@ -92,6 +100,6 @@ class Tractogram(object):
 
         Returns
         -------
-        coords: Nx3 numpy array, coords value from the toi
+        lines: arraysequence, streamline from the toi
         """
         pass
