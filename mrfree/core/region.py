@@ -29,12 +29,10 @@ class Region(object):
         ga: Points object, geometry attributs of the region
         sa: Scalar object, scalar attributes of the region.
         """
-        
         self.ga = ga
         self.sa = sa
         self.gs = gs
         self.ss = ss
-
 
     @property
     def gs(self):
@@ -174,7 +172,7 @@ class Region(object):
             File pathstr to a region serializing persistence file
         Returns
         -------
-        self: Region object
+        bool: successful or not
 
         """
         pass
@@ -217,5 +215,5 @@ class Region(object):
 
         Returns
         -------
-
+        bool: sucessful or not
         """

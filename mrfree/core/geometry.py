@@ -119,7 +119,7 @@ class Points(object):
         if ~isinstance(image, Image):
             image = Image(image)
 
-        self.data = image.get_coords()
+        self.data = image.get_roi_coords()
 
 
 class Lines(object):
