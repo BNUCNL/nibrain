@@ -233,15 +233,14 @@ class Mesh(object):
         ----------
         vertices
         faces
-        edges
+
     
     """
     
-    def __init__(self, vertices, faces, edges):
+    def __init__(self, vertices, faces):
         self.vertices = vertices
         self.faces = faces
-        self.edges = edges
-    
+
     def __eq__(self, other):
         return  np.array_equal(self.vertices, self.vertices)
 

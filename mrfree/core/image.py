@@ -2,6 +2,8 @@
 
 import numpy as np
 import nibabel as nib
+import os
+from nibabel.spatialimages import ImageFileError
 
 
 class Image(object):
@@ -142,7 +144,16 @@ class Image(object):
         -------
         self: an Image obejct
         """
-        pass
+        if not os.path.exists(filename):
+            print 'vol file does not exist!'
+            return None
+
+        if (filename.endswith('.nii.gz')) or (filename.endswith('.nii') and filename.count('.') == 1):
+            self.image = nib.load(filename)
+        else:
+            suffix = os.path.split(filename)[1].split('.')[-1]
+            raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
 
     def save(self, filename):
         """ Save the image to a image file
