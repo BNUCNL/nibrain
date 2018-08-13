@@ -1,3 +1,10 @@
+import os
+import numpy as np
+from geometry import Mesh
+import nibabel as nib
+from nibabel import freesurfer
+from nibabel.spatialimages import ImageFileError
+
 
 class Surface(object):
     """ Surface class represent brain surface data from surface analysis
@@ -61,7 +68,21 @@ class Surface(object):
         -------
         Self: an Surface object
         """
-        pass
+        if not os.path.exists(filename):
+            print 'surf file does not exist!'
+            return None
+
+        if filename.endswith(('.inflated', '.white', '.pial', '.orig')):
+            vertices, faces = freesurfer.read_geometry(filename)
+        elif filename.endswith('.surf.gii'):
+            geo_img = nib.load(filename)
+            vertices = geo_img.darray[0].data
+            faces = geo_img.darray[1].data
+        else:
+            suffix = os.path.split(filename)[1].split('.')[-1]
+            raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
+        self.mesh = Mesh(vertices, faces)
     
     def save_mesh(self, filename):
         """ Save the mesh to a surface mesh file
@@ -89,7 +110,33 @@ class Surface(object):
         -------
         self: a Surface obejct
         """
-        pass
+        if not os.path.exists(filename):
+            print 'surf scalar file does not exist!'
+            return None
+
+        if filename.endswith(('.curv', '.sulc', '.volume', '.thickness', '.area')):
+            data = np.expand_dims(freesurfer.read_morph_data(filename), axis=-1)
+        elif filename.endswith(('.shape.gii', '.func.gii')):
+            data = np.expand_dims(nib.load(filename).darrays[0].data, axis=-1)
+        elif filename.endswith(('.mgz', '.mgh')):
+            data = nib.load(filename).get_data()
+            data = data.reshape((data.shape[0], data.shape[-1]))
+        elif filename.endswith(('.dscalar.nii', '.dseries.nii')):
+            data = nib.load(filename).get_data()
+            data = data.T
+        elif filename.endswith('.label.gii'):
+            data = np.expand_dims(nib.load(filename).darrays[0].data, axis=-1)
+        elif filename.endswith('.dlabel.nii'):
+            data = nib.load(filename).get_data().T
+        elif filename.endswith('.label'):
+            data = np.expand_dims(freesurfer.read_label(filename), axis=-1)
+        elif filename.endswith('.annot'):
+            data, _, _ = freesurfer.read_annot(filename)
+        else:
+            suffix = os.path.split(filename)[1].split('.')[-1]
+            raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+
+        self.data = data
 
     def save_data(self, filename):
         """ Save the data to a surface scalar file
