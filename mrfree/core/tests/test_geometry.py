@@ -1,15 +1,16 @@
 
 from mrfree.core.geometry import (Points,Lines)
 import numpy as np
+import pytest
 
 
 def test_points():
     data = np.random.rand(10,3)
-    id = 1
+    id = np.arange(len(data))
     src = "Faked points"
     P = Points(data, id, src)
     P.data = np.random.rand(5,3)
-    P.id = 2
+    P.id = np.arange(len(P.data))
     P.src = "New faked points"
 
 
