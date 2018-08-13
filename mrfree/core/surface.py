@@ -4,10 +4,10 @@ class Surface(object):
         
         Attributes
         ----------
-        mesh: Mesh object, brain surface 
-        data: image data, a 3d or 4d array
+        mesh: Mesh object or surface obejct from nibabel , brain surface
+        data: scalar data on the mesh, a 3d or 4d array
         space: a string, native, mni152
-        dims: image dimensions, a 3x1 or 4x1 array
+        dims: dimensions of the surface, a 3x1 or 4x1 array
         """
 
     def __init__(self, mesh=None, data=None, space=None):
@@ -130,3 +130,4 @@ class Surface(object):
         coords: Nx3 numpy array, scalar value from the roi
         """
         pass
+
