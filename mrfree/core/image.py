@@ -126,7 +126,7 @@ class Image(object):
 
         Returns
         -------
-        values: NxT numpy array, scalar value from the mask roi
+        data: NxT numpy array, scalar value from the mask roi
         """
         pass
 

@@ -130,3 +130,4 @@ class Surface(object):
         coords: Nx3 numpy array, scalar value from the roi
         """
         pass
+

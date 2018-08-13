@@ -261,31 +261,3 @@ class Mesh(object):
         self: a Lines object
         """
         pass
-    
-
-if __name__ == "__main__":
-    # Test Points
-    data = np.random.rand(10,3)
-    id = 1
-    src = "Faked points"
-    rg = Points(data, id, src)
-    rg.data = np.random.rand(5,3)
-    rg.id = 2
-    rg.src = "New faked points"
-
-    # Test Lines
-    data = [np.array([[0, 0., 0.9],
-                      [1.9, 0., 0.]]),
-            np.array([[0.1, 0., 0],
-                      [0, 1., 1.],
-                      [0, 2., 2.]]),
-            np.array([[2, 2, 2],
-                      [3, 3, 3]])]
-    id = np.arange(len(data))
-    src = "Faked lines"
-    lg = Lines(data, id, src)
-    lg.data =  rg.data.remove(1)
-    lg.id = np.delete(rg.id,1)
-    lg.src = "New faked lines"
-
-
