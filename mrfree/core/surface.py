@@ -182,7 +182,7 @@ class Surface(object):
         coords: Nx3 numpy array, scalar value from the roi
         """
         if roi is not None:
-            coords = self.mesh.vertices[roi]
+            coords = self.mesh.vertices[roi, :]
         else:
             coords = self.mesh.vertices
 

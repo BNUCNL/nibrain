@@ -15,32 +15,35 @@ class Image(object):
           space: a string, native, mni152
           itype: image type, a string.
           ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
-          voxsize: voxel size, a 3x1 array
-          dims: image dimensions, a 3x1 or 4x1 array
+          voxsize: voxel size, a tuple
+          dims: image dimensions, a tuple
           """
 
-    def __init__(self, image, space=None, itype=None):
+    def __init__(self, image, space=None):
         """
         Parameters
         ----------
         image: nibabel image object or a pathstr to a nibabel image file
         space: a string, native, mni152
-        itype: image type, a string.
-        ras2vox: transform matrix from ras coords to voxel coords, a 4x4 array
-        voxsize: voxel size, a 3x1 array
-        dims: image dimensions, a 3x1 or 4x1 array
+        vox2ras: transform matrix from voxel coords to ras coords , a 4x4 array
+        voxsize: voxel size, a tuple
+        dims: image dimensions, a tuple
         """
+        if isinstance(image, basestring):
+            self.image = nib.load(image)
+        elif isinstance(image, nib.Nifti1Image):
+            self.image = image
 
-        self.image = image
+        self.data = image.get_data()
+        self.vox2ras = image.affine
+        self.voxsize = image.header.get_zooms()
+        self.dims = image.shape
+
         self.space = space
-        self.itype = itype
-        self.ras2vox = image.affine
-        self.voxsize = image.header.pixdim
-        self.dims = image.header.im
 
     @property
     def data(self):
-        return self.image.get_fdata()
+        return self.data
 
     @data.setter
     def data(self, data):
@@ -56,25 +59,15 @@ class Image(object):
         possible_space = ('native','mni152')
         assert space in possible_space , "space should be in {0}".format(possible_space)
         self._space = space
-        
-    @property
-    def itype(self):
-        return self._itype
 
-    @itype.setter
-    def itype(self, itype):
-        possible_itype = ('bold','dwi','anat')
-        assert itype in possible_itype , "itype should be in {0}".format(possible_itype)
-        self._itype = itype
-        
     @property
-    def ras2vox(self):
-        return self._ras2vox
+    def vox2ras(self):
+        return self._vox2ras
 
-    @ras2vox.setter
-    def ras2vox(self, ras2vox):
-        assert ras2vox.shape == (4,4), "ras2vox should a 4x4 matrix."
-        self._ras2vox = ras2vox
+    @vox2ras.setter
+    def vox2ras(self, vox2ras):
+        assert vox2ras.shape == (4,4), "vox2ras should a 4x4 matrix."
+        self._vox2ras = vox2ras
         
     @property
     def voxsize(self):
@@ -82,7 +75,7 @@ class Image(object):
 
     @voxsize.setter
     def voxsize(self, voxsize):
-        assert voxsize.ndim == 1 and voxsize.shape[0] == 3, "voxsize should be 1 x 3 numpy array."
+        assert len(voxsize) <= 4, "voxsize should be a tuple with length less than 4."
         self._voxsize = voxsize
 
     @property
@@ -91,7 +84,7 @@ class Image(object):
 
     @dims.setter
     def dims(self, dims):
-        assert dims.ndim == 1 and dims.shape[0] <= 4, "dims should be 1x3 or 1x4 numpy array."
+        assert len(dims) <= 4, "dims should be a tuple with length less than 4."
         self._dims = dims
 
     def __add__(self, other):
@@ -106,18 +99,29 @@ class Image(object):
     def __div__(self, other):
         self.data = np.divide(self.data, other.data)
 
-    def get_roi_coords(self, roi):
+    def get_roi_coords(self, roi=None):
         """ Get the spatial coords of the voxels within a roi
 
         Parameters
         ----------
-        roi
+        roi: nibabel image object or numpy array with the same shape as image
 
         Returns
         -------
         coords: Nx3 numpy array
         """
-        pass
+        if roi is None:
+            roi = self.data[:, :, :, 0]
+
+        if isinstance(roi, nib.Nifti1Image):
+            roi = roi.get_data()
+
+        if isinstance(roi, np.ndarray) and roi.shape == self.dims[0:3]:
+            coords = np.nonzero(roi)
+        else:
+            raise ValueError("Passed array is not of the right shape")
+
+        return self.vox2ras*coords
 
     def get_roi_data(self, roi=None):
         """ Get the data of the voxels within a roi
@@ -130,7 +134,20 @@ class Image(object):
         -------
         data: NxT numpy array, scalar value from the mask roi
         """
-        pass
+        if roi is None:
+            roi = self.data[:,:,:,0]
+
+        if isinstance(roi, nib.Nifti1Image):
+            roi = roi.get_data()
+
+        if isinstance(roi, np.ndarray) and roi.shape == self.dims[0:3]:
+            coords = np.nonzero(roi)
+        else:
+            raise ValueError("Passed array is not of the right shape")
+
+        data = self.data[coords[0], coords[1], coords[2],:]
+
+        return data
 
     def load(self, filename):
         """ Read image from a image file include nifti and cifti
@@ -144,9 +161,6 @@ class Image(object):
         -------
         self: an Image obejct
         """
-        if not os.path.exists(filename):
-            print 'vol file does not exist!'
-            return None
 
         if (filename.endswith('.nii.gz')) or (filename.endswith('.nii') and filename.count('.') == 1):
             self.image = nib.load(filename)
