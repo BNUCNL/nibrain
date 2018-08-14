@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
+import os
 import numpy as np
 import nibabel as nib
-import os
 from nibabel.spatialimages import ImageFileError
 
 
@@ -112,14 +110,13 @@ class Image(object):
         """
         if roi is None:
             roi = self.data[:, :, :, 0]
-
-        if isinstance(roi, nib.Nifti1Image):
+        elif isinstance(roi, nib.Nifti1Image):
             roi = roi.get_data()
 
         if isinstance(roi, np.ndarray) and roi.shape == self.dims[0:3]:
             coords = np.nonzero(roi)
         else:
-            raise ValueError("Passed array is not of the right shape")
+            raise ValueError("Passed roi is not of the right shape")
 
         return self.vox2ras*coords
 
@@ -136,8 +133,7 @@ class Image(object):
         """
         if roi is None:
             roi = self.data[:,:,:,0]
-
-        if isinstance(roi, nib.Nifti1Image):
+        elif isinstance(roi, nib.Nifti1Image):
             roi = roi.get_data()
 
         if isinstance(roi, np.ndarray) and roi.shape == self.dims[0:3]:
@@ -168,7 +164,6 @@ class Image(object):
             suffix = os.path.split(filename)[1].split('.')[-1]
             raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
 
-
     def save(self, filename):
         """ Save the image to a image file
 
@@ -182,4 +177,4 @@ class Image(object):
 
         """
 
-        pass
+        nib.save(self.image, filename)
