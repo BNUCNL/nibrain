@@ -161,9 +161,14 @@ class Surface(object):
         if roi == None, return data from all vertices on the surface
         Returns
         -------
-        values: NxT numpy array, scalar value from the mask roi
+        data: NxT numpy array, scalar value from the mask roi
         """
-        pass
+        if roi is not None:
+            data = self.data[roi]
+        else:
+            data = self.data
+
+        return data
 
     def get_roi_coords(self, roi=None):
         """ Get the coordinates of the vertex within a roi
@@ -176,5 +181,9 @@ class Surface(object):
         -------
         coords: Nx3 numpy array, scalar value from the roi
         """
-        pass
+        if roi is not None:
+            coords = self.mesh.vertices[roi, :]
+        else:
+            coords = self.mesh.vertices
 
+        return coords
