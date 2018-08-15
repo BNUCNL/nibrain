@@ -21,5 +21,15 @@ def test_surface():
     roi_data = surf_a.get_roi_data(roi)
     print roi_coords.shape, roi_data.shape
 
+    surf_mesh_path = '/nfs/e5/stanford/Longitudinal/3Danat/fsaverage/surf/rh.white'
+    vertices, faces = freesurfer.read_geometry(surf_mesh_path)
+
+    surf_b = Surface(mesh=Mesh(vertices, faces), space='fsaverage')
+
+    surf_data_path = '/nfs/e5/stanford/Longitudinal/3Danat/fsaverage/surf/rh.curv'
+    surf_b.load_data(surf_data_path)
+    surf_c = surf_a + surf_b
+    print surf_b.mesh.vertices.shape, surf_c.mesh.vertices.shape
+
 if __name__ == "__main__":
     test_surface()
