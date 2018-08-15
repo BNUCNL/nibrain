@@ -165,7 +165,6 @@ class Image(object):
         data: NxT numpy array, scalar value from the mask roi
         """
         _, crs_coords = self.get_roi_coords(roi)
-        # crs_coords = crs_coords.astype(int)
         data = self.data[crs_coords[:,0], crs_coords[:,1], crs_coords[:,2],:]
 
         return data

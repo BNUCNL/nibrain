@@ -11,6 +11,8 @@ def test_image():
     img_b = Image(nii,'mni152')
     img_c = img_a + img_b
 
+    img_c.load(nii_data_path)
+
     print img_c.space, img_c.dims, img_c.voxsize
 
     roi = img_a.data[:,:,:,1] > 0.9
