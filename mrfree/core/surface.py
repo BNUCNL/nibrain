@@ -28,7 +28,7 @@ class Surface(object):
     
     @mesh.setter
     def mesh(self, mesh):
-        self.mesh = mesh
+        self._mesh = mesh
 
     @property
     def data(self):
@@ -41,20 +41,22 @@ class Surface(object):
     def __add__(self, other):
         if self.mesh == other.mesh:
             self.data = self.data + other.data
+        return  self
             
     def __sub__(self, other):
         if self.mesh == other.mesh:
             self.data = self.data - other.data
-        pass
+        return self
     
     def __div__(self, other):
         if self.mesh == other.mesh:
             self.data = self.data * other.data
-        pass
+        return self
     
     def __mul__(self, other):
         if self.mesh == other.mesh:
             self.data = self.data/other.data
+        return self
 
     def load_mesh(self, filename):
         """ Load mesh from surface mesh file
@@ -68,19 +70,17 @@ class Surface(object):
         -------
         Self: an Surface object
         """
-        if not os.path.exists(filename):
-            print 'surf file does not exist!'
-            return None
-
         if filename.endswith(('.inflated', '.white', '.pial', '.orig')):
             vertices, faces = freesurfer.read_geometry(filename)
+
         elif filename.endswith('.surf.gii'):
             geo_img = nib.load(filename)
             vertices = geo_img.darray[0].data
             faces = geo_img.darray[1].data
+
         else:
             suffix = os.path.split(filename)[1].split('.')[-1]
-            raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
+            raise ImageFileError('The format-{} is not supported at present.'.format(suffix))
 
         self.mesh = Mesh(vertices, faces)
     
@@ -110,28 +110,33 @@ class Surface(object):
         -------
         self: a Surface obejct
         """
-        if not os.path.exists(filename):
-            print 'surf scalar file does not exist!'
-            return None
 
         if filename.endswith(('.curv', '.sulc', '.volume', '.thickness', '.area')):
             data = np.expand_dims(freesurfer.read_morph_data(filename), axis=-1)
+
         elif filename.endswith(('.shape.gii', '.func.gii')):
             data = np.expand_dims(nib.load(filename).darrays[0].data, axis=-1)
+
         elif filename.endswith(('.mgz', '.mgh')):
             data = nib.load(filename).get_data()
             data = data.reshape((data.shape[0], data.shape[-1]))
+
         elif filename.endswith(('.dscalar.nii', '.dseries.nii')):
             data = nib.load(filename).get_data()
             data = data.T
+
         elif filename.endswith('.label.gii'):
             data = np.expand_dims(nib.load(filename).darrays[0].data, axis=-1)
+
         elif filename.endswith('.dlabel.nii'):
             data = nib.load(filename).get_data().T
+
         elif filename.endswith('.label'):
             data = np.expand_dims(freesurfer.read_label(filename), axis=-1)
+
         elif filename.endswith('.annot'):
             data, _, _ = freesurfer.read_annot(filename)
+
         else:
             suffix = os.path.split(filename)[1].split('.')[-1]
             raise ImageFileError('This file format-{} is not supported at present.'.format(suffix))
@@ -157,14 +162,17 @@ class Surface(object):
 
         Parameters
         ----------
-        roi, a roi object with the same type as
-        if roi == None, return data from all vertices on the surface
+        roi: Nx1 numpy array, tuple, list, vertex id in the roi
+        if roi is None, return data from all vertices on the surface
+
         Returns
         -------
         data: NxT numpy array, scalar value from the mask roi
         """
         if roi is not None:
-            data = self.data[roi]
+            roi = np.asarray(roi)
+            roi = roi.astype(int)
+            data = self.data[roi, :]
         else:
             data = self.data
 
@@ -175,13 +183,15 @@ class Surface(object):
 
         Parameters
         ----------
-        roi
+        roi: numpy array or a tuple, vertex id in the roi
 
         Returns
         -------
         coords: Nx3 numpy array, scalar value from the roi
         """
         if roi is not None:
+            roi = np.asarray(roi)
+            roi = roi.astype(int)
             coords = self.mesh.vertices[roi, :]
         else:
             coords = self.mesh.vertices
