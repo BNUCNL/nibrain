@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
-from base import intersect2d,exclude2d
 from image import Image
+
 
 class Points(object):
     """Points represent a collection of spatial ponits
@@ -57,8 +57,10 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.coords = np.vstack(self.coords)
-        self.coords = np.unique(self.coords,axis=0)
+        self.coords = np.vstack((self.coords, other.coords))
+        self.id = np.vstack((self.id, other.id))
+        self.id, idx = np.unique(self.id, return_index=True)
+        self.coords = self.coords[idx,:]
         return self
 
     def intersect(self,other):
@@ -74,7 +76,9 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.coords = intersect2d(self.coords, other.coords)
+        idx = np.in1d(self.id, other.id)
+        self.id = self.id[idx]
+        self.coords = self.coords[idx,:]
         return self
 
     def exclude(self, other):
@@ -90,7 +94,10 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.coords = exclude2d(self.coords, other.coords)
+
+        idx = np.logical_not(np.in1d(self.id, other.id))
+        self.id = self.id[idx]
+        self.coords = self.coords[idx,:]
         return self
 
     def get_center(self):
@@ -107,45 +114,22 @@ class Points(object):
         
         return np.mean(self.coords,axis=0)
 
-    def update_from_image(self, image):
-        """ Construct Scalar object by reading a CIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        # use Image object to do the work
-        if ~isinstance(image, Image):
-            image = Image(image)
-
-        self.coords = image.get_roi_coords()
-
 
 class Lines(object):
-    def __init__(self, coords, id, source=None):
+    def __init__(self, coords, id=None):
         """
         Parameters
         ----------
         coords: geometry coords, a sequence of array.
         id: the id for each array.
-        source: source of the geometry coords, a string.
         """
         self.coords = coords
+        if id is None:
+            id = range(len(coords))
+        elif np.asarray(id).shape[0] != len(coords):
+            raise ValueError("id length is not equal to the length of the coords")
+
         self.id = id
-        self.src = source
-
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self,src):
-        self._src = src
 
     @property
     def coords(self):
@@ -164,7 +148,7 @@ class Lines(object):
         self._id = id
 
     def merge(self, other):
-        """ Merge other tract into the Lines based on the line id.
+        """ Merge other Lines into the Lines based on the line id.
 
         Parameters
         ----------
@@ -176,6 +160,10 @@ class Lines(object):
         self: merged Lines
         """
         assert isinstance(other, Lines), "other should be a Lines object"
+        self.coords = np.vstack((self.coords, other.coords))
+        self.id = np.vstack((self.id, other.id))
+        self.id, idx = np.unique(self.id, return_index=True)
+        self.coords = self.coords[idx, :]
         pass
 
     def intersect(self,other):
@@ -189,7 +177,9 @@ class Lines(object):
         ----------
         self with intersection from two Lines
         """
-        pass
+        idx = np.in1d(self.id, other.id)
+        self.id = self.id(idx)
+        del self.coords[np.nonzero(np.logical_not(idx))]
 
     def exclude(self, other):
         """ Exclude other Lines from the current Lines based on the line id.
@@ -202,7 +192,9 @@ class Lines(object):
         ----------
         self:  The Lines after excluding other Lines
         """
-        pass
+        idx = np.in1d(self.id, other.id)
+        self.id = self.id(np.logical_not(idx))
+        del self.coords[np.nonzero(idx)]
 
     def equidistant_resample(self, num_segment):
         """ Resample the Lines with equidistantance
@@ -238,7 +230,6 @@ class Mesh(object):
         vertices
         faces
 
-    
     """
     
     def __init__(self, vertices, faces):
@@ -247,20 +238,3 @@ class Mesh(object):
 
     def __eq__(self, other):
         return  np.array_equal(self.vertices, self.vertices)
-
-    def update_from_freesurfer(self):
-        pass 
-
-    def update_from_gifti(self, filename):
-        """ Construct Lines object by reading a TCK file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a TCK file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
