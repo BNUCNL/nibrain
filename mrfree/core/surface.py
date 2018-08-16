@@ -170,8 +170,8 @@ class Surface(object):
         data: NxT numpy array, scalar value from the mask roi
         """
         if roi is not None:
-            roi = np.asarray(roi)
-            roi = roi.astype(int)
+            #roi = np.asarray(roi)
+            #roi = roi.astype(int)
             data = self.data[roi, :]
         else:
             data = self.data
@@ -183,15 +183,16 @@ class Surface(object):
 
         Parameters
         ----------
-        roi: numpy array or a tuple, vertex id in the roi
+        roi: numpy array or a tuple,list, vertex id in the roi
+        if roi is None, return data from all vertices on the surface
 
         Returns
         -------
         coords: Nx3 numpy array, scalar value from the roi
         """
         if roi is not None:
-            roi = np.asarray(roi)
-            roi = roi.astype(int)
+            #roi = np.asarray(roi)
+            #roi = roi.astype(int)
             coords = self.mesh.vertices[roi, :]
         else:
             coords = self.mesh.vertices
