@@ -149,8 +149,9 @@ class Image(object):
         ras_coords = np.matmul(self.vox2ras, crs_coords)
         ras_coords = ras_coords[0:3,:]
         crs_coords = crs_coords[0:3,:].astype(int)
+        id = np.ravel_multi_index(crs_coords, roi.shape)
 
-        return ras_coords.T, crs_coords.T
+        return ras_coords.T, crs_coords.T, id
 
     def get_roi_data(self, roi=None):
         """ Get the data of the voxels within a roi
@@ -164,7 +165,7 @@ class Image(object):
         -------
         data: NxT numpy array, scalar value from the mask roi
         """
-        _, crs_coords = self.get_roi_coords(roi)
+        _, crs_coords, _ = self.get_roi_coords(roi)
         data = self.data[crs_coords[:,0], crs_coords[:,1], crs_coords[:,2],:]
 
         return data

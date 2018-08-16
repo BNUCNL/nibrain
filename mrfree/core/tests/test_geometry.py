@@ -1,32 +1,38 @@
 
 from mrfree.core.geometry import (Points,Lines)
 import numpy as np
-import pytest
+# import pytest
 
 
 def test_points():
-    data = np.random.rand(10,3)
-    id = np.arange(len(data))
-    src = "Faked points"
-    P = Points(data, id, src)
-    P.data = np.random.rand(5,3)
-    P.id = np.arange(len(P.data))
-    P.src = "New faked points"
+    coords = np.random.rand(10,3)
+    id = np.arange(len(coords))
+    P = Points(coords, id)
+    print P.coords, P.id
+
+    P.coords = np.random.rand(5,3)
+    P.id = np.arange(len(P.coords))
+    print P.coords, P.id
 
 
 def test_lines():
-    data = [np.array([[0, 0., 0.9],
+    coords = [np.array([[0, 0., 0.9],
                   [1.9, 0., 0.]]),
         np.array([[0.1, 0., 0],
                   [0, 1., 1.],
                   [0, 2., 2.]]),
         np.array([[2, 2, 2],
                   [3, 3, 3]])]
-    id = np.arange(len(data))
-    src = "Faked lines"
-    L = Lines(data, id, src)
-    L.data =  L.data.remove(1)
+    id = np.arange(len(coords))
+    L = Lines(coords, id)
+    print L.coords, L.id
+
+
+    L.coords = np.delete(L.coords,1)
     L.id = np.delete(L.id,1)
-    L.src = "New faked lines"
+    print L.coords, L.id
 
 
+if __name__ == "__main__":
+    test_points()
+    test_lines()
