@@ -16,7 +16,7 @@ class Scalar(object):
     ndim: dimension of the data frame
     """
 
-    def __init__(self, data=None, index=None, columns=None):
+    def __init__(self, data, index=None, columns=None):
         
         """
         Initialize the data as a pands DataFrame object
@@ -195,15 +195,19 @@ class Scalar(object):
 
     def __add__(self, other):
         self.add(other)
+        return  self
 
     def __sub__(self, other):
         self.sub(other)
+        return self
 
     def __mul__(self, other):
         self.mul(other)
+        return self
 
     def __div__(self, other):
         self.div(other)
+        return self
 
     def abs(self):
         """Return a Series/DataFrame with absolute numeric value of each element.
@@ -389,48 +393,3 @@ class Scalar(object):
 
       self.data.sort_value(by, axis, ascending, inplace, kind, na_position)
       return self
-
-    def update_from_cifti(self):
-        """ Construct Scalar object by reading a CIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a CIFTI file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-
-        pass
-
-
-    def update_from_nifti(self, filename):
-        """ Construct Scalar object by reading a NIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a NIFTI file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
-
-
-    def update_from_gifti(self, filename):
-        """ Construct Scalar object by reading a GIFTI file
-
-        Parameters
-        ----------
-        filename: str
-            Pathstr to a GIFTI file
-
-        Returns
-        -------
-        self: a Lines object
-        """
-        pass
