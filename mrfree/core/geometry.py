@@ -9,28 +9,32 @@ class Points(object):
     
     Attributes
     ----------
-    data:  Nx3 numpy array, points coordinates
-    id: Nx1 numpy array, id for each point
+    coords:  Nx3 numpy array, points coordinates
+    id: Nx1 numpy array,tuple or list, id for each point
     """
-    def __init__(self, data=None, id=None, src=None):
+    def __init__(self, coords, id=None):
         """
         Parameters
         ----------
-        data:  Nx3 numpy array, points coordinates
+        coords:  Nx3 numpy array, points coordinates
         id: Nx1 numpy array, id for each point
-        src: str, source of the points data
         """
-        self.data  = data
+        self.coords  = coords
+        if id is None:
+            id = range(coords.shape[0])
+        elif np.asarray(id).shape[0] != coords.shape[0]:
+            raise ValueError("id length is not equal to the length of the coords")
+
         self.id = id
 
     @property
-    def data(self):
-        return self._data
+    def coords(self):
+        return self._coords
 
-    @data.setter
-    def data(self, data):
-        assert data.ndim == 2 and data.shape[1] == 3, "data should be N x 3 np array."
-        self._data = data
+    @coords.setter
+    def coords(self, coords):
+        assert coords.ndim == 2 and coords.shape[1] == 3, "coords should be N x 3 np array."
+        self._coords = coords
 
     @property
     def id(self):
@@ -53,8 +57,8 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.data = np.vstack(self.data)
-        self.data = np.unique(self.data,axis=0)
+        self.coords = np.vstack(self.coords)
+        self.coords = np.unique(self.coords,axis=0)
         return self
 
     def intersect(self,other):
@@ -70,7 +74,7 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.data = intersect2d(self.data, other.data)
+        self.coords = intersect2d(self.coords, other.coords)
         return self
 
     def exclude(self, other):
@@ -86,7 +90,7 @@ class Points(object):
 
         """
         assert isinstance(other, Points), "other should be a Points object"
-        self.data = exclude2d(self.data, other.data)
+        self.coords = exclude2d(self.coords, other.coords)
         return self
 
     def get_center(self):
@@ -101,7 +105,7 @@ class Points(object):
 
         """
         
-        return np.mean(self.data,axis=0)
+        return np.mean(self.coords,axis=0)
 
     def update_from_image(self, image):
         """ Construct Scalar object by reading a CIFTI file
@@ -119,19 +123,19 @@ class Points(object):
         if ~isinstance(image, Image):
             image = Image(image)
 
-        self.data = image.get_roi_coords()
+        self.coords = image.get_roi_coords()
 
 
 class Lines(object):
-    def __init__(self, data, id, source=None):
+    def __init__(self, coords, id, source=None):
         """
         Parameters
         ----------
-        data: geometry data, a sequence of array.
+        coords: geometry coords, a sequence of array.
         id: the id for each array.
-        source: source of the geometry data, a string.
+        source: source of the geometry coords, a string.
         """
-        self.data = data
+        self.coords = coords
         self.id = id
         self.src = source
 
@@ -144,12 +148,12 @@ class Lines(object):
         self._src = src
 
     @property
-    def data(self):
-        return self._data
+    def coords(self):
+        return self._coords
 
-    @data.setter
-    def data(self, data):
-        self._data = data
+    @coords.setter
+    def coords(self, coords):
+        self._coords = coords
 
     @property
     def id(self):
