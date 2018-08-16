@@ -106,7 +106,7 @@ class Region(object):
         self: the intersected region
         """
 
-        assert isinstance(other, Region), "other should be a Region obejct."
+        assert isinstance(other, Region), "other is not a Region obejct."
         if hasattr(self, 'ga'):
             self.ga, idx = self.ga.intersect(other.ga)
             if hasattr(self, 'sa'):
@@ -126,14 +126,11 @@ class Region(object):
         self: the left region
         """
 
-        assert isinstance(other, Region), "other should be a Region obejct."
+        assert isinstance(other, Region), "other is not a Region obejct."
         if hasattr(self, 'ga'):
             self.ga, idx = self.ga.exclude(other)
             if hasattr(self, 'sa'):
                 self.sa = self.sa.remove(idx)
-
-            if hasattr(self, 'connection'):
-                pass
 
         return  self
 

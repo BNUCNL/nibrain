@@ -16,7 +16,7 @@ class Scalar(object):
     ndim: dimension of the data frame
     """
 
-    def __init__(self, data=None, index=None, columns=None):
+    def __init__(self, data, index=None, columns=None):
         
         """
         Initialize the data as a pands DataFrame object
@@ -195,15 +195,19 @@ class Scalar(object):
 
     def __add__(self, other):
         self.add(other)
+        return  self
 
     def __sub__(self, other):
         self.sub(other)
+        return self
 
     def __mul__(self, other):
         self.mul(other)
+        return self
 
     def __div__(self, other):
         self.div(other)
+        return self
 
     def abs(self):
         """Return a Series/DataFrame with absolute numeric value of each element.
