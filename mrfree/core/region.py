@@ -19,7 +19,7 @@ class Region(object):
     sa: Scalar object, scalar attributes of the region.
     """
 
-    def __init__(self, name, ga=None, sa=None, gs=None, ss=None):
+    def __init__(self, ga=None, sa=None, gs=None, ss=None):
         """ init the region with image, geometry, scalar attributes
         
         Parameters 
