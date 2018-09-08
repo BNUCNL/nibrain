@@ -81,15 +81,16 @@ class Tractogram(object):
                                                         data_per_point=data_per_point,affine_to_rasmm=affine_to_rasmm)
             datdat = nibtck.TckFile(tractogram=tractogram, header=header)
             datdat.save(out_path)
+        else:print("More fileformats will be supported later")
 
-    def load_data(self, tractogram=None):
+    def load_data(self, lines=None):
         """ Load fiber streamlines data from a tractography file
         Parameters
         ----------
         tractogram: str of filepath or line object
 
         """
-        if tractogram == None:
+        if not lines == None:
             self.data = self.lines.streamlines
         else:
             self.tractogram = tck.TckFile.load(tractography)
