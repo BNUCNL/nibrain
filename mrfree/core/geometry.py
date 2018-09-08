@@ -2,7 +2,8 @@
 
 import numpy as np
 from image import Image
-
+from surface import Surface
+from tractogram import Tractogram
 
 class Points(object):
     """Points represent a collection of spatial ponits
@@ -11,6 +12,7 @@ class Points(object):
     ----------
     coords:  Nx3 numpy array, points coordinates
     id: Nx1 numpy array,tuple or list, id for each point
+    src: source image or surface obejct which the coords were dervied
     """
     def __init__(self, coords, id=None, src=None):
         """
@@ -18,8 +20,9 @@ class Points(object):
         ----------
         coords:  Nx3 numpy array, points coordinates
         id: Nx1 numpy array, id for each point
-        src: source volume or surface obejct to get points
+        src: source image or surface obejct which the coords were dervied
         """
+
         self.coords  = coords
         if id is None:
             id = range(coords.shape[0])
@@ -54,15 +57,6 @@ class Points(object):
     def src(self, src):
         assert isinstance(src, Image) or isinstance(src, Surface), "src should a Image or Surface object."
         self._src = src
-
-    @property
-    def ss(self):
-        return self._ss
-
-    @ss.setter
-    def ss(self, ss):
-        assert isinstance(ss, Image) or isinstance(ss, Surface), "ss should be a Image or Surface object"
-        self._ss = ss
 
     def merge(self, other):
         """ Merge other Points object into self
@@ -134,14 +128,20 @@ class Points(object):
         
         return np.mean(self.coords,axis=0)
 
+    def save(self, filename):
+        if isinstance(self.src, Image):
+            self.src.save(filename)
+        elif isinstance(self.src, Surface):
+            self.src.save_mesh(filename)
 
 class Lines(object):
-    def __init__(self, coords, id=None):
+    def __init__(self, coords, id=None, src=None):
         """
         Parameters
         ----------
         coords: geometry coords, a sequence of array.
         id: the id for each array.
+        src: source image or surface obejct which the coords were dervied
         """
         self.coords = coords
         if id is None:
@@ -166,6 +166,15 @@ class Lines(object):
     @id.setter
     def id(self, id):
         self._id = id
+
+    @property
+    def src(self):
+        return self._src
+
+    @src.setter
+    def src(self, src):
+        assert isinstance(src, Tractogram), "src should a Tractogram object."
+        self._src = src
 
     def merge(self, other):
         """ Merge other Lines into the Lines based on the line id.
@@ -240,6 +249,9 @@ class Lines(object):
 
         """
         pass
+
+    def save(self, filename):
+        self.src.save_lines(filename)
 
 
 class Mesh(object):
