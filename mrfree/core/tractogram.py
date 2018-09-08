@@ -1,18 +1,18 @@
 from nibabel.streamlines import tck
 from nibabel import trackvis
 
-class Tractography(object):
-    """ Class Tractography represents the result of fiber tracking process.
+class Tractogram(object):
+    """ Class Tractogram represents the result of fiber tracking process.
 
         Attributes
         ----------
-        lines: streamline object from nibabel
+        lines: streamline object, such as Tckfile...
         data: image data, a 3d or 4d array
-        space: a string, native, mni152
+        space: a string, such as native, mni152
         dims: image dimensions, a 3x1 or 4x1 array
         """
 
-    def __init__(self, tractography=None, data=None, space=None):
+    def __init__(self, lines=None, data=None, space=None):
         """
         Parameters
         ----------
@@ -20,12 +20,12 @@ class Tractography(object):
         data: the scalar image data
         space: str, native, mni152
         """
-        self.tractography = tractography
+        self.lines = lines
         self.data = data
         self.space = space
 
     def load_lines(self, filename):
-        """ Load tractography from a tractography file, include tck, trk, vtk(tck file will be accepted  temporarily  )
+        """ Load tractogram from a tractography file, include tck, trk, vtk(tck file will be accepted  temporarily  )
 
         Parameters
         ----------
@@ -36,9 +36,9 @@ class Tractography(object):
         -------
         self: a Lines object
         """
-        self.tractography = tck.TckFile.load(filename)
+        self.lines = tck.TckFile.load(filename)
 
-    def save_tck(self,save_form,save_param,out_path=None):
+    def save_lines(self,save_form,out_path=None):
         """
         save streamlines data
         Parameters
@@ -73,26 +73,26 @@ class Tractography(object):
         streamlines data
         """
         if save_form == 'tck':
-            streamline = save_param[0]
-            data_per_streamline = save_param[1]
-            data_per_point = save_param[2]
-            affine_to_rasmm = save_param[3]
+            streamline = self.lines.streamlines
+            data_per_streamline = self.lines.tractogram.data_per_streamline
+            data_per_point = self.lines.tractogram.data_per_point
+            affine_to_rasmm = self.lines.tractogram.affine_to_rasmm
             tractogram = streamlines.tractogram.Tractogram(streamlines=streamline,data_per_streamline=data_per_streamline,
                                                         data_per_point=data_per_point,affine_to_rasmm=affine_to_rasmm)
             datdat = nibtck.TckFile(tractogram=tractogram, header=header)
             datdat.save(out_path)
 
-    def load_data(self, tractography=None):
+    def load_data(self, tractogram=None):
         """ Load fiber streamlines data from a tractography file
         Parameters
         ----------
-        tractography: str of filepath or line object
+        tractogram: str of filepath or line object
 
         """
-        if tractography == None:
+        if tractogram == None:
             self.data = self.lines.streamlines
         else:
-            self.tractography = tck.TckFile.load(tractography)
+            self.tractogram = tck.TckFile.load(tractography)
             self.data = self.tractography.streamlines
 
     def save_data(self, filename):
