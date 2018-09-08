@@ -13,44 +13,21 @@ class Region(object):
 
     Attributes 
     ----------
-    gs: Image or Surface object, source for geometry attributes
-    ss: Image or Surface object, source for scalar attributes
+
     ga: Points object, geometry attributs of the region
     sa: Scalar object, scalar attributes of the region.
     """
 
-    def __init__(self, ga=None, sa=None, gs=None, ss=None):
+    def __init__(self, ga=None, sa=None):
         """ init the region with image, geometry, scalar attributes
         
         Parameters 
         ----------
-        gs: Image or Surface object, source for geometry attributes
-        ss: Image or Surface object, source for scalar attributes
         ga: Points object, geometry attributs of the region
         sa: Scalar object, scalar attributes of the region.
         """
         self.ga = ga
         self.sa = sa
-        self.gs = gs
-        self.ss = ss
-
-    @property
-    def gs(self):
-        return self._gs
-
-    @gs.setter
-    def gs(self, gs):
-        assert isinstance(gs, Image) or isinstance(gs, Surface), "gs should a Image or Surface object."
-        self._gs = gs
-
-    @property
-    def ss(self):
-        return self._ss
-
-    @ss.setter
-    def ss(self, ss):
-        assert isinstance(ss, Image) or isinstance(ss, Surface), "ss should be a Image or Surface object"
-        self._ss = ss
 
     @property
     def ga(self):
