@@ -4,8 +4,6 @@
 
 from geometry import Points
 from scalar import Scalar
-from image import Image
-from surface import Surface
 
 
 class Region(object):
@@ -134,34 +132,6 @@ class Region(object):
         Returns
         -------
         self: created region object
-        """
-        pass
-
-    def save_ga(self, filename):
-        """ Save geometry attributes(ga) to persistence according to the geometry source(gs)
-
-        Parameters
-        ----------
-        filename: str
-            File pathstr to a region serializing persistence file
-        Returns
-        -------
-        bool: successful or not
-
-        """
-        pass
-
-    def save_sa(self, filename):
-        """ Save scalar attributes(sa) to persistence according to the scalar source(gs)
-
-        Parameters
-        ----------
-        filename: str
-            File pathstr to a region serializing persistence file
-        Returns
-        -------
-        bool: successful or not
-
         """
         pass
     
