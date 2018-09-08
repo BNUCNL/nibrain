@@ -12,12 +12,13 @@ class Points(object):
     coords:  Nx3 numpy array, points coordinates
     id: Nx1 numpy array,tuple or list, id for each point
     """
-    def __init__(self, coords, id=None):
+    def __init__(self, coords, id=None, src=None):
         """
         Parameters
         ----------
         coords:  Nx3 numpy array, points coordinates
         id: Nx1 numpy array, id for each point
+        src: source volume or surface obejct to get points
         """
         self.coords  = coords
         if id is None:
@@ -26,6 +27,7 @@ class Points(object):
             raise ValueError("id length is not equal to the length of the coords")
 
         self.id = id
+        self.src = src
 
     @property
     def coords(self):
@@ -43,6 +45,24 @@ class Points(object):
     @id.setter
     def id(self, id):
         self._id = id
+
+    @property
+    def src(self):
+        return self._src
+
+    @src.setter
+    def src(self, src):
+        assert isinstance(src, Image) or isinstance(src, Surface), "src should a Image or Surface object."
+        self._src = src
+
+    @property
+    def ss(self):
+        return self._ss
+
+    @ss.setter
+    def ss(self, ss):
+        assert isinstance(ss, Image) or isinstance(ss, Surface), "ss should be a Image or Surface object"
+        self._ss = ss
 
     def merge(self, other):
         """ Merge other Points object into self
