@@ -14,7 +14,7 @@ class Points(object):
     id: Nx1 numpy array,tuple or list, id for each point
     src: source image or surface obejct which the coords were dervied
     """
-    def __init__(self, coords, id=None, src=None):
+    def __init__(self, coords, id=None):
         """
         Parameters
         ----------
@@ -30,7 +30,6 @@ class Points(object):
             raise ValueError("id length is not equal to the length of the coords")
 
         self.id = id
-        self.src = src
 
     @property
     def coords(self):
@@ -48,15 +47,6 @@ class Points(object):
     @id.setter
     def id(self, id):
         self._id = id
-
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self, src):
-        assert isinstance(src, Image) or isinstance(src, Surface), "src should a Image or Surface object."
-        self._src = src
 
     def merge(self, other):
         """ Merge other Points object into self
@@ -127,13 +117,7 @@ class Points(object):
         """
         
         return np.mean(self.coords,axis=0)
-
-    def save(self, filename):
-        if isinstance(self.src, Image):
-            self.src.save(filename)
-        elif isinstance(self.src, Surface):
-            self.src.save_mesh(filename)
-
+    
 class Lines(object):
     def __init__(self, coords, id=None, src=None):
         """
