@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 import numpy as np
-from image import Image
-from surface import Surface
-from tractogram import Tractogram
 
 class Points(object):
     """Points represent a collection of spatial ponits
@@ -117,15 +114,14 @@ class Points(object):
         """
         
         return np.mean(self.coords,axis=0)
-    
+
 class Lines(object):
-    def __init__(self, coords, id=None, src=None):
+    def __init__(self, coords, id=None):
         """
         Parameters
         ----------
         coords: geometry coords, a sequence of array.
         id: the id for each array.
-        src: source image or surface obejct which the coords were dervied
         """
         self.coords = coords
         if id is None:
@@ -150,15 +146,6 @@ class Lines(object):
     @id.setter
     def id(self, id):
         self._id = id
-
-    @property
-    def src(self):
-        return self._src
-
-    @src.setter
-    def src(self, src):
-        assert isinstance(src, Tractogram), "src should a Tractogram object."
-        self._src = src
 
     def merge(self, other):
         """ Merge other Lines into the Lines based on the line id.
@@ -233,9 +220,6 @@ class Lines(object):
 
         """
         pass
-
-    def save(self, filename):
-        self.src.save_lines(filename)
 
 
 class Mesh(object):
