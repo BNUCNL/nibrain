@@ -2,7 +2,6 @@
 
 from geometry import Lines
 from scalar import Scalar
-from image import Image
 
 
 class Tract(object):
@@ -10,26 +9,20 @@ class Tract(object):
 
     Attributes 
     ----------
-    gs: Tractogram object, source for geometry attributes
-    ss: Image or Tractogram object, source for scalar attributes
     ga: Lines object, geometry attributs of the tract
     sa: Scalar object, scalar attributes of the tract.
     """
 
-    def __init__(self, ga=None, sa=None, gs=None, ss=None):
+    def __init__(self, ga=None, sa=None):
         """ init the tract with image, geometry, and scalar attributes
 
         Parameters 
         ----------
-        gs: Tractogram object, source for geometry attributes
-        ss: Image or Tractogram object, source for scalar attributes
         ga: Lines object, geometry attributs of the tract
         sa: Scalar object, scalar attributes of the tract.
         """
         self.ga = ga
         self.sa = sa
-        self.gs = gs
-        self.ss = ss
 
     @property
     def ga(self):
@@ -48,24 +41,7 @@ class Tract(object):
     def sa(self, sa):
         assert isinstance(sa, Scalar), "sa should be a Scalar object"
         self._sa = sa
-        
-    @property
-    def gs(self):
-        return self._gs
 
-    @gs.setter
-    def gs(self, gs):
-        assert isinstance(gs, Image), "gs should be a Tractogram object"
-        self._gs = gs
-    
-    @property
-    def ss(self):
-        return self._ss
-
-    @ss.setter
-    def ss(self, ss):
-        assert isinstance(ss, Image), "ss should be a Image or Tractogram object"
-        self._ss = ss
         
     def merge(self, other, axis=0):
         """ Merge other tract into the tract based on the line id from geometry attributes.
@@ -159,36 +135,6 @@ class Tract(object):
 
     def save(self, filename):
         """ save tract object to a serializing persistence file(Jason or pickle file)
-
-        Parameters
-        ----------
-        filename: str
-            File pathstr to a tract serializing persistence file
-
-        Returns
-        -------
-
-        """
-
-        pass
-
-    def save_sa(self, filename):
-        """ save tract scalar attributes to a scalar image file according to the scalar source(ss)
-
-        Parameters
-        ----------
-        filename: str
-            File pathstr to a tract serializing persistence file
-
-        Returns
-        -------
-
-        """
-
-        pass
-
-    def save_ga(self, filename):
-        """ save tract geometry attributes to a tractogram file according to the geometry source(gs)
 
         Parameters
         ----------
