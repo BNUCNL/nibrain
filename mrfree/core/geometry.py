@@ -147,13 +147,39 @@ class Lines(object):
     def id(self, id):
         self._id = id
 
+    def get_toi_data(self, toi=None):
+        """Get the coordinates of the node within a toi
+
+        Parameters
+        ----------
+        toi, a toi include the fiber id of interest
+        if toi == None, return data from all vertices on the surface
+        Returns
+        -------
+        data: NxT numpy array, scalar value from the toi
+        """
+        pass
+
+    def get_toi_lines(self, toi=None):
+        """ Get the coordinates of the node within a toi
+
+        Parameters
+        ----------
+        toi, a toi include the fiber id of interest
+
+        Returns
+        -------
+        lines: arraysequence, streamline from the toi
+        """
+        pass
+
     def merge(self, other):
         """ Merge other Lines into the Lines based on the line id.
 
         Parameters
         ----------
         other: Lines object, another lines
-        axis: integer, 0 or 1
+    axis: integer, 0 or 1
 
         Return
         ----------
