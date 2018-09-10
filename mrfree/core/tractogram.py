@@ -1,3 +1,4 @@
+import os
 from nibabel.streamlines import tck
 from nibabel import trackvis
 
@@ -25,7 +26,7 @@ class Tractogram(object):
         self.space = space
 
     def load_lines(self, filename):
-        """ Load tractogram from a tractography file, include tck, trk, vtk(tck file will be accepted  temporarily  )
+        """ Load tractogram from a tractography file, include tck, trk, vtk)
 
         Parameters
         ----------
@@ -36,7 +37,12 @@ class Tractogram(object):
         -------
         self: a Lines object
         """
-        self.lines = tck.TckFile.load(filename)
+        if os.path.splitext(filename)[-1] == ".tck":
+            self.lines = tck.TckFile.load(filename)
+        elif os.path.splitext(filename)[-1] == ".trk":
+            self.lines = trackvis.read(filename, points_space="rasmm")
+        else:
+            print('No more formats are now supported.')
 
     def save_lines(self,save_form,out_path=None):
         """
@@ -81,7 +87,7 @@ class Tractogram(object):
                                                         data_per_point=data_per_point,affine_to_rasmm=affine_to_rasmm)
             datdat = nibtck.TckFile(tractogram=tractogram, header=header)
             datdat.save(out_path)
-        else:print("More fileformats will be supported later")
+        else:print("More formats will be supported later")
 
     def load_data(self, lines=None):
         """ Load fiber streamlines data from a tractography file
@@ -90,11 +96,7 @@ class Tractogram(object):
         tractogram: str of filepath or line object
 
         """
-        if not lines == None:
-            self.data = self.lines.streamlines
-        else:
-            self.tractogram = tck.TckFile.load(tractography)
-            self.data = self.tractography.streamlines
+        pass
 
     def save_data(self, filename):
         """ Save tractogram scalar data to a tractogram scalar file
@@ -108,19 +110,6 @@ class Tractogram(object):
         bool: sucessful or not
         """
         pass
-    
-    def get_toi_data(self, toi=None):
-        """Get the coordinates of the node within a toi
-
-        Parameters
-        ----------
-        toi, a toi include the fiber id of interest
-        if toi == None, return data from all vertices on the surface
-        Returns
-        -------
-        data: NxT numpy array, scalar value from the toi
-        """
-        pass
 
     def get_toi_lines(self, toi=None):
         """ Get the coordinates of the node within a toi
@@ -132,5 +121,24 @@ class Tractogram(object):
         Returns
         -------
         lines: arraysequence, streamline from the toi
+        """
+        lines_geometry = []
+        if toi == None:
+            lines_geometry = self.lines.streamlines
+        else:
+            for i in toi:
+                lines_geometry.append(self.lines.streamlines)
+        return lines_geometry
+
+    def get_toi_data(self, toi=None):
+        """Get the coordinates of the node within a toi
+
+        Parameters
+        ----------
+        toi, a toi include the fiber id of interest
+        if toi == None, return data from all vertices on the surface
+        Returns
+        -------
+        data: NxT numpy array, scalar value from the toi
         """
         pass

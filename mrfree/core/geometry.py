@@ -127,7 +127,7 @@ class Lines(object):
         if id is None:
             id = range(len(coords))
         elif np.asarray(id).shape[0] != len(coords):
-            raise ValueError("id length is not equal to the length of the coords")
+            raise ValueError("id length is not equal to the number of the fibers")
 
         self.id = id
 
