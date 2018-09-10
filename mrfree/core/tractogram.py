@@ -25,7 +25,7 @@ class Tractogram(object):
         self.space = space
 
     def load_lines(self, filename):
-        """ Load tractogram from a tractography file, include tck, trk, vtk(tck file will be accepted  temporarily  )
+        """ Load tractogram from a tractography file, include tck, trk, vtk)
 
         Parameters
         ----------
@@ -36,7 +36,12 @@ class Tractogram(object):
         -------
         self: a Lines object
         """
-        self.lines = tck.TckFile.load(filename)
+        if filename.endswith(('.tck')):
+            self.lines = tck.TckFile.load(filename)
+        elif filename.endswith(('.trk')):
+            self.lines = trackvis.read(filename, points_space="rasmm")
+        else:
+            print('No more formats are now supported.')
 
     def save_lines(self,save_form,out_path=None):
         """
@@ -89,9 +94,7 @@ class Tractogram(object):
         Parameters
         ----------
         tractogram: str of filepath or line object
-
         """
-
         if self.lines is None:
             print("Lines is still empty")
             return None
@@ -100,7 +103,6 @@ class Tractogram(object):
             self.data = tck.TckFile.load(filename)
         else:
             pass
-
 
     def save_data(self, filename):
         """ Save tractogram scalar data to a tractogram scalar file
@@ -139,4 +141,10 @@ class Tractogram(object):
         -------
         lines: arraysequence, streamline from the toi
         """
-        pass
+        lines_geometry = []
+        if toi == None:
+            lines_geometry = self.lines.streamlines
+        else:
+            for i in toi:
+                lines_geometry.append(self.lines.streamlines)
+        return lines_geometry
