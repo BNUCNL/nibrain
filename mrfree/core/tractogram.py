@@ -7,7 +7,7 @@ class Tractogram(object):
         Attributes
         ----------
         lines: streamline object, such as Tckfile...
-        data: image data, a 3d or 4d array
+        data: streamline object, a squence of array
         space: a string, such as native, mni152
         dims: image dimensions, a 3x1 or 4x1 array
         """
@@ -81,20 +81,26 @@ class Tractogram(object):
                                                         data_per_point=data_per_point,affine_to_rasmm=affine_to_rasmm)
             datdat = nibtck.TckFile(tractogram=tractogram, header=header)
             datdat.save(out_path)
-        else:print("More fileformats will be supported later")
+        else:
+            print("More fileformats will be supported later")
 
-    def load_data(self, lines=None):
+    def load_data(self, filename):
         """ Load fiber streamlines data from a tractography file
         Parameters
         ----------
         tractogram: str of filepath or line object
 
         """
-        if not lines == None:
-            self.data = self.lines.streamlines
+
+        if self.lines is None:
+            print("Lines is still empty")
+            return None
+
+        if filename.endswith(('.tck')):
+            self.data = tck.TckFile.load(filename)
         else:
-            self.tractogram = tck.TckFile.load(tractography)
-            self.data = self.tractography.streamlines
+            pass
+
 
     def save_data(self, filename):
         """ Save tractogram scalar data to a tractogram scalar file
