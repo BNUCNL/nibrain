@@ -141,10 +141,8 @@ class Tractogram(object):
         -------
         lines: arraysequence, streamline from the toi
         """
-        lines_geometry = []
         if toi == None:
-            lines_geometry = self.lines.streamlines
+            toi_lines = self.lines.streamlines
         else:
-            for i in toi:
-                lines_geometry.append(self.lines.streamlines)
-        return lines_geometry
+            toi_lines = [self.lines.streamlines[i] for i in toi]
+        return toi_lines

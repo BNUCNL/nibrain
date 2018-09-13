@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+from nibabel.streamlines import tck
+from dipy.segment.clustering import QuickBundle
 import numpy as np
 
 class Points(object):
@@ -20,13 +21,13 @@ class Points(object):
         src: source image or surface obejct which the coords were dervied
         """
 
-        self.coords  = coords
+        self._coords  = coords
         if id is None:
             id = range(coords.shape[0])
         elif np.asarray(id).shape[0] != coords.shape[0]:
             raise ValueError("id length is not equal to the length of the coords")
 
-        self.id = id
+        self._id = id
 
     @property
     def coords(self):
@@ -123,13 +124,18 @@ class Lines(object):
         coords: geometry coords, a sequence of array.
         id: the id for each array.
         """
-        self.coords = coords
+        if isinstance(coords, tck.ArraySequence):
+            self._coords = coords
+        elif coords.data.shape[1] == 3:
+            self._coords = coords
+        else:
+            raise ValueError("Data dimension is false.")
+        self._coords = coords
         if id is None:
             id = range(len(coords))
         elif np.asarray(id).shape[0] != len(coords):
             raise ValueError("id length is not equal to the length of the coords")
-
-        self.id = id
+        self._id = id
 
     @property
     def coords(self):
@@ -137,7 +143,12 @@ class Lines(object):
 
     @coords.setter
     def coords(self, coords):
-        self._coords = coords
+        if isinstance(coords, tck.ArraySequence):
+            self._coords = coords
+        elif coords.data.shape[1] == 3:
+            self._coords = coords
+        else:
+            raise ValueError("Data dimension is false.")
 
     @property
     def id(self):
@@ -171,7 +182,11 @@ class Lines(object):
         -------
         lines: arraysequence, streamline from the toi
         """
-        pass
+        if toi == None:
+            toi_lines = self.lines.streamlines
+        else:
+            toi_lines = [self.lines.streamlines[i] for i in toi]
+        return toi_lines
 
     def merge(self, other):
         """ Merge other Lines into the Lines based on the line id.
@@ -189,7 +204,7 @@ class Lines(object):
         self.coords = np.vstack((self.coords, other.coords))
         self.id = np.vstack((self.id, other.id))
         self.id, idx = np.unique(self.id, return_index=True)
-        self.coords = self.coords[idx, :]
+        self.coords = self.coords[idx,:]
         pass
 
     def intersect(self,other):
@@ -223,7 +238,7 @@ class Lines(object):
         del self.coords[np.nonzero(idx)]
 
     def equidistant_resample(self, num_segment):
-        """ Resample the Lines with equidistantance
+        """ Resample the Lines with eistantance points
         
         Parameters
         ----------
@@ -231,22 +246,36 @@ class Lines(object):
 
         Returns
         -------
-        
-        self: a resampled Lines
-
+        resample_result: N x num x 3 list of array,num is num_segment.
         """
-        pass
+        num_lines = range(len(self.coords))
+        resample_result = []
+        # Resample every fiber to num_segment points
+        for i in num_lines:
+            i_lines = self.coords[i]
+            i_lines_len = len(i_lines)
+            interval = (i_lines_len - 1) / (num_segment - 1)          #calculate the interval of every points
+            resample_index = [int(round(num * interval)) for num in range(num_segment)]
+            i_resample_result = [self.coords[i][point][:] for point in resample_index]
+            resample_result.append(i_resample_result)
+        return resample_result
 
-    def skeleton(self):
+    def skeleton(self,dis=500):
         """Find the skeletion of the line set
-        
+
+        Paraments:
+        -------
+        dis: the threshold of distance between two fiber,
+             it controls whether the fibers will be clustering into one line set.
+             default value = 500
         Returns
         -------
-        skeleton: a Line object
-
+        fiber_skeleton: a centroid of fiber,a Line object
         """
-        pass
-
+        qb_streamline = QuickBundles(dis)
+        fiber_clusters = qb_streamline.cluster(self.coords)
+        fiber_skeleton = fiber_clusters.centroid
+        return fiber_skeleton
 
 class Mesh(object):
     """Mesh class represents geometry mesh
@@ -257,7 +286,6 @@ class Mesh(object):
         faces
 
     """
-    
     def __init__(self, vertices, faces):
         self.vertices = vertices
         self.faces = faces
