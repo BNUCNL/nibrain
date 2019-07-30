@@ -1,334 +1,163 @@
 #!/usr/bin/env python
 
 # region class
-import numpy as np
-from mrfree.core.geometry import Geometry, Scalar, Connection
-from mrfree.io import load
+
+from geometry import Points
+from scalar import Scalar
 
 
 class Region(object):
-    """
-    Region class that stores data and provides analysis methods.
+    """ Region class represents data related to anatomical and functional regions of the brain.
 
-    Parameters
+    Attributes 
     ----------
-    name: name of region, type: string.
-    layer: layer number of region, type: string.
-    source: source of region, type: string.
-    space: space of region, type: string
 
-    xform: transform matrix of region
-    anat_coords: coords of region, should be N*3 array.
-    geometry: geometry attributes, should be an instance of class Geometry.
-    scalar: scalar attributes, should be an instance of class Scalar.
-    connection: connection attributes, should be an instance of class Connection.
-    """
-    def __init__(self, name, layer='L1-6', source=None, space='native'):
-        """
-        Init Region for further usage.
-
-        Parameters
-        ----------
-        name: name of region, type: string.
-        layer: layer number of region, type: string.
-        source: source of region, type: string.
-        space: space of where this region exists, type: string
-        """
-        self.name = name
-        self.layer = layer
-        self.source = source
-        self.space = space
-
-    @property
-    def name(self):
-        """
-        Get name of region.
-
-        Return
-        ------
-        Name of region.
-        """
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        """
-        Set name of region, input should be string.
-
-        Parameters
-        ----------
-        name: name of region, type: string.
-        """
-        assert isinstance(name, str), "Input 'name' should be string."
-        self._name = name
-
-    @property
-    def layer(self):
-        return self._layer
-
-    @layer.setter
-    def layer(self, layer):
-        self._layer = str(layer)
-
-    @property
-    def source(self):
-        return self._source
-
-    @source.setter
-    def source(self, source):
-        if source:
-            assert isinstance(source, str), "Input 'source' should be string."
-        self._source = source
-
-    @property
-    def xform(self):
-        return self._xform
-
-    @xform.setter
-    def xform(self, xform):
-        assert xform.shape == (4, 4), "Shape of xform should be (4, 4)"
-        self._xform = xform
-
-    @property
-    def anat_coords(self):
-        return self._anat_coords
-
-    @anat_coords.setter
-    def anat_coords(self, anat_coords):
-        assert anat_coords.shape[1] == 3, "The shape of input should be (N, 3)."
-        self._anat_coords = anat_coords
-
-    @property
-    def geometry(self):
-        return self._geometry
-
-    @geometry.setter
-    def geometry(self, geometry):
-        assert isinstance(geometry, Geometry), "Input 'geometry' should be an instance of Geometry."
-        self._geometry = geometry
-
-    @property
-    def scalar(self):
-        return self._scalar
-
-    @scalar.setter
-    def scalar(self, scalar):
-        assert isinstance(scalar, Scalar), "Input 'scalar' should be an instance of Scalar."
-        self._scalar = scalar
-
-    @property
-    def connection(self):
-        return self._connection
-
-    @connection.setter
-    def connection(self, connection):
-        assert isinstance(connection, Connection), "Input 'connection' should be an instance of Connection."
-        self._connection = connection
-
-    @staticmethod
-    def extract(array1, array2, method='unique'):
-        """
-        Compare and extract rows from array2 if it suits requirement.
-        Notice that compare is affected by the order of row in array1 and array2, for example:
-            [1, 2, 3] and [3, 2, 1] is different in this method.
-
-        Parameters
-        ----------
-        array1: target array that be compared with.
-        array2: source array that used for loop and compare.
-        method: decide to get common part unique part in array2.
-                keyword: 'unique' for unique row that in array2 and not in array1.
-                keyword: 'common' for common row that in both array1 and array2.
-
-        Return
-        ------
-        index: index of rows that meets requirement in array2.
-        """
-        assert isinstance(method, str), 'method should be string.'
-        assert method in ['common', 'unique'], 'Wrong method name.'
-
-        index = []
-        for i, n in enumerate(array2):
-            if method == 'common':
-                if np.any(np.all(n == array1, axis=1)):  # equal
-                    index.append(i)
-            if method == 'unique':
-                if not np.any(np.all(n == array1, axis=1)):  # unique
-                    index.append(i)
-        return np.array(index)
-
-    def union(self, region):
-        """
-        Merge another region into self.
-
-        Parameters
-        ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
-        """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
-
-        idx = self.extract(self.anat_coords, region.anat_coords, method='unique')
-        self.anat_coords = np.append(self.anat_coords, region.anat_coords[idx], axis=0)
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = np.append(self.geometry.coords, region.geometry.coords[idx], axis=0)
-            self.geometry.faces = np.append(self.geometry.faces, region.geometry.faces[idx], axis=0)
-            self.geometry.index = np.append(self.geometry.index, region.geometry.index[idx], axis=0)
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = np.append(self.scalar.data, region.scalar.data[idx], axis=0)
-
-        if hasattr(self, 'connection'):
-            pass
-
-    def intersect(self, region):
-        """
-        Intersect another region into self.
-
-        Parameters
-        ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
-        """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
-
-        idx = self.extract(region.anat_coords, self.anat_coords, method='common')
-        self.anat_coords = self.anat_coords[idx]
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[idx]
-            self.geometry.faces = self.geometry.faces[idx]
-            self.geometry.index = self.geometry.index[idx]
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[idx]
-
-        if hasattr(self, 'connection'):
-            pass
-
-    def exclude(self, region):
-        """
-        Exclude another region out of self, which also means keep the unique part of self.
-
-        Parameters
-        ----------
-        region: an instance of Region class, its layer and space should be the same as this region class.
-        """
-        assert self.layer == region.layer, "Layer of regions do not match."
-        assert self.space == region.space, "Space of regions do not match."
-
-        idx = self.extract(region.anat_coords, self.anat_coords, method='unique')
-        self.anat_coords = self.anat_coords[idx]
-
-        if hasattr(self, 'geometry'):
-            self.geometry.coords = self.geometry.coords[idx]
-            self.geometry.faces = self.geometry.faces[idx]
-            self.geometry.index = self.geometry.index[idx]
-
-        if hasattr(self, 'scalar'):
-            self.scalar.data = self.scalar.data[idx]
-
-        if hasattr(self, 'connection'):
-            pass
-
-    @property
-    def centroid(self):
-        """
-        Calculate centroid of region in its property.
-
-        Return
-        ------
-        cen: region class that contain properties of center point.
-        """
-        cen = Region(name=self.name, layer=self.layer, source=self.source, space=self.space)
-        cen.xform = self.xform
-        cen.anat_coords = self.centroid_anat_coords
-        if hasattr(self, 'geometry'):
-            cen.geometry = self.geometry.centroid
-
-        # TODO scalar.centroid, connection.centroid
-        cen.scalar = self.scalar.centroid
-        cen.connection = self.connection.centroid
-        return cen
-
-    @property
-    def centroid_anat_coords(self):
-        """
-        Calculate centroid of region's anat_coords.
-
-        Return
-        ------
-        cen_anat_coords: centroid of anat_coords in region.
-        """
-        # TODO specify mean method.
-        cen_anat_coords = np.mean(self.anat_coords, axis=1)
-        return cen_anat_coords
-
-
-class SurfaceRegion(Region):
+    ga: Points object, geometry attributs of the region
+    sa: Scalar object, scalar attributes of the region.
     """
 
-    """
-    def load_geometry(self, name, surf_file, surf_label_file=None):
+    def __init__(self, ga=None, sa=None):
+        """ init the region with image, geometry, scalar attributes
+        
+        Parameters 
+        ----------
+        ga: Points object, geometry attributs of the region
+        sa: Scalar object, scalar attributes of the region.
         """
-        Load surf info into Geometry by load function.
+        self.ga = ga
+        self.sa = sa
+
+    @property
+    def ga(self):
+        return self._ga
+
+    @ga.setter
+    def ga(self, ga):
+        assert isinstance(ga, Points), "ga should be a Points obejct."
+        self._ga = ga
+
+    @property
+    def sa(self):
+        return self._sa
+
+    @sa.setter
+    def sa(self, sa):
+        assert isinstance(sa, Scalar), "sa should be a Scalar object"
+        self._sa = sa
+
+    def merge(self, other, axis=0):
+        """ Merge other region into the region.
 
         Parameters
         ----------
-        name: the name of where geometry indicated, like 'inflated', 'sphere' etc.
-        surf_file: Surface file path, specified as a filename (single file).
-        surf_label_file: Surface label file path, specified as a filename (single file).
-        """
-        coords, faces, label = load.load_surf_geom(surf_file, surf_label_file)
-        self.geometry = Geometry(name, coords, faces, label)
+        other: a Region object, another region
+        axis: integer, 0 or 1
 
-    def load_scalar(self, name, surf_file, surf_label_file=None):
+        Return
+        ----------
+        self: merged region
         """
-        Load scalar data into Scalar by load function.
+        assert isinstance(other, Region), "other should be a Region obejct."
+        if axis == 0: # merge both ga and sa in rows
+            if hasattr(self, 'ga'):
+                self.ga = self.ga.merge(other.ga)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.append(other.sa)
+        else: # only merge sa in column
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.join(other.sa)
+
+        return  self
+
+    def intersect(self, other):
+        """ Intersect with other region
 
         Parameters
         ----------
-        name: A string or list as identity of scalar data.
-        surf_file: Surface file path, specified as a filename (single file).
-        surf_label_file: Surface label file path, specified as a filename (single file).
-        """
-        data = load.load_surf_scalar(surf_file, surf_label_file)
-        self.scalar = Scalar(name, data)
+        other: a Region object, another region
 
-    def save(self, save_path):
+        Return
+        ----------
+        self: the intersected region
+        """
+
+        assert isinstance(other, Region), "other is not a Region obejct."
+        if hasattr(self, 'ga'):
+            self.ga, idx = self.ga.intersect(other.ga)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.remove(idx)
+
+        return self
+
+    def exclude(self, other):
+        """ Exclude other region from the region.
+
+        Parameters
+        ----------
+        other: a Region object, another region
+
+        Return
+        ----------
+        self: the left region
+        """
+
+        assert isinstance(other, Region), "other is not a Region obejct."
+        if hasattr(self, 'ga'):
+            self.ga, idx = self.ga.exclude(other)
+            if hasattr(self, 'sa'):
+                self.sa = self.sa.remove(idx)
+
+        return  self
+
+    def centralize(self):
+        if hasattr(self, 'ga'):
+            self.ga = self.ga.get_center()
+        if hasattr(self,'sa'):
+            self.sa = self.sa.mean()
+
+        return self
+
+    def create_from_scratch(self, gs=None, ss=None, roi=None):
+        """ Create region object from raw data which contain the image, geometry and scalar information of the region
+
+        Parameters
+        ----------
+        gs:  a Image or Surface object, or a pathstr to a surface or image file
+            The source for ga
+        ss:  a Image or Surface object, or a pathstr to a surface or image file
+            The source for sa
+        roi:  a Image or Surface object, or a pathstr to a surface or image file
+            The mask image, representing spatial location of the region
+
+        Returns
+        -------
+        self: created region object
+        """
+        pass
+    
+    def load(self, filename):
+        """ Load region object from serializing persistence file(Jason or pickle file)
+
+        Parameters
+        ----------
+        filename: str
+            File pathstr to a region serializing persistence file
+        Returns
+        -------
+        self: Tract object
+
+        """
         pass
 
-
-class VolumeRegion(Region):
-    """
-
-    """
-    def load_geometry(self, vol_file, vol_mask_file=None):
-        """
-        Load volume geometry by load function.
+    def save(self, filename):
+        """ save region object to a serializing persistence file(Jason or pickle file)
 
         Parameters
         ----------
-        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
-        """
-        coords, xform = load.load_vol_geom(vol_file, vol_mask_file)
-        self.xform = xform
-        self.anat_coords = coords
+        filename: str
+            File pathstr to a region serializing persistence file
 
-    def load_scalar(self, name, vol_file, vol_mask_file=None):
+        Returns
+        -------
+        bool: sucessful or not
         """
-        Load volume scalar by load function.
-
-        Parameters
-        ----------
-        name: A string or list as identity of scalar data.
-        vol_file : Volume file path. Nifti dataset, specified as a filename (single file).
-        vol_mask_file: Volume mask file path. Nifti dataset, specified as a filename (single file).
-        """
-        data = load.load_vol_scalar(vol_file, vol_mask_file)
-        self.scalar = Scalar(name, data)
-
-    def save(self, save_path):
-        pass
