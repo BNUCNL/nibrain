@@ -1,0 +1,109 @@
+#! /usr/bin/env python
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
+
+import os
+import os.path
+import glob
+import shutil
+import logging
+import argparse
+import subprocess
+
+
+from pynit.base import get_runs, get_logger
+
+def main():
+    """
+    rm-sess: remove specified files in session or run level    
+    Author : Zonglei Zhen, Xiangzhen Kong 
+
+    """
+    parser = argparse.ArgumentParser(description='cp files from session\
+                                    or run.', prog='cp-sess')
+    parser.add_argument('-sf',  
+                    type=argparse.FileType('r'),
+                    metavar='sessid file',
+                    required=True,
+                    help='session id file')
+    parser.add_argument('-df', 
+                    type=argparse.FileType('r'),
+                    metavar='sesspardir file',
+                    required=True,
+                    help='session parent directory file')
+    parser.add_argument('-level', 
+                    choices=['sess','run'],
+                    required=True,
+                    help='session or run.')
+    parser.add_argument('-cpfile', 
+                    required=True,
+                    help='The files or dirs to be copied(relative path to he specified level).')
+    parser.add_argument('-rlf',  
+                    default='',
+                    help='run list file name, \
+                            default all runs in subDir(file name).')
+    parser.add_argument('-fsd',  
+                    default='',
+                    help='A functional subdir or other subdir(dir name).')
+    parser.add_argument('-tfsd',
+                    default='',
+                    help='target functional subdir, if ommited, all file will be copied into one flat dir')
+    parser.add_argument('-v',
+                    action='version',
+                    version = '%(prog)s 0.2')
+    
+    
+    args = parser.parse_args()
+    logger = get_logger('cp-sess.log')
+    logger.debug(args)
+    logger.info('Now, run!')
+
+    #if not os.path.exists(args.df):
+    #    logger.error('{0} does not exist'.format(args.df))
+    #elif not os.path.exists(args.sf):
+    #    logger.error('{0} does not exist'.format(args.sf))        
+         
+    sesspard = args.df.readline().strip()        
+    cupath = os.path.abspath('.')
+
+    if args.level == 'run':
+        logger.info('cp in run level: {0}'.format(args.cpfile))
+        for sess in args.sf:
+            sess = sess.strip()
+            if not sess:
+                continue
+            fsd = os.path.join(sesspard, sess, args.fsd)
+            for run in get_runs(args.rlf,os.path.join(sesspard, sess, args.fsd)):
+                cpfile = os.path.join(sesspard, sess, args.fsd, run, args.cpfile)
+                print(cpfile)
+                if os.path.isdir(cpfile):
+                    shutil.copytree(cpfile, '.')
+                else:
+                    for f in glob.glob(cpfile):
+                        copy_name = os.path.join(cupath, sess+'_'+run+'_'+os.path.basename(f))
+                        shutil.copy2(f, copy_name)
+                logger.info('{0} was copied for {1}-{2}'.format(args.cpfile, sess, run))
+            
+    elif args.level == 'sess':
+        logger.info('cp in session level: {0}'.format(args.cpfile))
+        for sess in args.sf:
+            sess = sess.strip()
+            if not sess:
+                continue
+            cpfile = os.path.join(sesspard, sess, args.cpfile)
+            if os.path.isdir(cpfile):
+                shutil.copytree(cpfile, '.')
+            else:
+                for f in glob.glob(cpfile):
+                    if args.tfsd:
+                        copy_name = os.path.join(cupath, sess, args.tfsd)
+                        if not os.path.exists(copy_name):
+                            os.makedirs(copy_name)
+                        copy_name = os.path.join(copy_name, os.path.basename(f))
+                    else:
+                        copy_name = os.path.join(cupath, sess+'_'+os.path.basename(f))
+                    shutil.copy2(f, copy_name)
+            logger.info('{0} was copied for {1}'.format(args.cpfile, sess))
+
+if __name__ == '__main__':
+    main()
