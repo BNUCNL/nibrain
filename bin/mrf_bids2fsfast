@@ -1,109 +1,164 @@
 #! /usr/bin/env python
-# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
-# vi: set ft=python sts=4 ts=4 sw=4 et:
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+"""Clone data of interest from data repo, including stem.nii stem.nii.gz and
+*ev files
+
+Author: Yangzetian @ BNU/BUAA
+Reviewer: Lijie Huang @ BNU
+
+Update:
+    2017/07/19, updated by Taicheng Huang @ BNU
+                add a parameter -symlink to make it feasible to create soft link but not copy file
+"""
 
 import os
-import os.path
 import glob
 import shutil
 import logging
 import argparse
 import subprocess
 
+from pynit.base import get_runs
 
-from pynit.base import get_runs, get_logger
+
+def get_files(stem, run_dir):
+    files = glob.glob(os.path.join(run_dir, stem+'.nii.gz'))
+    files.extend(glob.glob(os.path.join(run_dir, stem+'.nii')))
+    files.extend(glob.glob(os.path.join(run_dir, '*.ev')))
+    files.extend(glob.glob(os.path.join(run_dir, '*.par')))
+    return files
+
+def mkdirs(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+def copy_wraper(cmd, src_dir):
+    try:
+        eval(cmd)
+    except OSError as (errno, strerror):
+        if strerror == 'File exists':
+            print 'Warning: {0}: {1}'.format(strerror, src_dir)
+            logging.warning(strerror+': '+src_dir)
+        else:
+            print 'Error: {0}: {1}'.format(strerror, src_dir)
+            logging.error(strerror+': '+src_dir)
+    except IOError as (errno, strerror):
+        print 'Error: {0}: {1}'.format(strerror, src_dir)
+        logging.error(strerror+': '+src_dir)
+    else:
+        logging.info('copied {0}'.format(src_dir))
 
 def main():
-    """
-    rm-sess: remove specified files in session or run level    
-    Author : Zonglei Zhen, Xiangzhen Kong 
+    nsp = '/nfs/t1/nspnifti/nii'
+    parser = argparse.ArgumentParser(description="Clone sessions to current directory")
+    parser.add_argument('-df',
+                        type=argparse.FileType('r'),
+                        help='file record source data directory',
+                        metavar='sessparentdirfile')
+    parser.add_argument('-sf',
+                        type=argparse.FileType('r'),
+                        required=True,
+                        help='session id file, each row contains a sessionid',
+                        metavar='sessidfile')
+    parser.add_argument('-fsd',
+                        required=True,
+                        help='functional subdirectory in each session',
+                        metavar='func_subdir')
+    parser.add_argument('-rlf',
+                        help='functional rlf, rlf file should be located in '
+                             'fsd, if supplied , the rlf file will also be '
+                             'copied (default: all runs in the fsd)',
+                        metavar='runlist_file')
+    parser.add_argument('-stem',
+                        help='image name WITHOUT suffix(.nii, .nii.gz) in your '
+                             'run directory',
+                        metavar='img')
+    parser.add_argument('-asd',
+                        help='full anatomical subdirectory',
+                        metavar='anat_subdir')
+    parser.add_argument('-clean',
+                        action='store_true',
+                        help='Be CAREFULL! if add this option, ALL FILES in current directory will'
+                             ' be cleaned first!')
+    parser.add_argument('-symlink',
+                        action='store_true',
+                        help='copy with symlink or not, add this option to copy SYMLINK but not HARDLINK')
 
-    """
-    parser = argparse.ArgumentParser(description='cp files from session\
-                                    or run.', prog='cp-sess')
-    parser.add_argument('-sf',  
-                    type=argparse.FileType('r'),
-                    metavar='sessid file',
-                    required=True,
-                    help='session id file')
-    parser.add_argument('-df', 
-                    type=argparse.FileType('r'),
-                    metavar='sesspardir file',
-                    required=True,
-                    help='session parent directory file')
-    parser.add_argument('-level', 
-                    choices=['sess','run'],
-                    required=True,
-                    help='session or run.')
-    parser.add_argument('-cpfile', 
-                    required=True,
-                    help='The files or dirs to be copied(relative path to he specified level).')
-    parser.add_argument('-rlf',  
-                    default='',
-                    help='run list file name, \
-                            default all runs in subDir(file name).')
-    parser.add_argument('-fsd',  
-                    default='',
-                    help='A functional subdir or other subdir(dir name).')
-    parser.add_argument('-tfsd',
-                    default='',
-                    help='target functional subdir, if ommited, all file will be copied into one flat dir')
-    parser.add_argument('-v',
-                    action='version',
-                    version = '%(prog)s 0.2')
-    
-    
     args = parser.parse_args()
-    logger = get_logger('cp-sess.log')
-    logger.debug(args)
-    logger.info('Now, run!')
 
-    #if not os.path.exists(args.df):
-    #    logger.error('{0} does not exist'.format(args.df))
-    #elif not os.path.exists(args.sf):
-    #    logger.error('{0} does not exist'.format(args.sf))        
-         
-    sesspard = args.df.readline().strip()        
-    cupath = os.path.abspath('.')
+    if args.clean:
+        subprocess.call('rm -r *', shell=True)
 
-    if args.level == 'run':
-        logger.info('cp in run level: {0}'.format(args.cpfile))
-        for sess in args.sf:
-            sess = sess.strip()
-            if not sess:
-                continue
-            fsd = os.path.join(sesspard, sess, args.fsd)
-            for run in get_runs(args.rlf,os.path.join(sesspard, sess, args.fsd)):
-                cpfile = os.path.join(sesspard, sess, args.fsd, run, args.cpfile)
-                print(cpfile)
-                if os.path.isdir(cpfile):
-                    shutil.copytree(cpfile, '.')
-                else:
-                    for f in glob.glob(cpfile):
-                        copy_name = os.path.join(cupath, sess+'_'+run+'_'+os.path.basename(f))
-                        shutil.copy2(f, copy_name)
-                logger.info('{0} was copied for {1}-{2}'.format(args.cpfile, sess, run))
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%Y/%m/%d %H:%M:%S',
+                        filename='clone-sess.log', filemode='w',
+                        level=logging.DEBUG)
+    logging.info('Here we go!')
+    logging.info(args)
+    
+    if args.df:
+        datadir = os.path.abspath(args.df.read().strip())
+    else:
+        datadir = os.path.abspath(nsp)
+
+    targdir = os.path.abspath('.')
+
+    for sess in args.sf:
+        sess = sess.strip()
+        if not sess:
+            continue
+        sess_dir = os.path.join(datadir, sess)
+        tsess_dir = os.path.join(targdir, sess)
+        if not os.path.exists(sess_dir):
+            print 'Error: directory not exists: {0}'.format(sess_dir)
+            logging.error('Error: directory not exists: {0}'.format(sess_dir))
+            continue
+        mkdirs(tsess_dir)
+        subjname = os.path.join(sess_dir, 'subjectname')
+        if args.symlink:
+            subprocess.call("ln -s {0} {1}".format(subjname, tsess_dir), shell=True)
+        else:
+            copy_wraper("shutil.copy2('{0}', '{1}')".
+                        format(subjname, tsess_dir), subjname)
             
-    elif args.level == 'sess':
-        logger.info('cp in session level: {0}'.format(args.cpfile))
-        for sess in args.sf:
-            sess = sess.strip()
-            if not sess:
-                continue
-            cpfile = os.path.join(sesspard, sess, args.cpfile)
-            if os.path.isdir(cpfile):
-                shutil.copytree(cpfile, '.')
+        if args.asd:
+            anat_dir = os.path.join(sess_dir, args.asd)
+            tanat_dir = os.path.join(tsess_dir, args.asd)
+            if args.symlink:
+                subprocess.call("ln -s {0} {1}".format(anat_dir, tanat_dir), shell=True)
             else:
-                for f in glob.glob(cpfile):
-                    if args.tfsd:
-                        copy_name = os.path.join(cupath, sess, args.tfsd)
-                        if not os.path.exists(copy_name):
-                            os.makedirs(copy_name)
-                        copy_name = os.path.join(copy_name, os.path.basename(f))
-                    else:
-                        copy_name = os.path.join(cupath, sess+'_'+os.path.basename(f))
-                    shutil.copy2(f, copy_name)
-            logger.info('{0} was copied for {1}'.format(args.cpfile, sess))
+                copy_wraper("shutil.copytree('{0}', '{1}')".
+                            format(anat_dir, tanat_dir), anat_dir)
+
+        func_dir = os.path.join(sess_dir, args.fsd)
+        tfunc_dir = os.path.join(tsess_dir, args.fsd)
+        if not os.path.exists(func_dir):
+            print 'Error: directory not exists: {0}'.format(func_dir)
+            logging.error('Error: directory not exists: {0}'.format(func_dir))
+            continue
+        if not args.symlink:
+            mkdirs(tfunc_dir)
+        else:
+            subprocess.call("ln -s {0} {1}".
+                            format(func_dir, tfunc_dir),shell=True)
+            continue
+
+        if args.rlf:
+            rlf_file = os.path.join(func_dir, args.rlf)
+        copy_wraper("shutil.copy2('{0}', '{1}')".
+                    format(rlf_file, tfunc_dir), rlf_file)
+
+        for run in get_runs(args.rlf, func_dir):
+            run_dir = os.path.join(func_dir, run)
+            trun_dir = os.path.join(tfunc_dir, run)
+            mkdirs(trun_dir)
+            for f in get_files(args.stem, run_dir):
+                copy_wraper("shutil.copy2('{0}', '{1}')".
+                            format(f, trun_dir), f)
+    args.sf.close()
+    if args.df:
+        args.df.close()
 
 if __name__ == '__main__':
     main()
