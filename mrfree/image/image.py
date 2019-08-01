@@ -205,3 +205,16 @@ class Image(object):
         """
 
         nib.save(self.image, filename)
+
+
+
+
+
+
+
+
+
+
+
+
+
