@@ -2,16 +2,16 @@
 .. vim:syntax=rst
 
 ====
-MRfree
+NiBrain(nb)
 ====
 
-Make neuroscientist analyze MR data freely
+Make neuroscientist analyze neuroimaging brain data freely
 
-The aim of MRfree is to develop a neuroscience-orientated Python toolbox for magnetic resonance(MR) imaging data analysis.
+The aim of NiBrain is to develop a neuroscience-orientated Python toolbox for neuroimaing data analysis.
 
-In MRfree we aim to:
+In NiBrain we aim to:
 
-1. Integrate multi-modality MRI analysis.
+1. Integrate multi-modality neuroimaging data analysis.
 
 2. Integrate region and tract analysis.
 
