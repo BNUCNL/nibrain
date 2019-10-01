@@ -9,7 +9,7 @@ Make neuroscientist analyze neuroimaging brain data freely
 
 The aim of NiBrain is to develop a neuroscience-orientated Python toolbox for neuroimaing data analysis.
 
-Particularly, NiBrain assumes all NI data are in the same space, and aims to:
+Particularly, NiBrain aligns all NI data into the same space, and aims to:
 
 1. Integrate multi-modality neuroimaging data analysis.
 
