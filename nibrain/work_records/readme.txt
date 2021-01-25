@@ -1,0 +1,1 @@
+"Heritability_model_function.R" and "Twin_study_heritability.R" come from https://github.com/helloTC/StoryMath_heritability
