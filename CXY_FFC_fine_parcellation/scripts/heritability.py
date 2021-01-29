@@ -4,7 +4,7 @@ import pickle as pkl
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from nibrain.util.plotfig import auto_bar_width
-from work_progress.CXY.FFC_fine_parcellation.codes import heritability as h2
+from CXY_FFC_fine_parcellation.lib import heritability as h2
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/heritability')
