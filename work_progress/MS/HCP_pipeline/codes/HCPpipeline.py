@@ -142,7 +142,7 @@ class hcp_pipeline(object):
                     cifti_file_name = os.path.join(self.ciftify_workdir, subject, 'MNINonLinear', 'Results', first_level_dir,
                                                    first_level_dir + '_Atlas_s0.dtseries.nii')
                     new_cifti_file_name = os.path.join(self.ciftify_workdir, subject, 'MNINonLinear', 'Results', first_level_dir,
-                                                     first_level_dir + '_Atlas.dtseries.nii')
+                                                       first_level_dir + '_Atlas.dtseries.nii')
                     os.rename(cifti_file_name, new_cifti_file_name)
 
     # Third step: task analysis (prepare EV files, prepare fsf files, first and second level analysis)
@@ -154,13 +154,18 @@ class hcp_pipeline(object):
         for subject in self.subject_list:
             session_list = os.listdir(os.path.join(self.raw_data_dir, subject))
             for session in session_list:
-                with open(os.path.join(self.raw_data_dir, subject, session, 'tmp', 'run_info', self.task + '.rlf'), 'r') as f:
+                with open(os.path.join(self.raw_data_dir, subject, session, 'tmp', 'run_info',
+                                       self.task + '.rlf'), 'r') as f:
                     runs_id = f.read().splitlines()
                 for run_id in runs_id:
-                    ev_file = os.path.join(self.raw_data_dir, subject, session, 'func', subject + '_' + session + '_' + 'task-' + self.task + '_' + 'run-' + run_id + '_events.tsv')
+                    ev_file = os.path.join(self.raw_data_dir, subject, session, 'func',
+                                           subject + '_' + session + '_' + 'task-' + self.task + '_' + 'run-' + run_id + '_events.tsv')
                     ev_cond = pd.read_csv(ev_file, sep='\t')
 
-                    labeldict = {1: 'toe', 2: 'ankle', 3: 'leftleg', 4: 'rightleg', 5: 'forearm', 6: 'upperarm', 7: 'wrist', 8: 'finger', 9: 'eye', 10: 'jaw', 11: 'lip', 12: 'tongue'}
+                    labeldict = {1: 'toe', 2: 'ankle', 3: 'leftleg',
+                                 4: 'rightleg', 5: 'forearm', 6: 'upperarm',
+                                 7: 'wrist', 8: 'finger', 9: 'eye',
+                                 10: 'jaw', 11: 'lip', 12: 'tongue'}
                     assert (np.all(np.unique(ev_cond['trial_type']) == np.arange(len(labeldict) + 1))), "Conditions are not complete."
                     for lbl in labeldict.keys():
                         ev_cond_tmp = ev_cond[ev_cond['trial_type'] == lbl]
@@ -169,10 +174,12 @@ class hcp_pipeline(object):
                         ev_cond_decomp[1, :] = np.array(ev_cond_tmp['duration'])
                         ev_cond_decomp[2, :] = np.ones(len(ev_cond_tmp))
                         ev_cond_decomp = ev_cond_decomp.T
-                        outpath = os.path.join(self.ciftify_workdir, subject, 'MNINonLinear', 'Results', session + '_' + 'task-' + self.task + '_' + 'run-' + run_id, 'EVs')
+                        outpath = os.path.join(self.ciftify_workdir, subject, 'MNINonLinear', 'Results',
+                                               session + '_' + 'task-' + self.task + '_' + 'run-' + run_id, 'EVs')
                         if not os.path.isdir(outpath):
                             subprocess.call('mkdir ' + outpath, shell=True)
-                        np.savetxt(os.path.join(outpath, labeldict[lbl] + '.txt'), ev_cond_decomp, fmt='%-6.1f', delimiter='\t', newline='\n')
+                        np.savetxt(os.path.join(outpath, labeldict[lbl] + '.txt'),
+                                   ev_cond_decomp, fmt='%-6.1f', delimiter='\t', newline='\n')
 
         # Prepare fsf files of first and second level analysis
 
@@ -223,7 +230,8 @@ class hcp_pipeline(object):
 
                 # Modify the second level fsf file
 
-                letter_list = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+                letter_list = ['a','b','c','d','e','f','g','h','i','j','k','l','m',
+                               'n','o','p','q','r','s','t','u','v','w','x','y','z']
                 for run in run_list:
                     letter_id = 0
                     sedfsf2_command = " ".join(['sed', '-i', '\'s#{0}#{1}#g\''.format('run-' + letter_list[letter_id], run), fsf2_filepath])
