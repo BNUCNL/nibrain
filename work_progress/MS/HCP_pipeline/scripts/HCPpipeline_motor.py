@@ -12,6 +12,7 @@ import pandas as pd
 
 # Three part, fmriprep, ciftify, and HCP Pipeline
 class Pipeline(object):
+
     def __init__(self, data_inpath, data_outpath, prep_workdir, ciftify_workdir, fsf_dir, subject_id, task='motor'):
         self.data_inpath = data_inpath
         self.data_outpath = data_outpath
