@@ -7,6 +7,34 @@ from scipy import stats
 import numpy as np
 from scipy.cluster.hierarchy import linkage, dendrogram
 
+
+def auto_bar_width(x, item_num=1):
+    """
+    decide bar width automatically according to the length and interval of x indices.
+
+    Parameters
+    ----------
+    x : 1-D sequence
+        x indices in the matplotlib ax
+    item_num : integer
+        the number of items for plots
+
+    Returns
+    -------
+    width : float
+        bar width
+    """
+    length = len(x)
+    bar_num = length * item_num
+    if length > 1:
+        interval = x[1] - x[0]
+        width = (length - 1.0) * interval / bar_num
+    else:
+        width = 0.1
+
+    return width
+
+
 def make_figfunction(figuretype, isshow = True):
     """
     A function to pack figure factory, make it easier to use
