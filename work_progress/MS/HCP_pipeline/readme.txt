@@ -7,4 +7,5 @@ HCP_pipeline.py
                                  FSL v6.0.2 (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/),
                                  Connectome Workbench v1.4.2 (https://www.humanconnectome.org/software/connectome-workbench)
                                  fmriprep v20.0.2 (https://fmriprep.org/en/stable)
+                                 ciftify v2.1.1 (https://github.com/edickie/ciftify)
     Usage: Two examples are given in the scripts folder, including complete use of HCPpiplines and task_analysis function use alone
