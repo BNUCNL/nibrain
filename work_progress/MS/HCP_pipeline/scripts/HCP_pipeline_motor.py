@@ -62,9 +62,7 @@ class Pipeline(object):
             session_id = os.listdir(os.path.join(self.data_inpath, subj_id))
             for ses_id in session_id:
                 # Load run_id
-                with open(os.path.join(self.data_inpath, subj_id,
-                                       ses_id, 'tmp', 'run_info',
-                                       self.task + '.rlf'), 'r') as f:
+                with open(os.path.join(self.data_inpath, subj_id, ses_id, 'tmp', 'run_info', self.task + '.rlf'), 'r') as f:
                     runs_id = f.read().splitlines()
                 for run_id in runs_id:
                     fslreg_command = self._fsl_regfilt(subj_id, ses_id, 'run-' + run_id)
@@ -75,12 +73,7 @@ class Pipeline(object):
 
     def _ciftify_reconall(self, subj_id):
         fs_subjects_dir = os.path.join(self.data_outpath, 'freesurfer')
-        cifrecon_command = ' '.join(['ciftify_recon_all',
-                                     '--resample-to-T1w32k',
-                                     '--surf-reg', 'MSMSulc',
-                                     '--ciftify-work-dir', self.ciftify_workdir,
-                                     '--fs-subjects-dir', fs_subjects_dir,
-                                     subj_id])
+        cifrecon_command = ' '.join(['ciftify_recon_all', '--resample-to-T1w32k', '--surf-reg', 'MSMSulc', '--ciftify-work-dir', self.ciftify_workdir, '--fs-subjects-dir', fs_subjects_dir, subj_id])
         return cifrecon_command
 
     def _ciftify_subjfmri(self, subj_id, ses_id, run_id):

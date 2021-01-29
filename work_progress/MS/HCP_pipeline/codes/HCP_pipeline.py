@@ -174,7 +174,7 @@ class hcp_pipeline(object):
                             subprocess.call('mkdir ' + outpath, shell=True)
                         np.savetxt(os.path.join(outpath, labeldict[lbl] + '.txt'), ev_cond_decomp, fmt='%-6.1f', delimiter='\t', newline='\n')
 
-        # Prepare fsf files of first and second level
+        # Prepare fsf files of first and second level analysis
 
         fsf1_template = os.path.join(self.fsf_template_dir, 'level1.fsf')
         fsf2_template = os.path.join(self.fsf_template_dir, 'level2.fsf')
@@ -281,12 +281,3 @@ class hcp_pipeline(object):
                 subprocess.check_call(analysis_command, shell=True)
             except subprocess.CalledProcessError:
                 raise Exception('TASKANALYSIS: Error happened in {}'.format(subject))
-
-
-
-
-
-
-
-
-
