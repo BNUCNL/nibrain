@@ -158,3 +158,57 @@ def icc(x, y=None, n_bootstrap=None, confidence=95):
     ms1 = np.var(mu0, ddof=1)*2
     r = (ms1 - ms0) / (ms0 + ms1)
     return r
+
+
+def heritability(mz, dz, n_bootstrap=None, confidence=95):
+    '''
+    heritability(mz, dz) yields Falconer's heritability index, h^2.
+
+    Parameters
+    ----------
+    mz : 2D array-like
+        The number of rows must be two (2 x n matrix).
+    dz : 2D array-like
+        The number of rows must be two (2 x n matrix).
+    n_bootstrap : positive integer
+        If is not None, do bootstrap with n_bootstrap iterations.
+    confidence : a number between 0 and 100
+        It is used when n_bootstrap is not None.
+        It determines the confidence boundary of the bootstrap. For example,
+        when it is 95, the lower and upper boundaries are 2.5- and
+        97.5-percentile values.
+
+    Returns
+    -------
+    h2 : float
+        heritability
+        If n_bootstrap is not None, it is the median heritability across all
+        bootstraps.
+    h2_lb : float
+        lower boundary of confidence interval
+        Only returned when n_bootstrap is not None.
+    h2_ub : float
+        upper boundary of confidence interval
+        Only returned when n_bootstrap is not None.
+
+    References
+    ----------
+    https://github.com/noahbenson/hcp-lines/blob/master/notebooks/hcp-lines.ipynb
+    '''
+    if n_bootstrap is None:
+        r_mz = icc(mz)
+        r_dz = icc(dz)
+        h2 = 2 * (r_mz - r_dz)
+        return h2
+    else:
+        mz, dz = np.asarray(mz), np.asarray(dz)
+        assert mz.shape[0] == 2 and dz.shape[0] == 2
+        n_mz, n_dz = mz.shape[1], dz.shape[1]
+        mz_rng, dz_rng = np.arange(n_mz), np.arange(n_dz)
+        h2s = np.zeros(n_bootstrap)
+        for i in range(n_bootstrap):
+            mz_indices = np.random.choice(mz_rng, n_mz)
+            dz_indices = np.random.choice(dz_rng, n_dz)
+            h2s[i] = heritability(mz[:, mz_indices], dz[:, dz_indices])
+        lev = 0.5 * (100 - confidence)
+        return tuple(np.percentile(h2s, [lev, 50, 100-lev]))
