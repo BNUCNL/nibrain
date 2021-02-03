@@ -45,6 +45,93 @@ else:
                        trg_file=pjoin(work_dir, 'twins_id_rfMRI.csv'))
     h2.count_twins_id(pjoin(work_dir, 'twins_id_rfMRI.csv'))
 
+# %% twins ID distribution in G0, G1, and G2
+gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                 'grouping/group_id_{hemi}.npy')
+twins_id_file = pjoin(work_dir, 'twins_id_1080.csv')
+subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+out_file = pjoin(work_dir, 'twins_gid_1080.csv')
+
+df = pd.read_csv(twins_id_file)
+subjs_id = [int(_) for _ in open(subjs_file).read().splitlines()]
+
+for hemi in ('lh', 'rh'):
+    gids = np.load(gid_file.format(hemi=hemi))
+    for col in ('twin1', 'twin2'):
+        col_new = f'{col}_gid_{hemi}'
+        for row in df.index:
+            subj_idx = subjs_id.index(df.loc[row, col])
+            df.loc[row, col_new] = gids[subj_idx]
+df.to_csv(out_file, index=False)
+
+# %% plot gourp info about twins
+hemis = ('lh', 'rh')
+n_hemi = len(hemis)
+hemi2color = {'lh': (0.33, 0.33, 0.33, 1),
+              'rh': (0.66, 0.66, 0.66, 1)}
+gids = (0, 1, 2)
+n_gid = len(gids)
+zygosity = ('MZ', 'DZ')
+n_zyg = len(zygosity)
+twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
+gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                 'grouping/group_id_{hemi}.npy')
+
+df = pd.read_csv(twins_gid_file)
+zyg2indices = {}
+for zyg in zygosity:
+    zyg2indices[zyg] = df['zygosity'] == zyg
+
+x = np.arange(n_zyg)
+width = auto_bar_width(x, n_hemi)
+offset = -(n_hemi - 1) / 2
+fig, axes = plt.subplots(1, 2, figsize=(12.8, 7))
+for hemi in hemis:
+    cols = [f'twin1_gid_{hemi}', f'twin2_gid_{hemi}']
+    ys = np.zeros((n_gid, n_zyg))
+    gid_vec = np.load(gid_file.format(hemi=hemi))
+    n_subjs = np.zeros((n_gid, 1))
+    for zyg_idx, zyg in enumerate(zygosity):
+        data = np.array(df.loc[zyg2indices[zyg], cols])
+        for gid_idx, gid in enumerate(gids):
+            ys[gid_idx, zyg_idx] = np.sum(data == gid)
+            if zyg_idx == 0:
+                n_subjs[gid_idx, 0] = np.sum(gid_vec == gid)
+    x_tmp = x + width * offset
+    offset += 1
+
+    ax = axes[0]
+    y_g0 = np.sum(ys, axis=0)
+    y_g1 = np.sum(ys[1:], axis=0)
+    y_g2 = ys[2]
+    ax.bar(x_tmp, y_g0, width, label=f'G0_{hemi}', ec=hemi2color[hemi],
+           fc='w', hatch='//')
+    ax.bar(x_tmp, y_g1, width, label=f'G1_{hemi}', ec=hemi2color[hemi],
+           fc='w', hatch='*')
+    ax.bar(x_tmp, y_g2, width, label=f'G2_{hemi}', ec=hemi2color[hemi],
+           fc=hemi2color[hemi])
+
+    ax = axes[1]
+    ys1 = ys / n_subjs
+    y1_g0 = np.sum(ys1, axis=0)
+    y1_g1 = np.sum(ys1[1:], axis=0)
+    y1_g2 = ys1[2]
+    ax.bar(x_tmp, y1_g0, width, label=f'G0_{hemi}', ec=hemi2color[hemi],
+           fc='w', hatch='//')
+    ax.bar(x_tmp, y1_g1, width, label=f'G1_{hemi}', ec=hemi2color[hemi],
+           fc='w', hatch='*')
+    ax.bar(x_tmp, y1_g2, width, label=f'G2_{hemi}', ec=hemi2color[hemi],
+           fc=hemi2color[hemi])
+axes[0].set_xticks(x)
+axes[0].set_xticklabels(zygosity)
+axes[0].set_ylabel('the number of subjects')
+axes[1].set_xticks(x)
+axes[1].set_xticklabels(zygosity)
+axes[1].set_ylabel('the ratio of subjects')
+axes[1].legend()
+plt.tight_layout()
+plt.show()
+
 # %% preparation for heritability calculation
 hemis = ('lh', 'rh')
 rois = ('IOG-face', 'pFus-face', 'mFus-face')
