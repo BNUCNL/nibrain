@@ -1,0 +1,645 @@
+<svg host="65bd71144e" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1241px" height="701px" viewBox="-0.5 -0.5 1241 701" content="&lt;mxfile host=&quot;a827ceb3-e538-4d8b-92ea-3e9b902b35b0&quot; modified=&quot;2021-02-03T09:16:32.169Z&quot; agent=&quot;5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.52.1 Chrome/83.0.4103.122 Electron/9.3.5 Safari/537.36&quot; version=&quot;13.10.0&quot; etag=&quot;9l5g97kZ2HflH2li3V-O&quot; type=&quot;embed&quot;&gt;&lt;diagram id=&quot;q3GeJnPkxBYzaZS4Q75w&quot; name=&quot;Page-1&quot;&gt;7Vxdb9owFP01SNtDUeJ8UB6BdtvLpklI27NJTIhq4swJBfbrZxM7HzhQqrbEC37COb52ro9PrnLNVQbObL37SmG6+k5ChAfACncD52EAgO2PHfbDkb1AXEcgEY1DgVXAPP6LBGgJdBOHKGsY5oTgPE6bYECSBAV5A4OUkm3TbElw864pjJACzAOIVfR3HOYrgXqWVXV8Q3G0Ercey441lMYCyFYwJNsa5DwOnBklJC9a690MYc6e5KUY9+VEb+kYRUl+0QCvGPEM8UYsTjiW7+VqI0o2qTBDNEe7No7hQppbqg92uTKmCUTWKKd7ZiIncsQQKQfJ1rbi1pNbv6rROpKGUOxnVM5dLZk1xKrbGfBbCPAxu8O0WBOwFoSGiB76/D8bvjNTu2o2/Cz7uWdew6giVIJi2IR1SnursJWLbOkqnLkLCMYwzVBhU16VVjB44tuWhNyS0MKMRotPwHK5FWC8WMDzqrZjfS6HL0mS32WHx46PA266q6/Fj8RvQdOCsAf5GKQKEh4ji2OA37aVqYv8mW8WnC45Gdv3Yr7mPRis3Jdhqncq8jb3fpHdIQxe4ODHOzMcDnVwQ3Lyo5SEIpvXuMdBVXddKRG8vASjRKPEKyjRMUo0SuxYiRex240KNdn4/9sNXXQm3gI9XcVmQl43IY+DbYkKx4s8T+JH2S/Ldzm+ytcsg3ywWTPLKXlCsyKvYiZOOBovLJ46LWOMa/hyifwgYDhhefMSH/J8bsIQiOMoYZcBy5F5bjk9mV838mjvbCLtqnmzO2rJm8HoHfLm0Y3lzc1cuWpbbi/yZgDMW6IJmbpo0TVaNFrURIvmVdJosWstmuy5327oojMZ88a6qs3EvG5i3i2lz+JvaNe5Zjp9r6TTw4O82ulscpiQBB3RJ6Aa7Xz/RSUFe70W12Ji3s+5iwOIJ4LadRyGvPNjuAZH//k7LWSXdQB1st134Hr8cs1DtoIpbwYbivdTCoMnxHnfruIczVMY8L4thWmT48PJAQpPMP4m3mq8gI8qhbBVEV69GOTe77IYxLZv7FSrfpLVbPfiVEvbapAZWafmNaaNkp5lbprXghgd3pQOtT3jNzq8ER2ak6x+u6GLznSvAzEBr4uA149jrHt9qkBsYBLmPiXMGpeBmIh5ghIfrvk5ZLLI+E/P3he1rwhp2wOj0ZvUqOYvm0ajN6xRk3f32w1ddKZ9BYmJhXrFwltKyTupLLGdvpWWnCe709IS29W5tuQEcVepLbmg6AYl4YR/nYVzg2GWxcF5nRVSlV9gsQGH5PdU7JIUFCofc3mxGKVebNLCiMQowjCPn5vTt7Ek7vCTxIfQLLbIH42accE7IjojGxogMariWpnoHrjnJ8ohjVCuTHTYtHLZF+0jUCtkfs4mrw7Op+OKEhNORo+2B6Z6SqymYBxfCUwXPTJnQ80IHAX2lmIlty2uv/6BYpfVV4GKfas+ruQ8/gM=&lt;/diagram&gt;&lt;/mxfile&gt;">
+    <defs/>
+    <g>
+        <rect x="40" y="0" width="470" height="270" fill="#ffe6cc" stroke="#d79b00" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 472px; height: 270px; padding-top: 0px; margin-left: 39px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; width: 472px; height: 270px; overflow: hidden; ">
+                            <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; width: 100%; height: 100%; white-space: nowrap; ">
+                                <table border="1" width="100%" style="width: 100% ; height: 100% ; border-collapse: collapse ; background-color: rgb(204 , 255 , 230) ; font-size: 24px">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 1
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 2
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 3
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        ...
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 15
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="275" y="12" fill="#000000" font-family="Helvetica" font-size="12px" text-anchor="middle">
+                    Sub 1Voxel 1...Voxel N...
+                </text>
+            </switch>
+        </g>
+        <rect x="40" y="430" width="470" height="270" fill="#ffe6cc" stroke="#d79b00" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 472px; height: 270px; padding-top: 430px; margin-left: 39px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; width: 472px; height: 270px; overflow: hidden; ">
+                            <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; width: 100%; height: 100%; white-space: nowrap; ">
+                                <table border="1" width="100%" style="width: 100% ; height: 100% ; border-collapse: collapse ; background-color: rgb(255 , 230 , 204) ; font-size: 24px">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 223
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 224
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 225
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        ...
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 229
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Voxel N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="275" y="442" fill="#000000" font-family="Helvetica" font-size="12px" text-anchor="middle">
+                    Sub 223Voxel 1...Voxel N...
+                </text>
+            </switch>
+        </g>
+        <rect x="230" y="330" width="100" height="40" fill="none" stroke="none" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 1px; height: 1px; padding-top: 350px; margin-left: 280px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; ">
+                            <div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; font-weight: bold; white-space: nowrap; ">
+                                ....
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="280" y="357" fill="#000000" font-family="Helvetica" font-size="24px" text-anchor="middle" font-weight="bold">
+                    ....
+                </text>
+            </switch>
+        </g>
+        <path d="M 20 0 L 15 0 Q 10 0 10 10 L 10 340 Q 10 350 5 350 L 2.5 350 Q 0 350 5 350 L 7.5 350 Q 10 350 10 360 L 10 690 Q 10 700 15 700 L 20 700" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
+        <rect x="770" y="0" width="470" height="270" fill="#ffe6cc" stroke="#d79b00" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 472px; height: 270px; padding-top: 0px; margin-left: 769px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; width: 472px; height: 270px; overflow: hidden; ">
+                            <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; width: 100%; height: 100%; white-space: nowrap; ">
+                                <table border="1" width="100%" style="width: 100% ; height: 100% ; border-collapse: collapse ; background-color: rgb(230 , 230 , 230) ; font-size: 24px">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 1
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 2
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 3
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        ...
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 15
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="1005" y="12" fill="#000000" font-family="Helvetica" font-size="12px" text-anchor="middle">
+                    Sub 1Comp 1...Comp N...
+                </text>
+            </switch>
+        </g>
+        <rect x="770" y="430" width="470" height="270" fill="#ffe6cc" stroke="#d79b00" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 472px; height: 270px; padding-top: 430px; margin-left: 769px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; width: 472px; height: 270px; overflow: hidden; ">
+                            <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; width: 100%; height: 100%; white-space: nowrap; ">
+                                <table border="1" width="100%" style="width: 100% ; height: 100% ; border-collapse: collapse ; background-color: rgb(230 , 230 , 230) ; font-size: 24px">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 223
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 224
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 225
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        ...
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <font style="font-size: 24px">
+                                                        Sub 229
+                                                    </font>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp 1
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    ...
+                                                </font>
+                                            </td>
+                                            <td>
+                                                <font style="font-size: 24px">
+                                                    Comp N
+                                                    <br/>
+                                                </font>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="1005" y="442" fill="#000000" font-family="Helvetica" font-size="12px" text-anchor="middle">
+                    Sub 223Comp 1...Comp N...
+                </text>
+            </switch>
+        </g>
+        <rect x="960" y="330" width="100" height="40" fill="none" stroke="none" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 1px; height: 1px; padding-top: 350px; margin-left: 1010px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; ">
+                            <div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; font-weight: bold; white-space: nowrap; ">
+                                ....
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="1010" y="357" fill="#000000" font-family="Helvetica" font-size="24px" text-anchor="middle" font-weight="bold">
+                    ....
+                </text>
+            </switch>
+        </g>
+        <path d="M 750 0 L 745 0 Q 740 0 740 10 L 740 340 Q 740 350 735 350 L 732.5 350 Q 730 350 735 350 L 737.5 350 Q 740 350 740 360 L 740 690 Q 740 700 745 700 L 750 700" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
+        <path d="M 547 350 L 667.08 350" fill="none" stroke="#000000" stroke-width="12" stroke-miterlimit="10" transform="translate(2,3)" opacity="0.25"/>
+        <path d="M 547 350 L 667.08 350" fill="none" stroke="#000000" stroke-width="12" stroke-miterlimit="10" pointer-events="stroke"/>
+        <path d="M 680.58 350 L 662.58 359 L 667.08 350 L 662.58 341 Z" fill="#000000" stroke="#000000" stroke-width="12" stroke-miterlimit="10" pointer-events="all"/>
+        <rect x="590" y="300" width="40" height="20" fill="none" stroke="none" pointer-events="all"/>
+        <g transform="translate(-0.5 -0.5)">
+            <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 38px; height: 1px; padding-top: 310px; margin-left: 591px;">
+                        <div style="box-sizing: border-box; font-size: 0; text-align: center; ">
+                            <div style="display: inline-block; font-size: 36px; font-family: Helvetica; color: #000000; line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">
+                                PCA
+                            </div>
+                        </div>
+                    </div>
+                </foreignObject>
+                <text x="610" y="321" fill="#000000" font-family="Helvetica" font-size="36px" text-anchor="middle" font-weight="bold">
+                    PCA
+                </text>
+            </switch>
+        </g>
+    </g>
+    <switch>
+        <g requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"/>
+        <a transform="translate(0,-5)" xlink:href="https://desk.draw.io/support/solutions/articles/16000042487" target="_blank">
+            <text text-anchor="middle" font-size="10px" x="50%" y="100%">
+                Viewer does not support full SVG 1.1
+            </text>
+        </a>
+    </switch>
+</svg>
