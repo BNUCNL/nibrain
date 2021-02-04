@@ -4,8 +4,8 @@ import pandas as pd
 import pickle as pkl
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
-from nibrain.util.plotfig import auto_bar_width
-from CXY_FFC_fine_parcellation.lib import heritability as h2
+from nibrain.util.plotfig import auto_bar_width, plot_stacked_bar
+from cxy_hcp_ffa.lib import heritability as h2
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir,
@@ -99,29 +99,18 @@ for hemi in hemis:
                 n_subjs[gid_idx, 0] = np.sum(gid_vec == gid)
     x_tmp = x + width * offset
     offset += 1
+    labels = [f'G0_{hemi}', f'G1_{hemi}', f'G2_{hemi}']
+    face_colors = ['w', 'w', hemi2color[hemi]]
+    hatchs = ['//', '*', None]
 
     ax = axes[0]
-    y_g0 = np.sum(ys, axis=0)
-    y_g1 = np.sum(ys[1:], axis=0)
-    y_g2 = ys[2]
-    ax.bar(x_tmp, y_g0, width, label=f'G0_{hemi}', ec=hemi2color[hemi],
-           fc='w', hatch='//')
-    ax.bar(x_tmp, y_g1, width, label=f'G1_{hemi}', ec=hemi2color[hemi],
-           fc='w', hatch='*')
-    ax.bar(x_tmp, y_g2, width, label=f'G2_{hemi}', ec=hemi2color[hemi],
-           fc=hemi2color[hemi])
+    plot_stacked_bar(x_tmp, ys, width, label=labels, ec=hemi2color[hemi],
+                     fc=face_colors, hatch=hatchs, ax=ax)
 
     ax = axes[1]
-    ys1 = ys / n_subjs
-    y1_g0 = np.sum(ys1, axis=0)
-    y1_g1 = np.sum(ys1[1:], axis=0)
-    y1_g2 = ys1[2]
-    ax.bar(x_tmp, y1_g0, width, label=f'G0_{hemi}', ec=hemi2color[hemi],
-           fc='w', hatch='//')
-    ax.bar(x_tmp, y1_g1, width, label=f'G1_{hemi}', ec=hemi2color[hemi],
-           fc='w', hatch='*')
-    ax.bar(x_tmp, y1_g2, width, label=f'G2_{hemi}', ec=hemi2color[hemi],
-           fc=hemi2color[hemi])
+    plot_stacked_bar(x_tmp, ys/n_subjs, width, label=labels,
+                     ec=hemi2color[hemi], fc=face_colors, hatch=hatchs,
+                     ax=ax)
 axes[0].set_xticks(x)
 axes[0].set_xticklabels(zygosity)
 axes[0].set_ylabel('the number of subjects')
