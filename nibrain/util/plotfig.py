@@ -8,9 +8,76 @@ import numpy as np
 from scipy.cluster.hierarchy import linkage, dendrogram
 
 
+def plot_stacked_bar(x, height, width=0.8, label=None, ec=None, fc=None,
+                     hatch=None, ax=None, **kwargs):
+    """
+    Make a stacked bar plot.
+
+    Parameters
+    ----------
+    x : sequence of scalars
+        The x coordinates of the bars.
+    height : 2D array
+        Each row is the heights of the bars.
+    width : float
+        The width of the bars.
+    label : a string or a list of strings
+        labels for each row's bars
+    ec : a string/scalar or a list of strings/scalars
+        edge colors for each row's bars
+    fc : a string/scalar or a list of strings/scalars
+        face colors for each row's bars
+    hatch : string or a list of strings
+        hatchs for each row's bars
+    ax : matplotlib AxesSubplot
+        If is None, create a new ax.
+
+    Returns
+    -------
+    ax : matplotlib AxesSubplot
+    containers : a list of `.BarContainer`
+        containers with all the bars and optionally errorbars for each row
+    """
+    assert height.ndim == 2
+    n_stack = height.shape[0]
+
+    if isinstance(label, list):
+        assert len(label) == n_stack
+    else:
+        label = [label] * n_stack
+
+    if isinstance(ec, list):
+        assert len(ec) == n_stack
+    else:
+        ec = [ec] * n_stack
+
+    if isinstance(fc, list):
+        assert len(fc) == n_stack
+    else:
+        fc = [fc] * n_stack
+
+    if isinstance(hatch, list):
+        assert len(hatch) == n_stack
+    else:
+        hatch = [hatch] * n_stack
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    containers = []
+    for row_idx in range(n_stack):
+        y = np.sum(height[row_idx:], axis=0)
+        c = ax.bar(x, y, width, label=label[row_idx], ec=ec[row_idx],
+                   fc=fc[row_idx], hatch=hatch[row_idx], **kwargs)
+        containers.append(c)
+
+    return ax, containers
+
+
 def auto_bar_width(x, item_num=1):
     """
-    decide bar width automatically according to the length and interval of x indices.
+    decide bar width automatically according to the length and interval of x
+    indices.
 
     Parameters
     ----------
