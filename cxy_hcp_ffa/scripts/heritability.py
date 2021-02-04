@@ -121,6 +121,51 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 
+# %% plot the probability whether twin pairs both belong to the same group
+hemis = ('lh', 'rh')
+n_hemi = len(hemis)
+hemi2cols = {'lh': ['twin1_gid_lh', 'twin2_gid_lh'],
+             'rh': ['twin1_gid_rh', 'twin2_gid_rh']}
+gids = (0, 1, 2)
+n_gid = len(gids)
+zygosity = ('MZ', 'DZ')
+n_zyg = len(zygosity)
+zyg2color = {'MZ': (0.33, 0.33, 0.33, 1),
+             'DZ': (0.66, 0.66, 0.66, 1)}
+twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
+
+df = pd.read_csv(twins_gid_file)
+zyg2indices = {}
+for zyg in zygosity:
+    zyg2indices[zyg] = df['zygosity'] == zyg
+
+x = np.arange(n_hemi)
+width = auto_bar_width(x, n_zyg)
+offset = -(n_zyg - 1) / 2
+fig, ax = plt.subplots(figsize=(12.8, 7))
+for zyg in zygosity:
+    ys = np.zeros((n_gid+1, n_hemi))
+    for hemi_idx, hemi in enumerate(hemis):
+        data = np.array(df.loc[zyg2indices[zyg], hemi2cols[hemi]])
+        for gid_idx, gid in enumerate(gids):
+            ys[gid_idx+1, hemi_idx] = np.mean(np.all(data == gid, axis=1))
+        ys[0, hemi_idx] = np.mean(data[:, 0] != data[:, 1])
+    x_tmp = x + width * offset
+    offset += 1
+    labels = [f'different_group_{zyg}', f'G0_{zyg}',
+              f'G1_{zyg}', f'G2_{zyg}']
+    face_colors = ['w', 'w', 'w', zyg2color[zyg]]
+    hatchs = [None, '//', '*', None]
+    plot_stacked_bar(x_tmp, ys, width, label=labels, ec=zyg2color[zyg],
+                     fc=face_colors, hatch=hatchs, ax=ax)
+    print(f'{zyg}_{hemis}:\n', ys)
+ax.set_xticks(x)
+ax.set_xticklabels(hemis)
+ax.set_ylabel('the ratio of twins')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
 # %% preparation for heritability calculation
 hemis = ('lh', 'rh')
 rois = ('IOG-face', 'pFus-face', 'mFus-face')
