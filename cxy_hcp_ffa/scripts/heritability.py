@@ -4,7 +4,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, sem
 from matplotlib import pyplot as plt
 from nibrain.util.plotfig import auto_bar_width, plot_stacked_bar
 from cxy_hcp_ffa.lib import heritability as h2
@@ -371,7 +371,7 @@ plt.show()
 
 # %% calculate correlation within each twin pair.
 twins_id_file = pjoin(work_dir, 'twins_id_1080.csv')
-meas_name = 'thickness'
+meas_name = 'activ'
 meas2file = {
     'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
                  'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
@@ -387,6 +387,7 @@ hemi2stru = {
 mpm_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                  'MPM_v3_{hemi}_0.25.nii.gz')
 roi2label = {'IOG-face': 1, 'pFus-face': 2, 'mFus-face': 3}
+zyg2label = {'MZ': 1, 'DZ': 2}
 out_file = pjoin(work_dir, f'twins_pattern-corr_{meas_name}.csv')
 
 df = pd.read_csv(twins_id_file)
@@ -397,6 +398,7 @@ twin2_indices = [meas_ids.index(i) for i in df['twin2']]
 
 out_df = pd.DataFrame()
 out_df['zygosity'] = df['zygosity']
+out_df['zyg'] = [zyg2label[zyg] for zyg in df['zygosity']]
 for hemi in hemis:
     meas1 = meas_reader.get_data(hemi2stru[hemi], True)[twin1_indices]
     meas2 = meas_reader.get_data(hemi2stru[hemi], True)[twin2_indices]
@@ -406,6 +408,47 @@ for hemi in hemis:
         out_df[f"{hemi}_{roi.split('-')[0]}"] = \
         [pearsonr(i[idx_vec], j[idx_vec])[0] for i, j in zip(meas1, meas2)]
 out_df.to_csv(out_file, index=False)
+
+# %% plot pattern correlation
+rois = ('pFus', 'mFus')
+meas_names = ('thickness', 'myelin', 'activ')
+meas2ylabel = {'thickness': 'thickness', 'myelin': 'myelin',
+               'activ': 'face-avg'}
+zygosity = ('MZ', 'DZ')
+n_zyg = len(zygosity)
+zyg2color = {'MZ': (0.33, 0.33, 0.33, 1),
+             'DZ': (0.66, 0.66, 0.66, 1)}
+hemis = ('lh', 'rh')
+df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
+
+x = np.arange(len(rois))
+width = auto_bar_width(x, n_zyg)
+fig, axes = plt.subplots(len(hemis), len(meas_names))
+for meas_idx, meas_name in enumerate(meas_names):
+    df = pd.read_csv(df_file.format(meas_name))
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx, meas_idx]
+        offset = -(n_zyg - 1) / 2
+        for zyg in zygosity:
+            indices = df['zygosity'] == zyg
+            cols = [f'{hemi}_{roi}' for roi in rois]
+            data = np.array(df.loc[indices, cols])
+            y = np.mean(data, 0)
+            yerr = sem(data, 0)
+            ax.bar(x+width*offset, y, width, yerr=yerr, label=zyg,
+                   color=zyg2color[zyg])
+            offset += 1
+        ax.set_ylabel(meas2ylabel[meas_name])
+        if meas_idx == 1:
+            ax.set_title(hemi)
+            if hemi_idx == 0:
+                ax.legend()
+        ax.set_xticks(x)
+        ax.set_xticklabels(rois)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+plt.tight_layout()
+plt.show()
 
 # %% plot results from Twin_study_heritability.R
 # %%% plot thickness, myelin, and activation
