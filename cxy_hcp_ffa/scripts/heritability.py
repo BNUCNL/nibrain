@@ -5,11 +5,12 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr, sem
+from scipy.stats import pearsonr, sem, ttest_ind
 from matplotlib import pyplot as plt
 from nibrain.util.plotfig import auto_bar_width, plot_stacked_bar
 from cxy_hcp_ffa.lib import heritability as h2
 from commontool.io.io import CiftiReader
+from commontool.stats import EffectSize
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir,
@@ -446,7 +447,7 @@ for hemi in hemis:
         [pearsonr(i[idx_vec], j[idx_vec])[0] for i, j in zip(meas1, meas2)]
 out_df.to_csv(out_file, index=False)
 
-# %% plot pattern correlation
+# %% plot pattern correlation 1
 rois = ('pFus', 'mFus')
 meas_names = ('thickness', 'myelin', 'activ')
 meas2ylabel = {'thickness': 'thickness', 'myelin': 'myelin',
@@ -484,6 +485,60 @@ for meas_idx, meas_name in enumerate(meas_names):
         ax.set_xticklabels(rois)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+plt.tight_layout()
+plt.show()
+
+# %% plot pattern correlation 2
+rois = ('pFus', 'mFus')
+n_roi = len(rois)
+roi2color = {'pFus': 'limegreen', 'mFus': 'cornflowerblue'}
+meas_names = ('thickness', 'myelin', 'activ')
+meas2ylabel = {'thickness': 'thickness', 'myelin': 'myelin',
+               'activ': 'face-avg'}
+hemis = ('lh', 'rh')
+df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
+
+x = np.arange(len(hemis))
+width = auto_bar_width(x, n_roi)
+_, axes = plt.subplots(2, len(meas_names))
+es = EffectSize()
+for meas_idx, meas_name in enumerate(meas_names):
+    print(f'---{meas2ylabel[meas_name]}---')
+    ax1 = axes[0, meas_idx]
+    ax2 = axes[1, meas_idx]
+    df = pd.read_csv(df_file.format(meas_name))
+    offset = -(n_roi - 1) / 2
+    for roi in rois:
+        ts = []
+        ps = []
+        ds = []
+        for hemi in hemis:
+            col = f'{hemi}_{roi}'
+            s1 = np.array(df.loc[df['zygosity']=='MZ', col])
+            s2 = np.array(df.loc[df['zygosity']=='DZ', col])
+            t, p = ttest_ind(s1, s2)
+            d = es.cohen_d(s1, s2)
+            ts.append(t)
+            ps.append(p)
+            ds.append(d)
+            print(f'P value of {col}:', p)
+        ax1.bar(x+width*offset, ts, width, label=roi, color=roi2color[roi])
+        ax2.bar(x+width*offset, ds, width, label=roi, color=roi2color[roi])
+        offset += 1
+    ax1.set_ylabel(meas2ylabel[meas_name])
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(hemis)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax2.set_ylabel(meas2ylabel[meas_name])
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(hemis)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    if meas_idx == 1:
+        # ax1.legend()
+        ax1.set_title('t-value')
+        ax2.set_title("Cohen's D")
 plt.tight_layout()
 plt.show()
 
