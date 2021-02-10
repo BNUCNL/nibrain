@@ -1,3 +1,4 @@
+# %% Initialization
 import time
 import numpy as np
 import pandas as pd
@@ -23,7 +24,7 @@ h2.count_twins_id(data=pjoin(work_dir, 'twins_id.csv'))
 twins_df = pd.read_csv(pjoin(work_dir, 'twins_id.csv'))
 subjs_twin = set(np.concatenate([twins_df['twin1'], twins_df['twin2']]))
 
-# check if it's a subset of 1080 subjects
+# %%% check if it's a subset of 1080 subjects
 subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
 subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
 flag = subjs_twin.issubset(subjs_id)
@@ -35,7 +36,7 @@ else:
                        trg_file=pjoin(work_dir, 'twins_id_1080.csv'))
     h2.count_twins_id(pjoin(work_dir, 'twins_id_1080.csv'))
 
-# check if the subject have all 4 rfMRI runs.
+# %%% check if the subject have all 4 rfMRI runs.
 subjs_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                    'rfMRI/rfMRI_REST_id')
 subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
@@ -47,6 +48,25 @@ else:
     h2.filter_twins_id(data=twins_df, limit_set=subjs_id,
                        trg_file=pjoin(work_dir, 'twins_id_rfMRI.csv'))
     h2.count_twins_id(pjoin(work_dir, 'twins_id_rfMRI.csv'))
+
+# %%% check if the subject is in G1 or G2
+hemis = ('lh', 'rh')
+gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                'grouping/group_id_{hemi}.npy')
+subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+subjs_1080 = np.array([int(_) for _ in open(subjs_file).read().splitlines()])
+for hemi in hemis:
+    gid_vec = np.load(gid_file.format(hemi=hemi))
+    gid_idx_vec = np.logical_or(gid_vec==1, gid_vec==2)
+    subjs_id = subjs_1080[gid_idx_vec]
+    flag = subjs_twin.issubset(subjs_id)
+    if flag:
+        print('All twins are in G1 and G2')
+    else:
+        print("Filter twins who are not in G1 or G2.")
+        h2.filter_twins_id(data=twins_df, limit_set=subjs_id,
+                           trg_file=pjoin(work_dir, f'twins_id_G1G2_{hemi}.csv'))
+        h2.count_twins_id(pjoin(work_dir, f'twins_id_G1G2_{hemi}.csv'))
 
 # %% twins ID distribution in G0, G1, and G2
 gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
@@ -124,7 +144,32 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 
-# %% plot the probability whether twin pairs both belong to the same group
+# %% count the number of twin pairs according to grouping
+hemis = ('lh', 'rh')
+gids = (0, 1, 2)
+rows = ('diff', 'G0', 'G1', 'G2', 'limit_G012', 'limit_G12')
+n_row = len(rows)
+zygosity = ('MZ', 'DZ')
+twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
+out_file = pjoin(work_dir, 'count_if_same_group.csv')
+
+df = pd.read_csv(twins_gid_file)
+out_dict = {}
+for hemi in hemis:
+    items = [f'twin1_gid_{hemi}', f'twin2_gid_{hemi}']
+    for zyg in zygosity:
+        col = f'{zyg}_{hemi}'
+        out_dict[col] = np.zeros(n_row)
+        data = np.array(df.loc[df['zygosity']==zyg, items])
+        out_dict[col][0] = np.sum(data[:, 0] != data[:, 1])
+        for gid_idx, gid in enumerate(gids):
+            out_dict[col][gid_idx+1] = np.sum(np.all(data == gid, axis=1))
+        out_dict[col][4] = data.shape[0]
+        out_dict[col][5] = np.sum(~np.any(data == 0, axis=1))
+out_df = pd.DataFrame(out_dict, index=rows)
+out_df.to_csv(out_file, index=True)
+
+# %% plot the probability whether a twin pair both belong to the same group
 hemis = ('lh', 'rh')
 n_hemi = len(hemis)
 hemi2cols = {'lh': ['twin1_gid_lh', 'twin2_gid_lh'],
