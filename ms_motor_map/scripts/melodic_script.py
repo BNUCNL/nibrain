@@ -1,5 +1,5 @@
 """
-    melodic_script.py
+    batch processing of melody command line
 """
 
 
