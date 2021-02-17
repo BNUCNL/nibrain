@@ -1,14 +1,16 @@
+# %% Initialization
 import time
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr, sem
+from scipy.stats import pearsonr, sem, ttest_ind
 from matplotlib import pyplot as plt
 from nibrain.util.plotfig import auto_bar_width, plot_stacked_bar
 from cxy_hcp_ffa.lib import heritability as h2
 from commontool.io.io import CiftiReader
+from commontool.stats import EffectSize
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir,
@@ -23,7 +25,7 @@ h2.count_twins_id(data=pjoin(work_dir, 'twins_id.csv'))
 twins_df = pd.read_csv(pjoin(work_dir, 'twins_id.csv'))
 subjs_twin = set(np.concatenate([twins_df['twin1'], twins_df['twin2']]))
 
-# check if it's a subset of 1080 subjects
+# %%% check if it's a subset of 1080 subjects
 subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
 subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
 flag = subjs_twin.issubset(subjs_id)
@@ -35,7 +37,7 @@ else:
                        trg_file=pjoin(work_dir, 'twins_id_1080.csv'))
     h2.count_twins_id(pjoin(work_dir, 'twins_id_1080.csv'))
 
-# check if the subject have all 4 rfMRI runs.
+# %%% check if the subject have all 4 rfMRI runs.
 subjs_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                    'rfMRI/rfMRI_REST_id')
 subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
@@ -47,6 +49,25 @@ else:
     h2.filter_twins_id(data=twins_df, limit_set=subjs_id,
                        trg_file=pjoin(work_dir, 'twins_id_rfMRI.csv'))
     h2.count_twins_id(pjoin(work_dir, 'twins_id_rfMRI.csv'))
+
+# %%% check if the subject is in G1 or G2
+hemis = ('lh', 'rh')
+gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                'grouping/group_id_{hemi}.npy')
+subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+subjs_1080 = np.array([int(_) for _ in open(subjs_file).read().splitlines()])
+for hemi in hemis:
+    gid_vec = np.load(gid_file.format(hemi=hemi))
+    gid_idx_vec = np.logical_or(gid_vec==1, gid_vec==2)
+    subjs_id = subjs_1080[gid_idx_vec]
+    flag = subjs_twin.issubset(subjs_id)
+    if flag:
+        print('All twins are in G1 and G2')
+    else:
+        print("Filter twins who are not in G1 or G2.")
+        h2.filter_twins_id(data=twins_df, limit_set=subjs_id,
+                           trg_file=pjoin(work_dir, f'twins_id_G1G2_{hemi}.csv'))
+        h2.count_twins_id(pjoin(work_dir, f'twins_id_G1G2_{hemi}.csv'))
 
 # %% twins ID distribution in G0, G1, and G2
 gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
@@ -124,44 +145,61 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 
-# %% plot the probability whether twin pairs both belong to the same group
+# %% count the number of twin pairs according to grouping
+hemis = ('lh', 'rh')
+gids = (0, 1, 2)
+rows = ('diff', 'G0', 'G1', 'G2', 'limit_G012', 'limit_G12')
+n_row = len(rows)
+zygosity = ('MZ', 'DZ')
+twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
+out_file = pjoin(work_dir, 'count_if_same_group.csv')
+
+df = pd.read_csv(twins_gid_file)
+out_dict = {}
+for hemi in hemis:
+    items = [f'twin1_gid_{hemi}', f'twin2_gid_{hemi}']
+    for zyg in zygosity:
+        col = f'{zyg}_{hemi}'
+        out_dict[col] = np.zeros(n_row)
+        data = np.array(df.loc[df['zygosity']==zyg, items])
+        out_dict[col][0] = np.sum(data[:, 0] != data[:, 1])
+        for gid_idx, gid in enumerate(gids):
+            out_dict[col][gid_idx+1] = np.sum(np.all(data == gid, axis=1))
+        out_dict[col][4] = data.shape[0]
+        out_dict[col][5] = np.sum(~np.any(data == 0, axis=1))
+out_df = pd.DataFrame(out_dict, index=rows)
+out_df.to_csv(out_file, index=True)
+
+# %% plot the probability whether a twin pair both belong to the same group
 hemis = ('lh', 'rh')
 n_hemi = len(hemis)
-hemi2cols = {'lh': ['twin1_gid_lh', 'twin2_gid_lh'],
-             'rh': ['twin1_gid_rh', 'twin2_gid_rh']}
 gids = (0, 1, 2)
 n_gid = len(gids)
+hatchs = [None, '//', '*']  # [None, '//', '*']
+limit_name = f"limit_G{''.join(map(str, gids))}"
 zygosity = ('MZ', 'DZ')
 n_zyg = len(zygosity)
 zyg2color = {'MZ': (0.33, 0.33, 0.33, 1),
              'DZ': (0.66, 0.66, 0.66, 1)}
-twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
-
-df = pd.read_csv(twins_gid_file)
-zyg2indices = {}
-for zyg in zygosity:
-    zyg2indices[zyg] = df['zygosity'] == zyg
+df = pd.read_csv(pjoin(work_dir, 'count_if_same_group.csv'), index_col=0)
 
 x = np.arange(n_hemi)
 width = auto_bar_width(x, n_zyg)
 offset = -(n_zyg - 1) / 2
-fig, ax = plt.subplots(figsize=(12.8, 7))
+_, ax = plt.subplots(figsize=(12.8, 7))
 for zyg in zygosity:
-    ys = np.zeros((n_gid+1, n_hemi))
-    for hemi_idx, hemi in enumerate(hemis):
-        data = np.array(df.loc[zyg2indices[zyg], hemi2cols[hemi]])
-        for gid_idx, gid in enumerate(gids):
-            ys[gid_idx+1, hemi_idx] = np.mean(np.all(data == gid, axis=1))
-        ys[0, hemi_idx] = np.mean(data[:, 0] != data[:, 1])
-    x_tmp = x + width * offset
+    ys = np.zeros((n_gid, n_hemi))
+    items = [f'{zyg}_lh', f'{zyg}_rh']
+    labels = []
+    for gid_idx, gid in enumerate(gids):
+        ys[gid_idx] = df.loc[f'G{gid}', items]
+        labels.append(f'G{gid}_{zyg}')
+    ys = ys / np.array([df.loc[limit_name, items]])
+    plot_stacked_bar(x+width*offset, ys, width, label=labels, ec=zyg2color[zyg],
+                     fc='w', hatch=hatchs, ax=ax)
     offset += 1
-    labels = [f'different_group_{zyg}', f'G0_{zyg}',
-              f'G1_{zyg}', f'G2_{zyg}']
-    face_colors = ['w', 'w', 'w', zyg2color[zyg]]
-    hatchs = [None, '//', '*', None]
-    plot_stacked_bar(x_tmp, ys, width, label=labels, ec=zyg2color[zyg],
-                     fc=face_colors, hatch=hatchs, ax=ax)
     print(f'{zyg}_{hemis}:\n', ys)
+    print(f'{zyg}_{hemis}:\n', np.sum(ys, 0))
 ax.set_xticks(x)
 ax.set_xticklabels(hemis)
 ax.set_ylabel('the ratio of twins')
@@ -409,7 +447,7 @@ for hemi in hemis:
         [pearsonr(i[idx_vec], j[idx_vec])[0] for i, j in zip(meas1, meas2)]
 out_df.to_csv(out_file, index=False)
 
-# %% plot pattern correlation
+# %% plot pattern correlation 1
 rois = ('pFus', 'mFus')
 meas_names = ('thickness', 'myelin', 'activ')
 meas2ylabel = {'thickness': 'thickness', 'myelin': 'myelin',
@@ -447,6 +485,60 @@ for meas_idx, meas_name in enumerate(meas_names):
         ax.set_xticklabels(rois)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+plt.tight_layout()
+plt.show()
+
+# %% plot pattern correlation 2
+rois = ('pFus', 'mFus')
+n_roi = len(rois)
+roi2color = {'pFus': 'limegreen', 'mFus': 'cornflowerblue'}
+meas_names = ('thickness', 'myelin', 'activ')
+meas2ylabel = {'thickness': 'thickness', 'myelin': 'myelin',
+               'activ': 'face-avg'}
+hemis = ('lh', 'rh')
+df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
+
+x = np.arange(len(hemis))
+width = auto_bar_width(x, n_roi)
+_, axes = plt.subplots(2, len(meas_names))
+es = EffectSize()
+for meas_idx, meas_name in enumerate(meas_names):
+    print(f'---{meas2ylabel[meas_name]}---')
+    ax1 = axes[0, meas_idx]
+    ax2 = axes[1, meas_idx]
+    df = pd.read_csv(df_file.format(meas_name))
+    offset = -(n_roi - 1) / 2
+    for roi in rois:
+        ts = []
+        ps = []
+        ds = []
+        for hemi in hemis:
+            col = f'{hemi}_{roi}'
+            s1 = np.array(df.loc[df['zygosity']=='MZ', col])
+            s2 = np.array(df.loc[df['zygosity']=='DZ', col])
+            t, p = ttest_ind(s1, s2)
+            d = es.cohen_d(s1, s2)
+            ts.append(t)
+            ps.append(p)
+            ds.append(d)
+            print(f'P value of {col}:', p)
+        ax1.bar(x+width*offset, ts, width, label=roi, color=roi2color[roi])
+        ax2.bar(x+width*offset, ds, width, label=roi, color=roi2color[roi])
+        offset += 1
+    ax1.set_ylabel(meas2ylabel[meas_name])
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(hemis)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax2.set_ylabel(meas2ylabel[meas_name])
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(hemis)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    if meas_idx == 1:
+        # ax1.legend()
+        ax1.set_title('t-value')
+        ax2.set_title("Cohen's D")
 plt.tight_layout()
 plt.show()
 
