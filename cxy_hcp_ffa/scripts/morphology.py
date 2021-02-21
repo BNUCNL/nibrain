@@ -59,7 +59,7 @@ def pre_ANOVA(morph='thickness'):
     hemis = ('lh', 'rh')
     rois = ('pFus-face', 'mFus-face')
     src_file = pjoin(work_dir, 'individual_{}_{}.pkl')
-    trg_file = f'individual_{morph}_preANOVA.csv'
+    trg_file = pjoin(work_dir, f'individual_{morph}_preANOVA.csv')
 
     out_dict = {'hemi': [], 'roi': [], 'meas': []}
     for hemi in hemis:
