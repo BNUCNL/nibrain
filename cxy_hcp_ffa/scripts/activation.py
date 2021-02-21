@@ -78,7 +78,7 @@ def get_mpm(hid=1, hemi='lh'):
 
     thr = 0.25
     prob_file = pjoin(split_dir, f'prob_maps_half{hid}_{hemi}.nii.gz')
-    trg_file = pjoin(split_dir, f'MPM_half{hid}_{hemi}_new.nii.gz')
+    trg_file = pjoin(split_dir, f'MPM_half{hid}_{hemi}.nii.gz')
     prob_maps = nib.load(prob_file).get_data()
 
     supra_thr_idx_arr = prob_maps > thr
@@ -90,13 +90,91 @@ def get_mpm(hid=1, hemi='lh'):
     save2nifti(trg_file, mpm)
 
 
+def calc_meas(hemi='lh'):
+    """
+    用一半被试的MPM去提取另一半被试的激活值
+    如果某个被试没有某个ROI，就不提取该被试该ROI的信号
+
+    Args:
+        hemi (str, optional): hemisphere. Defaults to 'lh'.
+    """
+    import numpy as np
+    import pickle as pkl
+    import nibabel as nib
+    from cxy_hcp_ffa.lib.predefine import hemi2stru, roi2label
+    from commontool.io.io import CiftiReader
+
+    hids = (1, 2)
+    hid_file = pjoin(split_dir, 'half_id.npy')
+    mpm_file = pjoin(split_dir, 'MPM_half{hid}_{hemi}.nii.gz')
+    roi_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               f'rois_v3_{hemi}.nii.gz')
+    src_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
+    trg_file = pjoin(work_dir, f'activ_{hemi}.pkl')
+
+    hid_vec = np.load(hid_file)
+    n_subj = len(hid_vec)
+    roi_maps = nib.load(roi_file).get_data().squeeze().T
+    n_roi = len(roi2label)
+    meas_reader = CiftiReader(src_file)
+    meas = meas_reader.get_data(hemi2stru[hemi], True)
+
+    out_dict = {'shape': 'n_roi x n_subj',
+                'roi': list(roi2label.keys()),
+                'meas': np.ones((n_roi, n_subj)) * np.nan}
+    for hid in hids:
+        hid_idx_vec = hid_vec == hid
+        mpm = nib.load(mpm_file.format(hid=hid, hemi=hemi)
+                       ).get_data().squeeze()
+        for roi_idx, roi in enumerate(out_dict['roi']):
+            roi_idx_vec = np.any(roi_maps == roi2label[roi], 1)
+            valid_idx_vec = np.logical_and(~hid_idx_vec, roi_idx_vec)
+            mpm_idx_vec = mpm == roi2label[roi]
+            meas_masked = meas[valid_idx_vec][:, mpm_idx_vec]
+            out_dict['meas'][roi_idx][valid_idx_vec] = np.mean(meas_masked, 1)
+    pkl.dump(out_dict, open(trg_file, 'wb'))
+
+
+def pre_ANOVA():
+    """
+    准备好二因素被试间设计方差分析需要的数据。
+    半球x脑区
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    src_file = pjoin(work_dir, 'activ_{}.pkl')
+    trg_file = pjoin(work_dir, 'activ_preANOVA.csv')
+
+    out_dict = {'hemi': [], 'roi': [], 'meas': []}
+    for hemi in hemis:
+        data = pkl.load(open(src_file.format(hemi), 'rb'))
+        for roi in rois:
+            roi_idx = data['roi'].index(roi)
+            meas_vec = data['meas'][roi_idx]
+            meas_vec = meas_vec[~np.isnan(meas_vec)]
+            n_valid = len(meas_vec)
+            out_dict['hemi'].extend([hemi] * n_valid)
+            out_dict['roi'].extend([roi.split('-')[0]] * n_valid)
+            out_dict['meas'].extend(meas_vec)
+            print(f'{hemi}_{roi}:', n_valid)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 if __name__ == '__main__':
     # split_half()
     # roi_stats(hid=1, hemi='lh')
     # roi_stats(hid=1, hemi='rh')
     # roi_stats(hid=2, hemi='lh')
     # roi_stats(hid=2, hemi='rh')
-    get_mpm(hid=1, hemi='lh')
-    get_mpm(hid=1, hemi='rh')
-    get_mpm(hid=2, hemi='lh')
-    get_mpm(hid=2, hemi='rh')
+    # get_mpm(hid=1, hemi='lh')
+    # get_mpm(hid=1, hemi='rh')
+    # get_mpm(hid=2, hemi='lh')
+    # get_mpm(hid=2, hemi='rh')
+    # calc_meas(hemi='lh')
+    # calc_meas(hemi='rh')
+    pre_ANOVA()
