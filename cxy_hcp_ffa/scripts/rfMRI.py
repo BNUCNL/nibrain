@@ -290,6 +290,53 @@ def multitest_correct_ttest():
     data.to_csv(out_file, index=False)
 
 
+def prepare_plot(hemi='lh'):
+    import numpy as np
+    import pickle as pkl
+    from scipy.stats import sem
+    from cxy_hcp_ffa.lib.predefine import net2label_cole
+
+    # inputs
+    data_file = pjoin(work_dir, f'rsfc_individual2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, f'plot_rsfc_individual2Cole_{hemi}.pkl')
+
+    # load data
+    data = pkl.load(open(data_file, 'rb'))
+    trg_names = list(net2label_cole.keys())
+    trg_labels = list(net2label_cole.values())
+    assert data['trg_label'] == trg_labels
+
+    # prepare seed_names and trg_names
+    seed_names = ['IOG-face', 'pFus-face', 'mFus-face']
+    n_seed = len(seed_names)
+    n_trg = len(trg_names)
+
+    # calculate mean and sem
+    means = np.ones((n_seed, n_trg)) * np.nan
+    sems = np.ones((n_seed, n_trg)) * np.nan
+    stds = np.ones((n_seed, n_trg)) * np.nan
+    for seed_idx, seed_name in enumerate(seed_names):
+        for trg_idx in range(n_trg):
+            samples = data[seed_name][:, trg_idx]
+            samples = samples[~np.isnan(samples)]
+            means[seed_idx, trg_idx] = np.mean(samples)
+            sems[seed_idx, trg_idx] = sem(samples)
+            stds[seed_idx, trg_idx] = np.std(samples, ddof=1)
+
+    out_dict = {
+        'shape': 'n_seed x n_target',
+        'seed': seed_names,
+        'target': trg_names,
+        'trg_label': trg_labels,
+        'mean': means,
+        'sem': sems,
+        'std': stds
+    }
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(1, 'LR')
     # get_valid_id(1, 'RL')
@@ -308,5 +355,7 @@ if __name__ == '__main__':
     # fc_mean_among_run(hemi='rh')
     # fc_merge_MMP(hemi='lh')
     # fc_merge_MMP(hemi='rh')
-    roi_ttest()
-    multitest_correct_ttest()
+    # roi_ttest()
+    # multitest_correct_ttest()
+    prepare_plot(hemi='lh')
+    prepare_plot(hemi='rh')
