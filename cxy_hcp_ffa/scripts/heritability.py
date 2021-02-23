@@ -285,14 +285,14 @@ def prepare_heritability_calculation_TMA():
     subjs_1080_file = pjoin(proj_dir, 'analysis/s2/subject_id')
     meas2file = {
         'thickness': pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin'
-                           '/structure/MPM_v3_{hemi}_0.25_thickness.pkl'),
+                           '/structure/individual_thickness_{hemi}.pkl'),
         'myelin': pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                        'structure/MPM_v3_{hemi}_0.25_myelin.pkl'),
+                        'structure/individual_myelin_{hemi}.pkl'),
         'activ': pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                       'tfMRI/MPM_v3_{hemi}_0.25_activ.pkl')
+                       'tfMRI/individual_activ_{hemi}.pkl')
     }
     twins_file = pjoin(work_dir, 'twins_id_1080.csv')
-    out_file = pjoin(work_dir, 'pre-heritability_TMA.csv')
+    out_file = pjoin(work_dir, 'pre-heritability_TMA_individual.csv')
 
     # prepare data
     df = pd.read_csv(twins_file)
@@ -377,8 +377,8 @@ def calc_Falconer_h2():
 
     n_bootstrap = 10000
     confidence = 95
-    data_file = pjoin(work_dir, 'pre-heritability_TMA.csv')
-    out_file = pjoin(work_dir, 'heritability_icc_TMA.csv')
+    data_file = pjoin(work_dir, 'pre-heritability_TMA_individual.csv')
+    out_file = pjoin(work_dir, 'heritability_icc_TMA_individual.csv')
 
     data = pd.read_csv(data_file)
     mz_indices = data['zyg'] == 1
@@ -394,7 +394,11 @@ def calc_Falconer_h2():
         time1 = time.time()
         pair_name = [var_name + '1', var_name + '2']
         mz = np.array(data.loc[mz_indices, pair_name]).T
+        mz = mz[:, ~np.any(np.isnan(mz), axis=0)]
         dz = np.array(data.loc[dz_indices, pair_name]).T
+        dz = dz[:, ~np.any(np.isnan(dz), axis=0)]
+        print(f'#MZ in {var_name}:', mz.shape[1])
+        print(f'#DZ in {var_name}:', dz.shape[1])
         out_dict['ICC_MZ'][var_idx] = h2.icc(mz)
         out_dict['ICC_DZ'][var_idx] = h2.icc(dz)
         r_mz_lb, r_mz, r_mz_ub = h2.icc(mz,
@@ -430,7 +434,7 @@ def plot_Falconer_h2_TMA():
     from matplotlib import pyplot as plt
     from nibrain.util.plotfig import auto_bar_width
 
-    h2_file = pjoin(work_dir, 'heritability_icc_TMA.csv')
+    h2_file = pjoin(work_dir, 'heritability_icc_TMA_individual.csv')
     zygosity = ('mz', 'dz')
     hemis = ('lh', 'rh')
     rois = ('pFus', 'mFus', 'pFus_mFus')
@@ -813,10 +817,11 @@ if __name__ == '__main__':
     # map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
     # count_twin_pair_G0G1G2()
-    plot_probability_if_twins_belong_to_same_group()
+    # plot_probability_if_twins_belong_to_same_group()
     # prepare_heritability_calculation_TMA()
     # prepare_heritability_calculation_RSFC()
     # calc_Falconer_h2()
+    plot_Falconer_h2_TMA()
     # calc_pattern_corr_between_twins(meas_name='thickness')
     # calc_pattern_corr_between_twins(meas_name='myelin')
     # calc_pattern_corr_between_twins(meas_name='activ')
