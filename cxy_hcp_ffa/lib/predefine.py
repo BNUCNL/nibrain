@@ -14,16 +14,16 @@ roi2label = {
 # map Cole network name to label
 # /nfs/p1/atlases/ColeAnticevicNetPartition/network_labelfile.txt
 net2label_cole = {
-    'Primary Visual': 1
-    'Secondary Visual': 2
-    'Somatomotor': 3
-    'Cingulo-Opercular': 4
-    'Dorsal-attention': 5
-    'Language': 6
-    'Frontoparietal': 7
-    'Auditory': 8
-    'Default': 9
-    'Posterior Multimodal': 10
-    'Ventral Multimodal': 11
+    'Primary Visual': 1,
+    'Secondary Visual': 2,
+    'Somatomotor': 3,
+    'Cingulo-Opercular': 4,
+    'Dorsal-attention': 5,
+    'Language': 6,
+    'Frontoparietal': 7,
+    'Auditory': 8,
+    'Default': 9,
+    'Posterior Multimodal': 10,
+    'Ventral Multimodal': 11,
     'Orbito-Affective': 12
 }

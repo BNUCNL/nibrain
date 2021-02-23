@@ -208,6 +208,88 @@ def fc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def roi_ttest():
+    """
+    compare rsfc difference between ROIs
+    scheme: hemi-separately network-wise
+    """
+    import numpy as np
+    import pickle as pkl
+    import pandas as pd
+    from scipy.stats.stats import ttest_ind
+    from cxy_hcp_ffa.lib.predefine import net2label_cole
+    from commontool.stats import EffectSize
+
+    # parameters
+    hemis = ('lh', 'rh')
+    roi_pair = ('pFus-face', 'mFus-face')
+    data_file = pjoin(work_dir, 'rsfc_individual2Cole_{}.pkl')
+    compare_name = f"{roi_pair[0].split('-')[0]}_vs_" \
+                   f"{roi_pair[1].split('-')[0]}"
+
+    # outputs
+    out_file = pjoin(work_dir,
+                     f"rsfc_individual2Cole_{compare_name}_ttest.csv")
+
+    # start
+    trg_names = list(net2label_cole.keys())
+    trg_labels = list(net2label_cole.values())
+    out_data = {'network': trg_names}
+    es = EffectSize()
+    for hemi in hemis:
+        data = pkl.load(open(data_file.format(hemi), 'rb'))
+        assert data['trg_label'] == trg_labels
+
+        out_data[f'CohenD_{hemi}'] = []
+        out_data[f't_{hemi}'] = []
+        out_data[f'P_{hemi}'] = []
+        for trg_idx, trg_name in enumerate(trg_names):
+            sample1 = data[roi_pair[0]][:, trg_idx]
+            sample2 = data[roi_pair[1]][:, trg_idx]
+            nan_vec1 = np.isnan(sample1)
+            nan_vec2 = np.isnan(sample2)
+            print(f'#NAN in sample1:', np.sum(nan_vec1))
+            print(f'#NAN in sample2:', np.sum(nan_vec2))
+            sample1 = sample1[~nan_vec1]
+            sample2 = sample2[~nan_vec2]
+            d = es.cohen_d(sample1, sample2)
+            t, p = ttest_ind(sample1, sample2)
+            out_data[f'CohenD_{hemi}'].append(d)
+            out_data[f't_{hemi}'].append(t)
+            out_data[f'P_{hemi}'].append(p)
+
+    # save out
+    out_data = pd.DataFrame(out_data)
+    out_data.to_csv(out_file, index=False)
+
+
+def multitest_correct_ttest():
+    import numpy as np
+    import pandas as pd
+    from statsmodels.stats.multitest import multipletests
+
+    # inputs
+    hemis = ('lh', 'rh')
+    data_file = pjoin(work_dir, 'rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
+
+    # outputs
+    out_file = pjoin(work_dir,
+                     'rsfc_individual2Cole_pFus_vs_mFus_ttest_mtc.csv')
+
+    # start
+    data = pd.read_csv(data_file)
+    for hemi in hemis:
+        item = f'P_{hemi}'
+        ps = np.asarray(data[item])
+        reject, ps_fdr, alpha_sidak, alpha_bonf = multipletests(ps, 0.05, 'fdr_bh')
+        reject, ps_bonf, alpha_sidak, alpha_bonf = multipletests(ps, 0.05, 'bonferroni')
+        data[f'{item}(fdr_bh)'] = ps_fdr
+        data[f'{item}(bonf)'] = ps_bonf
+
+    # save out
+    data.to_csv(out_file, index=False)
+
+
 if __name__ == '__main__':
     # get_valid_id(1, 'LR')
     # get_valid_id(1, 'RL')
@@ -226,4 +308,5 @@ if __name__ == '__main__':
     # fc_mean_among_run(hemi='rh')
     # fc_merge_MMP(hemi='lh')
     # fc_merge_MMP(hemi='rh')
-    pass
+    roi_ttest()
+    multitest_correct_ttest()
