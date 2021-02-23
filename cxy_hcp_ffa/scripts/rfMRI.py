@@ -5,6 +5,30 @@ work_dir = pjoin(proj_dir,
                  'analysis/s2/1080_fROI/refined_with_Kevin/rfMRI')
 
 
+# ---tools---
+def get_name_label_of_ColeNetwork():
+    import numpy as np
+
+    src_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/' \
+               'network_labelfile.txt'
+
+    rf = open(src_file)
+    names = []
+    labels = []
+    while True:
+        name = rf.readline()
+        if name == '':
+            break
+        names.append(name.rstrip('\n'))
+        labels.append(int(rf.readline().split(' ')[0]))
+    indices_sorted = np.argsort(labels)
+    names = [names[i] for i in indices_sorted]
+    labels = [labels[i] for i in indices_sorted]
+
+    return names, labels
+
+
+# ---steps---
 def get_valid_id(sess=1, run='LR'):
     import os
     import time
@@ -200,5 +224,6 @@ if __name__ == '__main__':
     # fc_individual(hemi='rh', sess=2, run='RL')
     # fc_mean_among_run(hemi='lh')
     # fc_mean_among_run(hemi='rh')
-    fc_merge_MMP(hemi='lh')
-    fc_merge_MMP(hemi='rh')
+    # fc_merge_MMP(hemi='lh')
+    # fc_merge_MMP(hemi='rh')
+    pass
