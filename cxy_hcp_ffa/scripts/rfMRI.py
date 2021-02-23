@@ -151,19 +151,54 @@ def fc_mean_among_run(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def fc_merge_MMP(hemi='lh'):
+    """
+    用ColeAnticevicNetPartition将MMP合并成12个网络
+    """
+    import numpy as np
+    import pickle as pkl
+    from scipy.io import loadmat
+
+    # parameters
+    rsfc_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}.pkl')
+    roi2net_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
+                   'cortex_parcel_network_assignments.mat'
+
+    # outputs
+    out_file = pjoin(work_dir, f'rsfc_individual2Cole_{hemi}.pkl')
+
+    rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
+    roi2net = loadmat(roi2net_file)['netassignments'][:, 0]
+    roi2net = np.r_[roi2net[180:], roi2net[:180]]
+    net_labels = sorted(set(roi2net))
+    n_net = len(net_labels)
+
+    seeds = ('IOG-face', 'pFus-face', 'mFus-face')
+    for seed in seeds:
+        data = np.zeros((rsfc_dict[seed].shape[0], n_net))
+        for net_idx, net_lbl in enumerate(net_labels):
+            data[:, net_idx] = np.mean(rsfc_dict[seed][:, roi2net == net_lbl], 1)
+        rsfc_dict[seed] = data
+    rsfc_dict['trg_label'] = net_labels
+
+    pkl.dump(rsfc_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(1, 'LR')
     # get_valid_id(1, 'RL')
     # get_valid_id(2, 'LR')
     # get_valid_id(2, 'RL')
     # get_common_id()
-    fc_individual(hemi='lh', sess=1, run='LR')
-    fc_individual(hemi='lh', sess=1, run='RL')
-    fc_individual(hemi='lh', sess=2, run='LR')
-    fc_individual(hemi='lh', sess=2, run='RL')
-    fc_individual(hemi='rh', sess=1, run='LR')
-    fc_individual(hemi='rh', sess=1, run='RL')
-    fc_individual(hemi='rh', sess=2, run='LR')
-    fc_individual(hemi='rh', sess=2, run='RL')
-    fc_mean_among_run(hemi='lh')
-    fc_mean_among_run(hemi='rh')
+    # fc_individual(hemi='lh', sess=1, run='LR')
+    # fc_individual(hemi='lh', sess=1, run='RL')
+    # fc_individual(hemi='lh', sess=2, run='LR')
+    # fc_individual(hemi='lh', sess=2, run='RL')
+    # fc_individual(hemi='rh', sess=1, run='LR')
+    # fc_individual(hemi='rh', sess=1, run='RL')
+    # fc_individual(hemi='rh', sess=2, run='LR')
+    # fc_individual(hemi='rh', sess=2, run='RL')
+    # fc_mean_among_run(hemi='lh')
+    # fc_mean_among_run(hemi='rh')
+    fc_merge_MMP(hemi='lh')
+    fc_merge_MMP(hemi='rh')
