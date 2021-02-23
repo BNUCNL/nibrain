@@ -6,6 +6,41 @@ split_dir = pjoin(proj_dir,
 work_dir = pjoin(split_dir, 'tfMRI')
 
 
+def calc_meas_individual(hemi='lh'):
+    import nibabel as nib
+    import numpy as np
+    import pickle as pkl
+    from commontool.io.io import CiftiReader
+    from cxy_hcp_ffa.lib.predefine import hemi2stru, roi2label
+
+    # inputs
+    work_dir = pjoin(proj_dir,
+                     'analysis/s2/1080_fROI/refined_with_Kevin/tfMRI')
+    rois_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                      f'refined_with_Kevin/rois_v3_{hemi}.nii.gz')
+    meas_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
+
+    # outputs
+    out_file = pjoin(work_dir, f'individual_activ_{hemi}.pkl')
+
+    rois = nib.load(rois_file).get_data().squeeze().T
+    n_roi = len(roi2label)
+    meas_reader = CiftiReader(meas_file)
+    meas = meas_reader.get_data(hemi2stru[hemi], True)
+    n_subj = meas.shape[0]
+
+    roi_meas = {'shape': 'n_roi x n_subj', 'roi': list(roi2label.keys()),
+                'meas': np.ones((n_roi, n_subj)) * np.nan}
+    for roi_idx, roi in enumerate(roi_meas['roi']):
+        lbl_idx_arr = rois == roi2label[roi]
+        for subj_idx in range(n_subj):
+            lbl_idx_vec = lbl_idx_arr[subj_idx]
+            if np.any(lbl_idx_vec):
+                roi_meas['meas'][roi_idx, subj_idx] = np.mean(
+                    meas[subj_idx][lbl_idx_vec])
+    pkl.dump(roi_meas, open(out_file, 'wb'))
+
+
 def split_half():
     """
     随机将被试分成两半
@@ -90,7 +125,7 @@ def get_mpm(hid=1, hemi='lh'):
     save2nifti(trg_file, mpm)
 
 
-def calc_meas(hemi='lh'):
+def calc_meas_MPM(hemi='lh'):
     """
     用一半被试的MPM去提取另一半被试的激活值
     如果某个被试没有某个ROI，就不提取该被试该ROI的信号
@@ -175,6 +210,8 @@ if __name__ == '__main__':
     # get_mpm(hid=1, hemi='rh')
     # get_mpm(hid=2, hemi='lh')
     # get_mpm(hid=2, hemi='rh')
-    # calc_meas(hemi='lh')
-    # calc_meas(hemi='rh')
-    pre_ANOVA()
+    # calc_meas_MPM(hemi='lh')
+    # calc_meas_MPM(hemi='rh')
+    # pre_ANOVA()
+    calc_meas_individual(hemi='lh')
+    calc_meas_individual(hemi='rh')
