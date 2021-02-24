@@ -200,6 +200,45 @@ def pre_ANOVA():
     out_df.to_csv(trg_file, index=False)
 
 
+def pre_ANOVA_rm():
+    """
+    Preparation for two-way repeated-measures ANOVA
+    半球x脑区
+    Only the subjects who have all four ROIs will be used.
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    src_file = pjoin(work_dir, 'activ_{}.pkl')
+    roi_idx_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                                   'rois_v3_idx_vec.csv')
+
+    # outputs
+    trg_file = pjoin(work_dir, 'activ_preANOVA-rm.csv')
+
+    # load data
+    roi_idx_df = pd.read_csv(roi_idx_file)
+    roi_cols = [f'{i}_{j}' for i in hemis for j in rois]
+    roi_idx_vec = np.all(roi_idx_df.loc[:, roi_cols], 1)
+
+    out_dict = {}
+    nan_idx_vec = np.zeros_like(roi_idx_vec, np.bool)
+    for hemi in hemis:
+        data = pkl.load(open(src_file.format(hemi), 'rb'))
+        for roi in rois:
+            roi_idx = data['roi'].index(roi)
+            meas_vec = data['meas'][roi_idx]
+            out_dict[f"{hemi}_{roi.split('-')[0]}"] = meas_vec[roi_idx_vec]
+            nan_idx_vec = np.logical_or(nan_idx_vec, np.isnan(meas_vec))
+    assert np.all(roi_idx_vec == ~nan_idx_vec)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 if __name__ == '__main__':
     # split_half()
     # roi_stats(hid=1, hemi='lh')
@@ -213,5 +252,6 @@ if __name__ == '__main__':
     # calc_meas_MPM(hemi='lh')
     # calc_meas_MPM(hemi='rh')
     # pre_ANOVA()
-    calc_meas_individual(hemi='lh')
-    calc_meas_individual(hemi='rh')
+    # calc_meas_individual(hemi='lh')
+    # calc_meas_individual(hemi='rh')
+    pre_ANOVA_rm()
