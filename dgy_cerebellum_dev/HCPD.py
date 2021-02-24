@@ -10,8 +10,8 @@ from matplotlib import pyplot as plt
 
 class PATH(object):
     SUBJECTS = '/nfs/m1/HCPD/fmriresults01/'
-    INFO = os.path.join(os.getcwd(), 'data', 'HCPD.csv')
-    WORKING_DIR = './data/'
+    INFO = os.path.join(os.path.dirname(__file__), 'data', 'HCPD.csv')
+    WORKING_DIR = os.path.join(os.path.dirname(__file__), 'data/')
 
 def getSubjectIDs():
     filnames = os.listdir(PATH.SUBJECTS)
@@ -44,7 +44,7 @@ def getROI(roi_id):
 class _ROI_INDICES:
     '''ROI indices in .2 resolution.
     '''
-    ROI_LABELS = pd.read_csv(os.path.join('data', 'ROIs.csv'))
+    ROI_LABELS = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data', 'ROIs.csv'))
     ROI_TO_INDEX = {key: value for key, value in zip(list(ROI_LABELS['roi']), list(ROI_LABELS['index']))}
     CEREBELLUM = (8, 47)
     BRAIN_STEM = 16
@@ -98,14 +98,19 @@ def getCerebrumMap(sub_id):
     myelinMap = nibabel.load(os.path.join(sub_32kdir, f'{sub_id}_V1_MR.MyelinMap.32k_fs_LR.dscalar.nii'))
     return myelinMap.get_fdata()[0]
 
-def getSubcorticalMap(sub_id):
+def getSubcorticalMap(sub_id, invert = False):
     myelinMap = getMyelinationMap(sub_id)
     sub_dir = getMNIDir(sub_id)
     ROIs = nibabel.load(os.path.join(sub_dir, 'ROIs', 'Atlas_ROIs.2.nii.gz'))
     ROIs_arr = ROIs.get_fdata()
     LCEREBELLUM, RCEREBELLUM = ROI_INDICES.CEREBELLUM
     OTHERS = 0
-    return myelinMap[((ROIs_arr - LCEREBELLUM) * (ROIs_arr - RCEREBELLUM) * (ROIs_arr - OTHERS)) != 0]
+
+    indices = np.where(((ROIs_arr - LCEREBELLUM) * (ROIs_arr - RCEREBELLUM) * (ROIs_arr - OTHERS)) != 0)
+    if invert:
+        return myelinMap, indices
+    else:
+        return myelinMap[indices]
 
 def getAllMaps(_method, *args):
     """Get maps of specific ROI of all ages with given method.
@@ -153,7 +158,7 @@ def getNibabelObj(data):
     t1 = nibabel.load(os.path.join(sub_dir, 'T1w_restore.2.nii.gz'))
     return nibabel.nifti1.Nifti1Image(data, t1.affine)
 
-def invertCerebellumMap(flatMap, flatIndices = None):
+def invertMyelinationMap(flatMap, flatIndices = None, _method = getCerebellumMap):
     """Map a flat myelination map to original space according.
 
     Args:
@@ -164,7 +169,7 @@ def invertCerebellumMap(flatMap, flatIndices = None):
         np.ndarray: 3-D Myelination map in original space.
     """
     sub_id = pickSubjectID()
-    template, indices = getCerebellumMap(sub_id, True)
+    template, indices = _method(sub_id, True)
     template[:, :, :] = 0
     if not flatIndices: flatIndices = [i for i in range(flatMap.shape[0])]
     for i, idx in enumerate(flatIndices):
