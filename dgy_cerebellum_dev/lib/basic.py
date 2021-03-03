@@ -8,11 +8,10 @@ import pandas as pd
 NI_DATADIR = '/nfs/m1/HCPD/fmriresults01/'
 HCP_AVERAGE_DATADIR = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1'
 
-def BASE():
-    return os.path.dirname(os.path.dirname(__file__))
-
+BASE = os.path.dirname(os.path.dirname(__file__))
+_DATA_DIRNAME = 'data'
 def DATA_DIR():
-    return os.path.join(BASE(), 'data')
+    return os.path.join(BASE, _DATA_DIRNAME)
 
 #--------------------
 # Subject information
