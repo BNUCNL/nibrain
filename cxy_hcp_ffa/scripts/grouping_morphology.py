@@ -85,6 +85,47 @@ def pre_ANOVA(gid=1, morph='thickness'):
     out_df.to_csv(trg_file, index=False)
 
 
+def pre_ANOVA_rm_individual(gid=1, morph='thickness'):
+    """
+    Preparation for two-way repeated-measures ANOVA
+    半球x脑区
+    """
+    import pandas as pd
+    import pickle as pkl
+
+    # inputs
+    rois = ('pFus-face', 'mFus-face')
+    src_lh_file = pjoin(work_dir, f'individual_G{gid}_{morph}_lh.pkl')
+    src_rh_file = pjoin(work_dir, f'individual_G{gid}_{morph}_rh.pkl')
+
+    # outputs
+    trg_file = pjoin(work_dir, f'individual_G{gid}_{morph}_preANOVA-rm.csv')
+
+    # load data
+    data_lh = pkl.load(open(src_lh_file, 'rb'))
+    data_rh = pkl.load(open(src_rh_file, 'rb'))
+    valid_indices_lh = [i for i, j in enumerate(data_lh['subject'])
+                        if j in data_rh['subject']]
+    valid_indices_rh = [i for i, j in enumerate(data_rh['subject'])
+                        if j in data_lh['subject']]
+    assert [data_lh['subject'][i] for i in valid_indices_lh] == \
+           [data_rh['subject'][i] for i in valid_indices_rh]
+    print(f'#valid subjects in G{gid}:', len(valid_indices_lh))
+
+    # start
+    out_dict = {}
+    for roi in rois:
+        roi_idx = data_lh['roi'].index(roi)
+        meas_lh = data_lh['meas'][roi_idx][valid_indices_lh]
+        out_dict[f"lh_{roi.split('-')[0]}"] = meas_lh
+    for roi in rois:
+        roi_idx = data_rh['roi'].index(roi)
+        meas_rh = data_rh['meas'][roi_idx][valid_indices_rh]
+        out_dict[f"rh_{roi.split('-')[0]}"] = meas_rh
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 if __name__ == '__main__':
     # calc_meas_individual(gid=1, hemi='lh', morph='thickness')
     # calc_meas_individual(gid=1, hemi='lh', morph='myelin')
@@ -94,7 +135,11 @@ if __name__ == '__main__':
     # calc_meas_individual(gid=2, hemi='lh', morph='myelin')
     # calc_meas_individual(gid=2, hemi='rh', morph='thickness')
     # calc_meas_individual(gid=2, hemi='rh', morph='myelin')
-    pre_ANOVA(gid=1, morph='thickness')
-    pre_ANOVA(gid=1, morph='myelin')
-    pre_ANOVA(gid=2, morph='thickness')
-    pre_ANOVA(gid=2, morph='myelin')
+    # pre_ANOVA(gid=1, morph='thickness')
+    # pre_ANOVA(gid=1, morph='myelin')
+    # pre_ANOVA(gid=2, morph='thickness')
+    # pre_ANOVA(gid=2, morph='myelin')
+    pre_ANOVA_rm_individual(gid=1, morph='thickness')
+    pre_ANOVA_rm_individual(gid=1, morph='myelin')
+    pre_ANOVA_rm_individual(gid=2, morph='thickness')
+    pre_ANOVA_rm_individual(gid=2, morph='myelin')

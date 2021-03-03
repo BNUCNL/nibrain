@@ -1,0 +1,63 @@
+name	num	session	run	Experiment Quality	Date
+YANGSHAOTONG	sub01	LOC | Train sesion1	Resting retino structural   |   3 	Cautious	20201125 AM1
+ZHAOYIXUE	sub02	Train session1	10	OK	20201125 AM2
+TANGSHAOHUA	sub03	Train session1	10	OK	20201125 PM1
+SHENHUADONG	sub94	Test session1	10	OK	20201125 PM2
+MASAI	sub05	Train session1 | structure	10 | sturcture	OK	20201203 PM1
+ZHENSHUYI	sub06	Train session1 | structure	10 | sturcture	OK	20201203 PM2
+GUOQI	sub07	Train session1 	10	OK	20201208 AM1
+TANGSHAOHUA	sub03	Train session2 | structure	10 | structure	OK	20201208 AM2
+GONGZHENGXIN	sub08	Train session1 | structure	10 | structure	OK	20201208 PM1
+ZHANGYI	sub09	Train session1 | structure	10 | structure	OK	20201208 PM2
+YANGSHAOTONG	sub01	Train session1 	10	OK	20201209 AM1
+WANGJUNYI	sub10	Train session1 	10	OK	20201209 AM2
+JIAFANGFANG	sub91	Train session1 | structure	10 | structure	OK	20201209 PM1
+ZHAOYIXUE	sub02	Train session2 | structure	10 | structure	OK	20201209 PM2
+ZHENSHUYI	sub06	Train session2 | resting	10 | RS	OK	20201210 PM1
+MASAI	sub05	Train session2 | resting	10 | RS	OK	20201210 PM2
+GONGZHENGXIN	sub08	CAT	NULL	OK	20201210 PM3
+GONGZHENGXIN	sub08	Train session2 | resting	10 | RS	OK	20201214 AM1
+YANGSHAOTONG	sub01	Train session2 | resting	10 | RS	OK	20201214 AM2
+WANGJUNYI	sub10	Train session2 | structural	10 | STR	OK	20201214 PM1
+ZHENSHUYI	sub06	Train session3 | resting	10 | RS B	OK	20201214 PM2
+GUOQI	sub07	Train session2 | resting	12 | RS	OK	20201215 AM1
+MASAI	sub05	Train session3 | resting	10 | RS	OK	20201215 AM2
+ZHAOYIXUE	sub02	Train session3 | resting	11 | RS	OK	20201215 PM1
+ZHANGYI	sub09	other	10 | RS	EROR	20201215 PM2
+WANGJUNYI	sub10	Train session3 | resting	10 | RS	OK	20201216 AM1
+YANGSHAOTONG	sub01	Train session3 | resting	10 | RS	OK	20201216 AM2
+ZHENSHUYI	sub06	Train session4 | resting	10 | RS	OK	20201216 PM1
+TANGSHAOHUA	sub03	Train session3 | resting	10 | RS	OK	20201216 PM2
+YANGSHAOTONG	sub01	Train session4 | resting	10 | RS	OK	20201221 AM1
+GONGZHENGXIN	sub08	Train session3 | resting	10 | RS	OK	20201221 AM2
+WANGJUNYI	sub10	Train session4 | resting	10 | RS	OK	20201221 PM1
+ZHENSHUYI	sub06	Test	11	OK	20201221 PM2
+WANGJUNYI	sub10	Test	11	OK	20201223 AM1
+ZHANGYI	sub09	Train session3 | resting	10 | RS	OK	20201223 AM2
+LIUFUJU	sub04	Train session1 | structural	10 | ST	OK	20201223 PM1
+ZHAOYIXUE	sub02	Train session4 | resting	10 | RS	OK	20201223 PM2
+MASAI	sub05	Train session4 | resting	10 | RS	OK	20201224 AM1
+ZHENSHUYI	sub06	LOC	12	OK	20201224 AM2
+LIUFUJU	sub04	Train session2 | resting	10 | RS	OK	20201224 PM1
+TANGSHAOHUA	sub03	Train session4 | resting	10 | RS	OK	20201224 PM2
+MASAI	sub05	Test	NULL	OK	20201228 AM1
+GONGZHENGXIN	sub08	Train session4 | resting	NULL	OK	20201228 AM2
+WANGJUNYI	sub10	LOC	NULL	OK	20201228 PM1
+ZHAOYIXUE	sub02	Test	NULL	OK	20201228 PM2
+GONGZHENGXIN	sub08	Test	NULL	OK	20201229 PM1
+LIUFUJU	sub04	Train session3 | resting	NULL	OK	20201229 PM2
+YANGSHAOTONG	sub01	Test	NULL	OK	20201230 AM1
+TANGSHAOHUA	sub03	Test	NULL	OK	20201230 AM2
+ZHANGYI	sub09	Train session4 | resting	NULL	OK	20201230 PM1
+ZHAOYIXUE	sub02	LOC	NULL	OK	20201230 PM2
+LIUFUJU	sub04	Train session4 | resting	NULL	OK	20201231 PM2
+MASAI	sub05	LOC	NULL	OK	20201231 PM2
+LIUFUJU	sub04	Test	NULL	OK	20210106 PM1
+ZHANGYI	sub09	Test	NULL	OK	20210106 PM2
+YANGSHAOTONG	sub01	LOC	NULL	OK	20210107 1
+LIUFUJU	sub04	LOC	NULL	OK	20210107 2
+GONGZHENGXIN	sub08	LOC	NULL	OK	20210107 3
+TANGSHAOHUA	sub03	LOC	NULL	OK	20210107 4
+ZHANGYI	sub09	LOC	NULL	OK	20210107 5
+ZHANGYI	sub09	Train session2 | resting	10 | RS	OK	20210112 AM1
+LIUFUJU	sub04	rescan	5 | RS	OK	20210112 AM2
