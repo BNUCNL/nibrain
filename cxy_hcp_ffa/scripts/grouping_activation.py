@@ -225,6 +225,39 @@ def pre_ANOVA_rm(gid=1):
     out_df.to_csv(trg_file, index=False)
 
 
+def pre_ANOVA_3factors():
+    """
+    准备好3因素被试间设计方差分析需要的数据。
+    2 groups x 2 hemispheres x 2 ROIs
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    gids = (1, 2)
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    src_file = pjoin(work_dir, 'G{}_activ_{}.pkl')
+    trg_file = pjoin(work_dir, f'activ_preANOVA-3factor.csv')
+
+    out_dict = {'gid': [], 'hemi': [], 'roi': [], 'meas': []}
+    for gid in gids:
+        for hemi in hemis:
+            data = pkl.load(open(src_file.format(gid, hemi), 'rb'))
+            for roi in rois:
+                roi_idx = data['roi'].index(roi)
+                meas_vec = data['meas'][roi_idx]
+                meas_vec = meas_vec[~np.isnan(meas_vec)]
+                n_valid = len(meas_vec)
+                out_dict['gid'].extend([gid] * n_valid)
+                out_dict['hemi'].extend([hemi] * n_valid)
+                out_dict['roi'].extend([roi.split('-')[0]] * n_valid)
+                out_dict['meas'].extend(meas_vec)
+                print(f'{gid}_{hemi}_{roi}:', n_valid)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 if __name__ == '__main__':
     # split_half()
     # roi_stats(gh_id=11, hemi='lh')
@@ -249,5 +282,6 @@ if __name__ == '__main__':
     # calc_meas(gid=2, hemi='rh')
     # pre_ANOVA(gid=1)
     # pre_ANOVA(gid=2)
-    pre_ANOVA_rm(gid=1)
-    pre_ANOVA_rm(gid=2)
+    # pre_ANOVA_rm(gid=1)
+    # pre_ANOVA_rm(gid=2)
+    pre_ANOVA_3factors()
