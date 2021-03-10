@@ -208,6 +208,40 @@ def fc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def pre_ANOVA_rm():
+    """
+    Preparation for two-way repeated-measures ANOVA
+    半球x脑区
+    Only the subjects who have all four ROIs will be used.
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    src_file = pjoin(work_dir, 'rsfc_individual2Cole_{}.pkl')
+
+    # outputs
+    trg_file = pjoin(work_dir, 'rsfc_individual2Cole_preANOVA-rm.csv')
+
+    out_dict = {}
+    nan_idx_vec = np.zeros(1080, dtype=np.bool)
+    for hemi in hemis:
+        data = pkl.load(open(src_file.format(hemi), 'rb'))
+        for roi in rois:
+            meas_vec = np.mean(data[roi], axis=1)
+            nan_idx_vec = np.logical_or(nan_idx_vec, np.isnan(meas_vec))
+            out_dict[f"{hemi}_{roi.split('-')[0]}"] = meas_vec
+    valid_idx_vec = ~nan_idx_vec
+
+    for k, v in out_dict.items():
+        out_dict[k] = v[valid_idx_vec]
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 def roi_ttest():
     """
     compare rsfc difference between ROIs
@@ -415,5 +449,6 @@ if __name__ == '__main__':
     # multitest_correct_ttest()
     # prepare_plot(hemi='lh')
     # prepare_plot(hemi='rh')
-    roi_pair_ttest()
-    multitest_correct_ttest()
+    # roi_pair_ttest()
+    # multitest_correct_ttest()
+    pre_ANOVA_rm()
