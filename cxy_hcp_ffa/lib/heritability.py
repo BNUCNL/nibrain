@@ -128,13 +128,13 @@ def icc(x, y=None, n_bootstrap=None, confidence=95):
 
     Returns
     -------
+    r_lb : float
+        lower boundary of confidence interval
+        Only returned when n_bootstrap is not None.
     r : float
         intraclass correlation
         If n_bootstrap is not None, it is the median correlation across all
         bootstraps.
-    r_lb : float
-        lower boundary of confidence interval
-        Only returned when n_bootstrap is not None.
     r_ub : float
         upper boundary of confidence interval
         Only returned when n_bootstrap is not None.
@@ -180,13 +180,13 @@ def heritability(mz, dz, n_bootstrap=None, confidence=95):
 
     Returns
     -------
+    h2_lb : float
+        lower boundary of confidence interval
+        Only returned when n_bootstrap is not None.
     h2 : float
         heritability
         If n_bootstrap is not None, it is the median heritability across all
         bootstraps.
-    h2_lb : float
-        lower boundary of confidence interval
-        Only returned when n_bootstrap is not None.
     h2_ub : float
         upper boundary of confidence interval
         Only returned when n_bootstrap is not None.
