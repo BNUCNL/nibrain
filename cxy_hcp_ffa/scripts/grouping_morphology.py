@@ -21,7 +21,10 @@ def calc_meas_individual(gid=1, hemi='lh', morph='thickness'):
                      'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii',
         'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
                   'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
-                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
+                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
+        'va': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+              'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+              'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
     }
     meas_file = morph2file[morph]
     gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
@@ -29,6 +32,7 @@ def calc_meas_individual(gid=1, hemi='lh', morph='thickness'):
     roi_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                      f'rois_v3_{hemi}.nii.gz')
     subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
     trg_file = pjoin(work_dir, f'individual_G{gid}_{morph}_{hemi}.pkl')
 
     gid_idx_vec = np.load(gid_file) == gid
@@ -37,7 +41,7 @@ def calc_meas_individual(gid=1, hemi='lh', morph='thickness'):
     n_subj = len(subj_ids)
     roi_maps = nib.load(roi_file).get_data().squeeze().T[gid_idx_vec]
     meas_reader = CiftiReader(meas_file)
-    meas_ids = [name.split('_')[0] for name in meas_reader.map_names()]
+    meas_ids = open(meas_id_file).read().splitlines()
     meas_indices = [meas_ids.index(i) for i in subj_ids]
     meas = meas_reader.get_data(hemi2stru[hemi], True)[meas_indices]
 
@@ -50,8 +54,12 @@ def calc_meas_individual(gid=1, hemi='lh', morph='thickness'):
         for subj_idx in range(n_subj):
             lbl_idx_vec = lbl_idx_arr[subj_idx]
             if np.any(lbl_idx_vec):
-                out_dict['meas'][roi_idx, subj_idx] = np.mean(
-                    meas[subj_idx][lbl_idx_vec])
+                if morph == 'va':
+                    out_dict['meas'][roi_idx, subj_idx] = np.sum(
+                        meas[subj_idx][lbl_idx_vec])
+                else:
+                    out_dict['meas'][roi_idx, subj_idx] = np.mean(
+                        meas[subj_idx][lbl_idx_vec])
     pkl.dump(out_dict, open(trg_file, 'wb'))
 
 
@@ -168,6 +176,10 @@ if __name__ == '__main__':
     # calc_meas_individual(gid=2, hemi='lh', morph='myelin')
     # calc_meas_individual(gid=2, hemi='rh', morph='thickness')
     # calc_meas_individual(gid=2, hemi='rh', morph='myelin')
+    calc_meas_individual(gid=1, hemi='lh', morph='va')
+    calc_meas_individual(gid=1, hemi='rh', morph='va')
+    calc_meas_individual(gid=2, hemi='lh', morph='va')
+    calc_meas_individual(gid=2, hemi='rh', morph='va')
     # pre_ANOVA(gid=1, morph='thickness')
     # pre_ANOVA(gid=1, morph='myelin')
     # pre_ANOVA(gid=2, morph='thickness')
@@ -176,5 +188,5 @@ if __name__ == '__main__':
     # pre_ANOVA_rm_individual(gid=1, morph='myelin')
     # pre_ANOVA_rm_individual(gid=2, morph='thickness')
     # pre_ANOVA_rm_individual(gid=2, morph='myelin')
-    pre_ANOVA_3factors(morph='thickness')
-    pre_ANOVA_3factors(morph='myelin')
+    # pre_ANOVA_3factors(morph='thickness')
+    # pre_ANOVA_3factors(morph='myelin')
