@@ -123,6 +123,58 @@ def pre_ANOVA_rm_individual(morph='thickness'):
     out_df.to_csv(trg_file, index=False)
 
 
+def plot_bar(morph='thickness'):
+    import numpy as np
+    import pickle as pkl
+    from scipy.stats import sem
+    from nibrain.util.plotfig import auto_bar_width
+    from matplotlib import pyplot as plt
+
+    src_file = pjoin(work_dir, 'individual_{morph}_{hemi}.pkl')
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    roi2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
+    morph2ylabel = {'thickness': 'thickness',
+                    'myelin': 'myelination',
+                    'activ': 'face selectivity',
+                    'va': 'region size'}
+    morph2ylim = {'thickness': 2.7,
+                  'myelin': 1.3,
+                  'activ': 2,
+                  'va': 200}
+
+    hemi2meas = {
+        'lh': pkl.load(open(src_file.format(morph=morph, hemi='lh'), 'rb')),
+        'rh': pkl.load(open(src_file.format(morph=morph, hemi='rh'), 'rb'))}
+    n_roi = len(rois)
+    n_hemi = len(hemis)
+    x = np.arange(n_hemi)
+    width = auto_bar_width(x, n_roi)
+    offset = -(n_roi - 1) / 2
+    _, ax = plt.subplots()
+    for roi in rois:
+        y = np.zeros(n_hemi)
+        y_err = np.zeros(n_hemi)
+        for hemi_idx, hemi in enumerate(hemis):
+            roi_idx = hemi2meas[hemi]['roi'].index(roi)
+            meas = hemi2meas[hemi]['meas'][roi_idx]
+            meas = meas[~np.isnan(meas)]
+            y[hemi_idx] = np.mean(meas)
+            y_err[hemi_idx] = sem(meas)
+        ax.bar(x+width*offset, y, width, yerr=y_err,
+               label=roi.split('-')[0], color=roi2color[roi])
+        offset += 1
+    ax.set_xticks(x)
+    ax.set_xticklabels(hemis)
+    ax.set_ylabel(morph2ylabel[morph])
+    ax.set_ylim(morph2ylim[morph])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     # calc_morphology_individual(hemi='lh', morph='thickness')
     # calc_morphology_individual(hemi='lh', morph='myelin')
@@ -132,6 +184,7 @@ if __name__ == '__main__':
     # pre_ANOVA(morph='myelin')
     # calc_morphology_individual(hemi='lh', morph='va')
     # calc_morphology_individual(hemi='rh', morph='va')
-    pre_ANOVA_rm_individual(morph='thickness')
-    pre_ANOVA_rm_individual(morph='myelin')
-    pre_ANOVA_rm_individual(morph='va')
+    # pre_ANOVA_rm_individual(morph='thickness')
+    # pre_ANOVA_rm_individual(morph='myelin')
+    # pre_ANOVA_rm_individual(morph='va')
+    plot_bar(morph='va')
