@@ -43,9 +43,16 @@ def count_roi():
         print(f'#subjects of {col}:', np.sum(df[col]))
 
 
-def calc_gdist():
-    """
-    Calculate geodesic distance between each two ROIs.
+def calc_gdist(method='peak'):
+    """Calculate geodesic distance between each two ROIs.
+
+    Args:
+        method (str, optional): 'peak' or 'min'
+            If 'peak', use the distance between two vertices
+            with peak activation values in two ROIs respectively.
+            If 'min', use the minimum distance of pair-wise
+            vertices between the two ROIs.
+            Defaults to 'peak'.
     """
     import os
     import time
@@ -53,8 +60,10 @@ def calc_gdist():
     import numpy as np
     import pandas as pd
     import nibabel as nib
-    from cxy_hcp_ffa.lib.predefine import roi2label
+    from cxy_hcp_ffa.lib.predefine import roi2label, hemi2stru
+    from magicbox.io.io import CiftiReader
 
+    # inputs
     rois = ('IOG-face', 'pFus-face', 'mFus-face')
     hemis = ('lh', 'rh')
     hemi2Hemi = {'lh': 'L', 'rh': 'R'}
@@ -62,12 +71,16 @@ def calc_gdist():
     roi_file = pjoin(work_dir, 'rois_v3_{}.nii.gz')
     geo_file = '/nfs/m1/hcp/{sid}/T1w/fsaverage_LR32k/' \
                '{sid}.{Hemi}.midthickness_MSMAll.32k_fs_LR.surf.gii'
-    log_file = pjoin(work_dir, 'gdist_error_log')
-    out_file = pjoin(work_dir, 'gdist.csv')
+    activ_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
 
+    # outputs
+    log_file = pjoin(work_dir, f'gdist_{method}_log')
+    out_file = pjoin(work_dir, f'gdist_{method}.csv')
+
+    # preparation
     subj_ids = open(subj_file).read().splitlines()
     n_subj = len(subj_ids)
-
+    activ_reader = CiftiReader(activ_file)
     out_dict = {}
     for hemi in hemis:
         for roi1_idx, roi1 in enumerate(rois[:-1]):
@@ -75,36 +88,85 @@ def calc_gdist():
                 k = f"{hemi}_{roi1.split('-')[0]}-{roi2.split('-')[0]}"
                 out_dict[k] = np.ones(n_subj, dtype=np.float64) * np.nan
     log_lines = []
+
+    # calculation
     for hemi in hemis:
         roi_maps = nib.load(roi_file.format(hemi)).get_fdata().squeeze().T
+        activ_maps = activ_reader.get_data(hemi2stru[hemi], True)
+        assert roi_maps.shape == activ_maps.shape
         for subj_idx, subj_id in enumerate(subj_ids):
             time1 = time.time()
             roi_map = roi_maps[subj_idx]
+            activ_map = activ_maps[subj_idx]
             g_file = geo_file.format(sid=subj_id, Hemi=hemi2Hemi[hemi])
             if not os.path.exists(g_file):
                 log_lines.append(f'{g_file} does not exist.')
                 continue
             geo = nib.load(g_file)
-            coords = geo.get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0].data
-            coords = coords.astype(np.float64)
-            faces = geo.get_arrays_from_intent('NIFTI_INTENT_TRIANGLE')[0].data
-            faces = faces.astype(np.int32)
+            coords = geo.get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0]
+            coords = coords.data.astype(np.float64)
+            faces = geo.get_arrays_from_intent('NIFTI_INTENT_TRIANGLE')[0]
+            faces = faces.data.astype(np.int32)
             for roi1_idx, roi1 in enumerate(rois[:-1]):
                 roi1_idx_map = roi_map == roi2label[roi1]
                 if np.any(roi1_idx_map):
                     for roi2 in rois[roi1_idx+1:]:
                         roi2_idx_map = roi_map == roi2label[roi2]
                         if np.any(roi2_idx_map):
-                            roi1_vertices = np.where(roi1_idx_map)[0]
-                            roi1_vertices = roi1_vertices.astype(np.int32)
-                            roi2_vertices = np.where(roi2_idx_map)[0]
-                            roi2_vertices = roi2_vertices.astype(np.int32)
-                            ds = gdist.compute_gdist(coords, faces, roi1_vertices,
-                                                     roi2_vertices)
-                            k = f"{hemi}_{roi1.split('-')[0]}-{roi2.split('-')[0]}"
-                            out_dict[k][subj_idx] = np.min(ds)
+                            k = f"{hemi}_{roi1.split('-')[0]}-"\
+                                f"{roi2.split('-')[0]}"
+                            if method == 'peak':
+                                roi1_max = np.max(activ_map[roi1_idx_map])
+                                roi2_max = np.max(activ_map[roi2_idx_map])
+                                roi1_idx_map =\
+                                    np.logical_and(roi1_idx_map,
+                                                   activ_map == roi1_max)
+                                roi2_idx_map =\
+                                    np.logical_and(roi2_idx_map,
+                                                   activ_map == roi2_max)
+                                roi1_vertices = np.where(roi1_idx_map)[0]
+                                roi1_vertices = roi1_vertices.astype(np.int32)
+                                n_vtx1 = len(roi1_vertices)
+                                roi2_vertices = np.where(roi2_idx_map)[0]
+                                roi2_vertices = roi2_vertices.astype(np.int32)
+                                n_vtx2 = len(roi2_vertices)
+                                if n_vtx1 > 1 or n_vtx2 > 1:
+                                    msg = f'{subj_id}: {roi1} vs {roi2} '\
+                                          f'has multiple peaks.'
+                                    log_lines.append(msg)
+                                    ds = []
+                                    for src_vtx in roi1_vertices:
+                                        src_vtx = np.array([src_vtx], np.int32)
+                                        ds_tmp = \
+                                            gdist.compute_gdist(coords, faces,
+                                                                src_vtx,
+                                                                roi2_vertices)
+                                        ds.extend(ds_tmp)
+                                    out_dict[k][subj_idx] = np.mean(ds)
+                                elif n_vtx1 == 1 and n_vtx2 == 1:
+                                    ds = gdist.compute_gdist(coords, faces,
+                                                             roi1_vertices,
+                                                             roi2_vertices)
+                                    assert len(ds) == 1
+                                    out_dict[k][subj_idx] = ds[0]
+                                else:
+                                    raise RuntimeError("Impossible!")
+                            elif method == 'min':
+                                roi1_vertices = np.where(roi1_idx_map)[0]
+                                roi1_vertices = roi1_vertices.astype(np.int32)
+                                roi2_vertices = np.where(roi2_idx_map)[0]
+                                roi2_vertices = roi2_vertices.astype(np.int32)
+                                ds = gdist.compute_gdist(coords, faces,
+                                                         roi1_vertices,
+                                                         roi2_vertices)
+                                out_dict[k][subj_idx] = np.min(ds)
+                            else:
+                                raise ValueError(f'Not supported method: '
+                                                 f'{method}')
             print(f'Finished: {subj_idx+1}/{n_subj}, '
                   f'cost {time.time()-time1} seconds.')
+
+    # save out
     out_df = pd.DataFrame(out_dict)
     out_df.to_csv(out_file, index=False)
     out_log = '\n'.join(log_lines)
@@ -120,7 +182,7 @@ def plot_gdist():
 
     hemis = ('lh', 'rh')
     items = ('pFus-mFus',)
-    data_file = pjoin(work_dir, 'gdist.csv')
+    data_file = pjoin(work_dir, 'gdist_peak.csv')
 
     n_hemi = len(hemis)
     n_item = len(items)
@@ -158,7 +220,7 @@ def compare_gdist():
     from scipy.stats.stats import ttest_rel
 
     items = ('pFus-mFus',)
-    data_file = pjoin(work_dir, 'gdist.csv')
+    data_file = pjoin(work_dir, 'gdist_peak.csv')
 
     df = pd.read_csv(data_file)
     for item in items:
@@ -178,6 +240,7 @@ def compare_gdist():
 if __name__ == '__main__':
     # get_roi_idx_vec()
     # count_roi()
-    # calc_gdist()
+    # calc_gdist(method='min')
+    # calc_gdist(method='peak')
     plot_gdist()
     compare_gdist()
