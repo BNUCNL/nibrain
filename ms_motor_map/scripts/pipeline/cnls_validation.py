@@ -3,6 +3,7 @@
 """
 
 import os, argparse, logging, subprocess
+import pandas as pd
 from os.path import join as pjoin
 
 class bcolors:
@@ -71,21 +72,29 @@ def cnls_validation(args):
         mkdir = 0
 
     # prepare logging
-    log_config(pjoin(bold_dir, 'info', 'CNLS_validation.log'))
+    if not os.path.isdir(args.projectdir):
+        log_config(pjoin('.', 'CNLS_validation.log'))
+    else:
+        log_config(pjoin(args.projectdir, 'CNLS_validation.log'))
 
     # Check if the file/folder exists
-    if not args.initialize:
-        if not os.path.exists(args.scaninfo):
-            logging.critical('scaninfo file in {} is not found!'.format(args.scaninfo))
-            raise AssertionError(bcolors.FAIL + "[Critical] NOT FOUND {}".format(args.scaninfo) + bcolors.ENDC)
-        if not os.listdir(orig_dir):
-            logging.critical('orig_dir in {} is empty!'.format(orig_dir))
-            raise AssertionError("[Critical] orig_dir in {} is empty!".format(orig_dir) + bcolors.ENDC)
-    for path in [data_dir, exp_dir, preexp_dir, \
+    for path in [args.projectdir, data_dir, exp_dir, preexp_dir, \
                      behavior_dir, bold_dir, code_dir, \
                          orig_dir, dicom_dir, nifti_dir, info_dir,\
                              derivatives_dir, work_dir]:
         check_path(path, mkdir)
+        
+    if args.initialize:
+        scaninfo_df = pd.DataFrame(columns=['date', 'name', 'sub', 'dim', 'protocol_name', 'ses', 'modality', 'task', 'run', 'scansequence', 'quality'])
+        scaninfo_df.to_excel(pjoin(info_dir, 'scaninfo.xlsx'), index=None)
+    
+    if not args.initialize:
+        if not os.listdir(orig_dir):
+            logging.critical('orig_dir in {} is empty!'.format(orig_dir))
+            raise AssertionError("[Critical] orig_dir in {} is empty!".format(orig_dir) + bcolors.ENDC)
+        if not os.path.exists(pjoin(info_dir, args.scaninfo)):
+            logging.critical('scaninfo file in {} is not found!'.format(pjoin(info_dir, args.scaninfo)))
+            raise AssertionError("[Critical] scaninfo file in {} is not found!".format(pjoin(info_dir, args.scaninfo)) + bcolors.ENDC)
 
     # make soft link to orig dir
     if args.origdir:
@@ -102,16 +111,15 @@ if __name__ == '__main__':
     """
        required parameters 
     """
-    parser.add_argument("scaninfo", help="path to fetch scaninfo.xlsx", default='data/bold/info/scaninfo.xlsx')
-    parser.add_argument("projectdir", help="base dir contains all project files")
+    parser.add_argument("projectdir", help="base dir contains all project files, validator will create automaticlly if it is not exist")
+    parser.add_argument("scaninfo", help="filename of scaninfo, default is <scaninfo.xlsx>", default='scaninfo.xlsx')
 
     """
         optinal parameters 
     """
-    parser.add_argument("--initialize", action="store_true", help="if choose, validator will initialize projectdir.")
-    parser.add_argument("--create", action="store_true", help="if choose, validator will create required folder if it is not exist.")
-    parser.add_argument("--origdir", help="dir contains original data, if not None, \
-                        validator will create a soft link to original data dir. It should an be absolute path.")
+    parser.add_argument("-i", "--initialize", action="store_true", help="if choose, validator will initialize a new projectdir.")
+    parser.add_argument("-c", "--create", action="store_true", help="if choose, validator will create required folder if it is not exist.")
+    parser.add_argument("-o", "--origdir", help="dir contains original data, if not None, validator will create a soft link to original data dir. It should an be absolute path.")
 
     args = parser.parse_args()
 
