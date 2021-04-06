@@ -26,6 +26,11 @@ def run_fmriprep(args):
 
     nifti_dir = os.path.join(args.projectdir, 'data', 'bold', 'nifti')
     derivatives_dir = os.path.join(args.projectdir, 'data', 'bold', 'derivatives')
+    work_dir = os.path.join(derivatives_dir, args.workdir)
+
+    if not os.path.exists(work_dir):
+        os.mkdir(work_dir)
+        print("[news] {} just created.".format(work_dir))
 
     if args.subject:
         subjects = args.subject
@@ -37,7 +42,7 @@ def run_fmriprep(args):
                                    nifti_dir,
                                    derivatives_dir,
                                    'participant',
-                                   '-w', args.workdir,
+                                   '-w', work_dir,
                                    '--participant_label', subject,
                                    '--output-space', 'T1w fsnative',
                                    '--skip-bids-validation',
@@ -58,17 +63,15 @@ if __name__ == '__main__':
        required parameters 
     """
     parser.add_argument("projectdir", help="base dir contains all project files")
-    parser.add_argument("workdir", help="name of directory stores temp files")
+    parser.add_argument("workdir", help="name of directory stores temp files, should be in <derivatives>, default is <workdir>", default='workdir')
 
     """
         optinal parameters 
     """
-    # parser.add_argument("--create", action="store_true", help="if choose, script will create required folder if it is not exist.")
-    parser.add_argument("--subject", type=str, nargs="+", help="subjects")
-    parser.add_argument("--preview", action="store_true", help="if choose, user can preview the whole pipeline and inspect critical information without runing any process command")
-    # parser.add_argument("--options", type=str, nargs="+", help="Add parameters to the command line, There is no need to add '--' before the option")
+    parser.add_argument('-s', "--subject", type=str, nargs="+", help="subjects")
+    parser.add_argument('-p', "--preview", action="store_true", help="if choose, user can preview the whole pipeline and inspect critical information without runing any process command")
 
     args = parser.parse_args()
 
-    # CNLS validation
+    # fMRIPrep
     run_fmriprep(args)
