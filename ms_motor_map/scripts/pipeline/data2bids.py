@@ -21,7 +21,7 @@ class heucreation:
     """
 
     def __init__(self, file):
-        self.file = open(file, 'a+')
+        self.file = open(file, 'w')
         self.HEADER = [
             'import os\ndef create_key(template, outtype=(\'nii.gz\',), annotation_classes=None):\n    if template is None or not template:\n        raise ValueError(\'Template must be a valid format string\')\n    return template, outtype, annotation_classes\ndef infotodict(seqinfo):\n    """Heuristic evaluator for determining which runs belong where\n    allowed template fields - follow python string module:\n    item: index within category\n    subject: participant id\n    seqitem: run number during scanning\n    subindex: sub index within group\n    """\n\n']
 
@@ -147,7 +147,7 @@ def session_input_dict(scaninfo):
     print("[news] Generating session-input mapping...")
     for _ in tqdm(range(len(scaninfo))):
         cur_run = scaninfo.iloc[_, :]
-        _key = "sub-{:02d}/ses-{:s}".format(cur_run['sub'], cur_run['ses'])
+        _key = "sub-{:02d}/ses-{:s}".format(cur_run['sub'], str(cur_run['ses']))
         if _key not in session_input.keys():
             session_input[_key] = "{0}*{1}.tar.gz".format(cur_run['date'].strftime("%Y%m%d"), cur_run['name'])
 
@@ -160,7 +160,7 @@ def session_task_dict(scaninfo):
     Won't contain fmap/ cause every session should have one
     parameter:
     ----------
-    scaninfo锛?pd.DataFrame
+    scaninfo: pd.DataFrame
 
     return:
     ---------
@@ -170,7 +170,7 @@ def session_task_dict(scaninfo):
     print("[news] Generating session-task mapping...")
     for _ in tqdm(range(len(scaninfo))):
         cur_run = scaninfo.iloc[_, :]
-        for __ in cur_run['ses'].split(','):
+        for __ in str(cur_run['ses']).split(','):
             _key = "sub-{:02d}/ses-{:s}".format(cur_run['sub'], __)
             if _key not in session_task.keys():
                 session_task[_key] = ["{:s}/{:s}".format(cur_run['modality'], cur_run['task'])]
@@ -208,11 +208,6 @@ def log_config(log_name):
     logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
                         level=logging.INFO, filename=log_name, filemode='w')
 
-def dict2json(dict, path):
-    dict = json.dumps(dict)
-    with open(path, "w+", encoding='utf-8') as f:
-        f.write(dict + ",\n")
-
 def data2bids(args):
 
     # prepare parameter and path
@@ -231,10 +226,9 @@ def data2bids(args):
     # generate session:input - determine
     # generate session:task
     # generate task:feature
-    scaninfo_raw = pd.read_excel(args.scaninfo)
+    scaninfo_raw = pd.read_excel(pjoin(info_dir, args.scaninfo))
     # pandas:https://www.cnblogs.com/ech2o/p/11831488.html
 
-    #
     if args.subject or args.session:
         scaninfo = scaninfo_raw
         if args.subject:
@@ -268,7 +262,6 @@ def data2bids(args):
     for key, value in session_input.items():
         print(bcolors.BOLD + "    {:s} ".format(key) + bcolors.ENDC + "from: {:s}".format(value))
     logging.info('DATA2BIDS: session-input mapping is stored in {}'.format(pjoin(nifti_dir, 'session-input.json')))
-    dict2json(session_input, pjoin(nifti_dir, 'session-input.json'))
 
 
     # detemine session-contained tasks --
@@ -287,7 +280,6 @@ def data2bids(args):
     for key, value in heu_session_task.items():
         print(bcolors.BOLD + "    {:s} ".format(key) + bcolors.ENDC + "contains: {}".format(value))
     logging.info('DATA2BIDS: session-task mapping is stored in {}'.format(pjoin(nifti_dir, 'session-task.json')))
-    dict2json(session_task, pjoin(nifti_dir, 'session-task.json'))
 
     # determine task feature -- task : [protocolname dim]
     task_feature = task_feature_dict(scaninfo)
@@ -297,19 +289,19 @@ def data2bids(args):
               bcolors.BOLD + "{0[0]},".format(value) + bcolors.ENDC + " dim = " + \
               bcolors.BOLD + "{0[1]} ".format(value) + bcolors.ENDC)
     logging.info('DATA2BIDS: task-feature mapping is stored in {}'.format(pjoin(nifti_dir, 'task-feature.json')))
-    dict2json(task_feature, pjoin(nifti_dir, 'task-feature.json'))
 
     # step 3 Unpack
-    print(bcolors.BOLD_NODE + "[Node] Unpacking..." + bcolors.ENDC)
+    if not args.skip_unpack:
+        print(bcolors.BOLD_NODE + "[Node] Unpacking..." + bcolors.ENDC)
 
-    for _value in tqdm([__ for __ in session_input.values()]):
-        # upack
-        if not glob.glob(pjoin(dicom_dir, _value.replace('.tar.gz', ''))):
-            cmd = "tar -xzvf {:s} -C {:s}".format(pjoin(orig_dir, _value), dicom_dir)
-            logging.info('Unpack command: {:s}'.format(cmd))
-            print("[news] Running command: {:s}".format(cmd))
-            if not args.preview:
-                runcmd(cmd)
+        for _value in tqdm([__ for __ in session_input.values()]):
+            # upack
+            if not glob.glob(pjoin(dicom_dir, _value.replace('.tar.gz', ''))):
+                cmd = "tar -xzvf {:s} -C {:s}".format(pjoin(orig_dir, _value), dicom_dir)
+                logging.info('Unpack command: {:s}'.format(cmd))
+                print("[news] Running command: {:s}".format(cmd))
+                if not args.preview:
+                    runcmd(cmd)
 
     # step 4 Heuristic.py generation
     print(bcolors.BOLD_NODE + "[Node] Heuristic.py Generating..." + bcolors.ENDC)
@@ -317,9 +309,9 @@ def data2bids(args):
     for key, value in heu_session_task.items():
         check_path(pjoin(nifti_dir, 'code', key))
         file = pjoin(nifti_dir, 'code', key, 'heuristic.py')
-        if not os.path.exists(file):
-            heu_creation = heucreation(file)
-            heu_creation.create_heuristic(value, task_feature)
+
+        heu_creation = heucreation(file)
+        heu_creation.create_heuristic(value, task_feature)
     print("[news] Heuristic.py completion!")
 
     # step 5 heudiconv
@@ -364,11 +356,8 @@ def data2bids(args):
                     else:
                         if not _feature in dicominfo_scan_feature:
                             _check.append(_feature in dicominfo_scan_feature)
-                            logging.critical("'{:s}' protocol name mismtach! Found no {:s} in {:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv" \
-                                             .format(_task, _feature, nifti_dir, subID, sesID))
-                            print(bcolors.FAIL + \
-                                  "[ERROR] '{:s}' protocol name mismtach! Found no {:s} in {:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv" \
-                                  .format(_task, _feature, nifti_dir, subID, sesID) + bcolors.ENDC)
+                            logging.critical('"'+_task+'" protocol name mismtach! Found no '+str(_feature)+' in '+nifti_dir+'/.heudiconv/'+subID+'/info/dicominfo_ses-'+sesID+'.tsv')
+                            print('[ERROR] "'+_task+'" protocol name mismtach! Found no '+str(_feature)+' in '+nifti_dir+'/.heudiconv/'+subID+'/info/dicominfo_ses-'+sesID+'.tsv')
                 if not all(_check):
                     logging.critical('Feature validation failure!')
                     raise AssertionError(
@@ -393,43 +382,47 @@ def data2bids(args):
     print(bcolors.BOLD_NODE + "[Node] .json Filling up..." + bcolors.ENDC)
 
     if args.subject:
-        subjects = args.subject
+        subjects = ["{:02d}".format(int(_)) for _ in args.subject]
     else:
         subjects = [_.replace("sub-", "") for _ in os.listdir(nifti_dir) if "sub-" in _]
 
     sessions = {name: [] for name in (subjects)}  # {sub : [session]}
     jsonfiles = {name: {sesname: [] for sesname in sessions[name]} for name in
-                 (args.subject)}  # {sub:{session:[files]}}
+                 (subjects)}  # {sub:{session:[files]}}
     intendedfornii = {name: {sesname: [] for sesname in sessions[name]} for name in
                       (subjects)}  # {sub:{session:[files]}}
 
     # collect .json files waiting to fill & .nii.gz filenames
-    print("[news] collect .json files waiting to fill & .nii.gz filenames")
-    for subname in sessions.keys():
-        # get all the sessions under a subject
-        subpth = pjoin(nifti_dir, 'sub-%s' % (subname))
-        sessions[subname] = os.listdir(subpth)
-        # collect jsonfiles & values
-        for fold in sessions[subname]:
-            # path preparation
-            sesspth = pjoin(nifti_dir, subpth, fold)
-            fmappth = pjoin(sesspth, 'fmap')
-            funcpth = pjoin(sesspth, 'func')
-            # if fmap exist then clollect
-            if os.path.exists(fmappth):
-                jsonfiles[subname][fold] = [file for file in os.listdir(fmappth) if '.json' in file]
-                # the file path must be the relative path to sub- folder
-                intendedfornii[subname][fold] = ['%s/func/%s' % (fold, file) for file in os.listdir(funcpth) if
-                                                 '.nii.gz' in file]
+    if not args.preview:
+        print("[news] collect .json files waiting to fill & .nii.gz filenames")
+        for subname in sessions.keys():
+            # get all the sessions under a subject
+            subpth = pjoin(nifti_dir, 'sub-%s' % (subname))
+            sessions[subname] = os.listdir(subpth)
+            # collect jsonfiles & values
+            for fold in sessions[subname]:
+                # path preparation
+                sesspth = pjoin(nifti_dir, subpth, fold)
+                fmappth = pjoin(sesspth, 'fmap')
+                funcpth = pjoin(sesspth, 'func')
+                # if fmap exist then clollect
+                if os.path.exists(fmappth):
+                    jsonfiles[subname][fold] = [file for file in os.listdir(fmappth) if '.json' in file]
+                    # the file path must be the relative path to sub- folder
+                    intendedfornii[subname][fold] = ['%s/func/%s' % (fold, file) for file in os.listdir(funcpth) if
+                                                     '.nii.gz' in file]
 
     # write key:value for each json
-    if not args.preview:
         print("[news] write key:value for each json")
         for sub, ses_fold in jsonfiles.items():
             for ses, files in ses_fold.items():
                 for file in files:
                     # file path
                     file_path = os.path.join(nifti_dir, 'sub-%s/%s' % (sub, ses), 'fmap', file)
+                    
+                    # change mode
+                    chmod_cmd = ' '.join(['chmod', '755', file_path])
+                    runcmd(chmod_cmd, timeout=3600)
 
                     # load in & add IntendedFor
                     with open(file_path, 'r') as datafile:
@@ -451,20 +444,21 @@ if __name__ == '__main__':
     """
        required parameters 
     """
-    parser.add_argument("scaninfo", help="path to fetch scaninfo.xlsx")
     parser.add_argument("projectdir", help="base dir contains all project files")
-
+    parser.add_argument("scaninfo", help="filename of scaninfo, default is <scaninfo.xlsx>", default='scaninfo.xlsx')
+    
     """
         optinal parameters 
     """
-    parser.add_argument("--quality-filter", type=str, help="quality filter on scaninfo.xlsx", choices=['ok', 'all', 'discard'], default='ok')
-    parser.add_argument("--subject", type=str, nargs="+", help="subjects")
-    parser.add_argument("--session", type=str, nargs="+", help="sessions")
-    parser.add_argument("--preview", action="store_true", help="if choose, user can preview the whole pipeline and inspect critical information without runing any process command")
+    parser.add_argument("-q","--quality-filter", type=str, help="quality filter on scaninfo.xlsx", choices=['ok', 'all', 'discard'], default='ok')
+    parser.add_argument("-s","--subject", type=str, nargs="+", help="subjects")
+    parser.add_argument("-ss","--session", type=str, nargs="+", help="sessions")
+    parser.add_argument("-p","--preview", action="store_true", help="if choose, user can preview the whole pipeline and inspect critical information without runing any process command")
     parser.add_argument("--skip-feature-validation", action="store_true", help="if choose, pipeline will not compare scan features between scaninfo.xlsx and dicom.tsv")
     parser.add_argument("--overwrite", action="store_true", help="if choose, heudiconv will overwrite the existed files")
+    parser.add_argument("--skip-unpack", action="store_true", help="if choose, pipeline will skip upack")
 
     args = parser.parse_args()
 
-    # CNLS validation
+    # data2bids
     data2bids(args)
