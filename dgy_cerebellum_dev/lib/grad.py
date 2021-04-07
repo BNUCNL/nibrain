@@ -1,4 +1,3 @@
-import nibabel
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -53,7 +52,7 @@ def get_time_profile(grad_pca: PCA, n_comp: int = 3) -> pd.DataFrame:
     
     return time_profile
 
-def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, figsize=(12, 4)) -> None:
+def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, figsize=(13, 4)) -> None:
     w_mean = np.row_stack(time_profile['mean'])
     w_se = np.row_stack(time_profile['se'])
 
@@ -67,7 +66,7 @@ def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, fi
             capsize = 4, color = cmap[i % 3]
         )
         axes[i].set_title(f'PC{i+1}', y = -0.2)
-        axes[i].set_xticks(np.arange(8, 22, 2))
+        axes[i].set_xticks(np.arange(6, 24, 2))
     
     plt.tight_layout()
     plt.show()

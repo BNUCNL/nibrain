@@ -8,6 +8,7 @@ def niqr_outlier_indices(x, n=2):
     """For a 1-D array, find out indices of outliers beyond n * IQR.
     """
     Q1, Q3 = stats.scoreatpercentile(x, 25), stats.scoreatpercentile(x, 75)
+    assert not np.isinf(Q1) and not np.isinf(Q3)
     IQR = Q3 - Q1
     l, u = Q1 - n * IQR, Q3 + n * IQR
     return np.where((x - l) * (x - u) > 0)[0]
@@ -33,7 +34,7 @@ def get_norm_indices(array: np.ndarray, _outlier_func=niqr_outlier_indices, **ka
     return noramls
 
 #--------------------------------------------------------------
-# Used in processing myelination maps in old-fashion data structure
+# Used in processing myelination maps in old-fashioned data structure
 
 def set_outliers_to_nan(maps: dict, _method=niqr_outlier_indices, *args):
     """For a dict containing maps of all subjects of all ages, set outliers to nan within subject data.
