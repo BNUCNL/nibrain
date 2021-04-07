@@ -5,7 +5,7 @@ import pandas as pd
 #--------------
 # Path settings
 
-NI_DATADIR = '/nfs/m1/HCPD/fmriresults01/'
+NI_DATADIR = '/nfs/e1/HCPD/fmriresults01/'
 HCP_AVERAGE_DATADIR = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1'
 
 BASE = os.path.dirname(os.path.dirname(__file__))
@@ -17,7 +17,7 @@ def DATA_DIR():
 # Subject information
 
 def SUB_INFO():
-    return os.path.join(DATA_DIR(), 'HCPD.csv')
+    return os.path.join(DATA_DIR(), 'HCPD-Full.csv')
 
 def _SUBJECTS_AVAILABLE():
     filnames = os.listdir(NI_DATADIR)
