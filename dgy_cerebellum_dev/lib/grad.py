@@ -7,19 +7,19 @@ from typing import List, Tuple, Callable, Any, Dict
 
 from . import basic, preprocess, niio, myelin
 
-def basic_grad_pca(maps: pd.DataFrame, report_outliers=True) -> Tuple[np.ndarray, PCA]:
+def basic_grad_pca(maps: pd.DataFrame, fill_outliers_with_mean=False) -> Tuple[np.ndarray, PCA]:
     from sklearn.decomposition import PCA
     matrix = np.row_stack(maps['data']) # n_sub * n_voxel
     
-    n_outliers = []
-    for i, row in enumerate(np.copy(matrix)):
-        outliers = preprocess.niqr_outlier_indices(row)
-        n_outliers.append(len(outliers))
-        matrix[i, outliers] = np.nan
-        feat_mean = np.nanmean(matrix[i])
-        matrix[i, outliers] = feat_mean
-    
-    if report_outliers:
+    if fill_outliers_with_mean:
+        n_outliers = []
+        for i, row in enumerate(np.copy(matrix)):
+            outliers = preprocess.niqr_outlier_indices(row[0])
+            n_outliers.append(len(outliers))
+            matrix[i, outliers] = np.nan
+            feat_mean = np.nanmean(matrix[i])
+            matrix[i, outliers] = feat_mean
+        
         print(f'n_voxel: {matrix.shape[1]}')
         print('Descriptive result of n_outliers: ')
         print(stats.describe(n_outliers))
@@ -86,8 +86,8 @@ def get_spatial_map(matrix: np.ndarray, grad_pca: PCA, nib_type: str, _map_func:
     
     return nib_objects
 
-def grad_analysis(maps: pd.DataFrame, nib_type: str, _map_func: Callable = None, n_comp: int = 3, plot: bool = True, roi_name: str = None, report_outliers: bool = True) -> Dict[str, Any]:
-    matrix, grad_pca = basic_grad_pca(maps, report_outliers)
+def grad_analysis(maps: pd.DataFrame, nib_type: str, _map_func: Callable = None, n_comp: int = 3, plot: bool = True, roi_name: str = None, fill_outliers: bool = False) -> Dict[str, Any]:
+    matrix, grad_pca = basic_grad_pca(maps, fill_outliers)
     time_profile = get_time_profile(grad_pca, n_comp)
     if plot:
         plot_pca_r2(grad_pca.explained_variance_ratio_, roi_name)
