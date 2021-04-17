@@ -167,6 +167,52 @@ def pre_ANOVA_3factors(morph='thickness'):
     out_df.to_csv(trg_file, index=False)
 
 
+def pre_ANOVA_3factors_mix(morph='thickness'):
+    """
+    准备好3因素混合设计方差分析需要的数据。
+    被试间因子：group
+    被试内因子：hemisphere，ROI
+    2 groups x 2 hemispheres x 2 ROIs
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    gids = (1, 2)
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                     'structure/individual_{}_{}.pkl')
+    gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                     'grouping/group_id_{}.npy')
+    trg_file = pjoin(work_dir, f'individual_{morph}_preANOVA-3factor-mix.csv')
+
+    hemi2data = {}
+    hemi2gids = {}
+    for hemi in hemis:
+        hemi2data[hemi] = pkl.load(open(src_file.format(morph, hemi), 'rb'))
+        hemi2gids[hemi] = np.load(gid_file.format(hemi))
+
+    out_dict = {'gid': []}
+    for idx, gid in enumerate(gids):
+        gid_idx_vec = np.logical_and(hemi2gids['lh'] == gid,
+                                     hemi2gids['rh'] == gid)
+        n_valid = np.sum(gid_idx_vec)
+        print(f'G{gid}:', n_valid)
+        out_dict['gid'].extend([gid] * n_valid)
+        for hemi in hemis:
+            data = hemi2data[hemi]
+            for roi in rois:
+                roi_idx = data['roi'].index(roi)
+                meas_vec = data['meas'][roi_idx][gid_idx_vec]
+                if idx == 0:
+                    out_dict[f"{hemi}_{roi.split('-')[0]}"] = meas_vec.tolist()
+                else:
+                    out_dict[f"{hemi}_{roi.split('-')[0]}"].extend(meas_vec)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
 def plot_bar(gid=1, morph='thickness'):
     import numpy as np
     import pickle as pkl
@@ -243,5 +289,7 @@ if __name__ == '__main__':
     # pre_ANOVA_3factors(morph='thickness')
     # pre_ANOVA_3factors(morph='myelin')
     # pre_ANOVA_3factors(morph='va')
-    plot_bar(gid=1, morph='va')
-    plot_bar(gid=2, morph='va')
+    # plot_bar(gid=1, morph='va')
+    # plot_bar(gid=2, morph='va')
+    pre_ANOVA_3factors_mix(morph='thickness')
+    pre_ANOVA_3factors_mix(morph='myelin')
