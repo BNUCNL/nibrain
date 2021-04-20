@@ -1,11 +1,49 @@
 """
-    run command
+    run cmd
 """
 
-import os, subprocess, argparse
+import os, argparse, subprocess, re
 
 def run_cmd(args):
-    
+    # input
+    cmd = args.cmd
+    projectdir = args.projectdir
+
+    # subject
+    if args.subject:
+        subjects = args.subject
+    else:
+        subjects = [sub.replace("sub-", "") for sub in os.listdir(os.path.join(projectdir, 'data', 'bold', 'nifti')) if "sub-" in sub]
+    for subject in subjects:
+        # session
+        if args.session:
+            sessions = args.session
+        else:
+            sessions = [ses.replace("ses-", "") for ses in os.listdir(os.path.join(projectdir, 'data', 'bold', 'nifti', 'sub-' + subject)) if "ses-" in ses]
+        for session in sessions:
+            # run
+            if args.run:
+                runs = args.run
+            else:
+                runs = []
+                for filename in os.listdir(os.path.join(projectdir, 'data', 'bold', 'nifti', 'sub-' + subject, 'ses-' + session, 'func')):
+                    if '_bold.nii.gz' in filename:
+                        runs.append(re.findall('run-(.+?)_bold', filename)[0])
+            for run in runs:
+                # adjust cmd
+                if 'subject' in cmd:
+                    cmd = cmd.replace('subject', subject)
+                if 'session' in cmd:
+                    cmd = cmd.replace('session', session)
+                if 'run' in cmd:
+                    cmd = cmd.replace('run', run)
+                print(cmd)
+                # run cmd
+                # if not args.preview:
+                #     try:
+                #         subprocess.check_call(cmd, shell=True)
+                #     except subprocess.CalledProcessError:
+                #         raise Exception('RUN CMD: Error happened in subject {}'.format(subject))
 
 if __name__ == '__main__':
 
@@ -15,17 +53,18 @@ if __name__ == '__main__':
     """
        required parameters 
     """
-    parser.add_argument("projectdir", help="base dir contains all project files.")
-    parser.add_argument("cmd", help="cmd")
+    parser.add_argument("projectdir", help="projectdir")
 
     """
         optinal parameters 
     """
-    parser.add_argument("-i", "--subject", action="store_true", help="if choose, validator will initialize a new projectdir.")
-    parser.add_argument("-c", "--session", action="store_true", help="if choose, validator will create required folder if it is not exist.")
-    parser.add_argument("-o", "--run", help="dir contains original data, if not None, validator will create a soft link to original data dir. It should an be absolute path.")
+    parser.add_argument('-c', '--cmd', help="command, use double quotation")
+    parser.add_argument('-s', "--subject", type=str, nargs="+", help="subject id")
+    parser.add_argument('-ss', "--session", type=str, nargs="+", help="session id")
+    parser.add_argument('-r', "--run", type=str, nargs="+", help="run id")
+    parser.add_argument('-p', "--preview", action="store_true", help="command line preview")
 
     args = parser.parse_args()
 
-    # CNLS validation
+    # run cmd
     run_cmd(args)
