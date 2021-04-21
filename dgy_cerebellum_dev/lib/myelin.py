@@ -9,10 +9,19 @@ from typing import Tuple, Callable, Union
 from . import basic, roi, preprocess
 
 SET_CACHE = False
+USE_CACHE = False
 def LOCAL_CACHE_DIR():
     return os.path.join(basic.CACHE_DIR(), 'myelin')
 
-def get_vol_myelin_map(sub_id: str, fill_outliers_strategy='winsorize', n_neighbors=1, n_iqr=2.5) -> np.ndarray:
+def get_lu_bounds(l, u, u_max, semi_width):
+    if l < 0:
+        return 0, 2 * semi_width + 1
+    elif u > u_max:
+        return u_max - 2 * semi_width - 1, u_max
+    else:
+        return l, u
+
+def get_vol_myelin_map(sub_id: str, fill_outliers_strategy='neighbor', n_neighbors=1, n_iqr=2.0) -> np.ndarray:
     """Calculates the full myelination map of given subject using 'T1w/T2w_restore.2.nii.gz'.
 
     Args:
@@ -29,12 +38,12 @@ def get_vol_myelin_map(sub_id: str, fill_outliers_strategy='winsorize', n_neighb
     
     if fill_outliers_strategy == 'neighbor':
         outliers = preprocess.niqr_outlier_indices(myelin_map, n_iqr)
+        myelin_map[outliers] = np.nan
         for x, y, z in zip(*outliers):
-            new_val = np.nanmean(myelin_map[
-                max(0, x - n_neighbors): x + n_neighbors + 1,
-                max(0, y - n_neighbors): y + n_neighbors + 1,
-                max(0, z - n_neighbors): z + n_neighbors + 1
-            ])
+            xl, xu = get_lu_bounds(x - n_neighbors, x + n_neighbors + 1, myelin_map.shape[0], n_neighbors)
+            yl, yu = get_lu_bounds(y - n_neighbors, y + n_neighbors + 1, myelin_map.shape[1], n_neighbors)
+            zl, zu = get_lu_bounds(z - n_neighbors, z + n_neighbors + 1, myelin_map.shape[2], n_neighbors)
+            new_val = np.nanmean(myelin_map[xl: xu, yl: yu, zl: zu])
             myelin_map[x, y, z] = new_val
     elif fill_outliers_strategy == 'winsorize':
         l, u = preprocess.get_iqr(myelin_map)
@@ -47,31 +56,7 @@ def get_vol_myelin_map(sub_id: str, fill_outliers_strategy='winsorize', n_neighb
     
     return myelin_map
 
-# def fill_outliers_with_vol_neighbors(myelin_map: np.ndarray, indices: Tuple[np.ndarray], n_iqr=2.5, n_neighbors=1) -> np.ndarray:
-#     # outliers = preprocess.niqr_outlier_indices(myelin_map[indices], n_iqr)
-#     outliers = preprocess.niqr_outlier_indices(myelin_map, n_iqr)
-#     new_myelin_map = myelin_map.copy()
-#     # new_myelin_map[(indices[0][outliers], indices[1][outliers], indices[2][outliers])] = np.nan
-#     new_myelin_map[(outliers)] = np.nan
-#     for outidx in outliers:
-#         x, y, z = indices[0][outidx], indices[1][outidx], indices[2][outidx]
-#         new_val = np.nanmean(new_myelin_map[
-#             max(0, x - n_neighbors): x + n_neighbors + 1,
-#             max(0, y - n_neighbors): y + n_neighbors + 1,
-#             max(0, z - n_neighbors): z + n_neighbors + 1
-#         ])
-#         print(f'{[x, y, z]} {new_myelin_map[x, y, z]} --> {new_val}') if basic.DEBUG else None
-#         new_myelin_map[x, y, z] = new_val
-
-#     return new_myelin_map
-
-# def fill_outliers_with_surf_neighbors(myelin_map: np.ndarray, n_iqr=2.5, n_neighbors=2) -> np.ndarray:
-#     outliers = preprocess.niqr_outlier_indices(myelin_map, n_iqr)
-#     myelin_map[outliers] = np.nan
-#     for outidx in outliers[0]:
-#         myelin_map[outidx] = np.nanmean(myelin_map[max(0, outidx - n_neighbors): outidx + n_neighbors + 1])
-
-def get_cc_map(sub_id: str, fill_outliers=True, n_neighbors=2, n_iqr=2.5) -> np.ndarray:
+def get_cc_map(sub_id: str, fill_outliers='neighbor', n_neighbors=2, n_iqr=2.0) -> np.ndarray:
     """Reads myelination map of cerebral cortex of given subject from 'V1_MR.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'.
 
     Args:
@@ -91,7 +76,7 @@ def get_cc_map(sub_id: str, fill_outliers=True, n_neighbors=2, n_iqr=2.5) -> np.
     
     return myelin_map, np.arange(0, 59412)
 
-def get_cb_map(sub_id: str, fill_outliers=True, n_neighbors=1, n_iqr=2.5) -> Tuple[np.ndarray, list]:
+def get_cb_map(sub_id: str, fill_outliers='neighbor', n_neighbors=1, n_iqr=2.0) -> Tuple[np.ndarray, list]:
     """Calculates myelination map of cerebellum based on 'get_myelin_map' and .2 ROI map.
 
     Args:
@@ -101,7 +86,7 @@ def get_cb_map(sub_id: str, fill_outliers=True, n_neighbors=1, n_iqr=2.5) -> Tup
     Returns:
         Tuple[np.ndarray, list]: Cerebellum myelination map in 1-D array and original indices.
     """
-    if os.path.isfile(os.path.join(LOCAL_CACHE_DIR(), sub_id)):
+    if USE_CACHE and os.path.isfile(os.path.join(LOCAL_CACHE_DIR(), sub_id)):
         with open(os.path.join(LOCAL_CACHE_DIR(), sub_id), 'rb') as f:
             myelin_map = pickle.load(f)
     else:
@@ -113,7 +98,7 @@ def get_cb_map(sub_id: str, fill_outliers=True, n_neighbors=1, n_iqr=2.5) -> Tup
 
     return myelin_map, indices
 
-def get_sc_map(sub_id: str, fill_outliers=True, n_neighbors=1, n_iqr=2.5) -> Tuple[np.ndarray, list]:
+def get_sc_map(sub_id: str, fill_outliers='neighbor', n_neighbors=1, n_iqr=2.0) -> Tuple[np.ndarray, list]:
     """Calculates myelination map of subcortical regions based on 'get_myelin_map' and .2 ROI map.
 
     Args:
@@ -123,7 +108,7 @@ def get_sc_map(sub_id: str, fill_outliers=True, n_neighbors=1, n_iqr=2.5) -> Tup
     Returns:
         Tuple[np.ndarray, list]: Subcortical myelination map in 1-D array and original indices.
     """
-    if os.path.isfile(os.path.join(LOCAL_CACHE_DIR(), sub_id)):
+    if USE_CACHE and os.path.isfile(os.path.join(LOCAL_CACHE_DIR(), sub_id)):
         with open(os.path.join(LOCAL_CACHE_DIR(), sub_id), 'rb') as f:
             myelin_map = pickle.load(f)
     else:
@@ -181,10 +166,10 @@ def get_mean_maps_of_ages(maps: pd.DataFrame, remove_outliers=True) -> dict:
     
     return mean_maps
 
-def invert_map(data: np.ndarray, _map_func, new_indices=None, bkg_val=0) -> np.ndarray:
+def invert_map(data: np.ndarray, _map_func, new_indices=None, bkg_val=np.nan) -> np.ndarray:
     assert isinstance(_map_func, Callable) and _map_func.__name__ in ['get_cb_map', 'get_sc_map']
     sub_id = basic.rand_pick_sub()
-    template, indices = _map_func(sub_id)
+    template, indices = _map_func(sub_id, fill_outliers=None)
     template[:, :, :] = bkg_val
 
     if not new_indices:

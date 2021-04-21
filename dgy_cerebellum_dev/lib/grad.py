@@ -31,7 +31,7 @@ def basic_grad_pca(maps: pd.DataFrame, fill_outliers_with_mean=False) -> Tuple[n
 
 def plot_pca_r2(r2: np.ndarray, roi_name=None, figsize=(7, 4), n_dot=30, n_plot=50) -> None:
     plt.style.use('ggplot')
-    plt.figure(figsize = figsize)
+    fig = plt.figure(figsize = figsize)
     plt.scatter(np.arange(n_dot), r2[:n_dot], s = 24)
     plt.plot(np.arange(n_plot), r2[:n_plot])
     plt.ylabel('$R^2$', loc = 'center', rotation = 0, labelpad = 12)
@@ -52,7 +52,7 @@ def get_time_profile(grad_pca: PCA, n_comp: int = 3) -> pd.DataFrame:
     
     return time_profile
 
-def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, figsize=(13, 4)) -> None:
+def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, figsize=(13, 4), fname=None) -> None:
     w_mean = np.row_stack(time_profile['mean'])
     w_se = np.row_stack(time_profile['se'])
 
@@ -69,6 +69,8 @@ def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, fi
         axes[i].set_xticks(np.arange(6, 24, 2))
     
     plt.tight_layout()
+    if fname:
+        plt.savefig(fname)
     plt.show()
 
 def get_spatial_map(matrix: np.ndarray, grad_pca: PCA, nib_type: str, _map_func: Callable = None, n_comp: int = 3) -> List[Any]:
