@@ -4,14 +4,18 @@ import scipy.stats as stats
 #------------------------------------------------
 # Finding out data outliers and further operation
 
-def niqr_outlier_indices(x, n=2):
-    """For a 1-D array, find out indices of outliers beyond n * IQR.
-    """
+def get_iqr(x, n=3):
     Q1, Q3 = stats.scoreatpercentile(x, 25), stats.scoreatpercentile(x, 75)
     assert not np.isinf(Q1) and not np.isinf(Q3)
     IQR = Q3 - Q1
     l, u = Q1 - n * IQR, Q3 + n * IQR
-    return np.where((x - l) * (x - u) > 0)[0]
+    return l, u
+
+def niqr_outlier_indices(x, n=3):
+    """For a given `np.ndarray`, find out indices of outliers beyond n * IQR.
+    """
+    l, u = get_iqr(x, n)
+    return np.where((x - l) * (x - u) > 0)
 
 def bound_outlier_indices(x, l, u):
     """For a 1-D array, find out indices of outliers beyond given bounds.

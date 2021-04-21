@@ -10,8 +10,12 @@ HCP_AVERAGE_DATADIR = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupA
 
 BASE = os.path.dirname(os.path.dirname(__file__))
 _DATA_DIRNAME = 'data'
+_CACHE_DIRNAME = 'cache'
 def DATA_DIR():
     return os.path.join(BASE, _DATA_DIRNAME)
+
+def CACHE_DIR():
+    return os.path.join(BASE, _CACHE_DIRNAME)
 
 #--------------------
 # Subject information
@@ -47,6 +51,7 @@ def get_32k_dir(sub_id):
 #-------
 # Others
 
+DEBUG = False
 def rand_pick_sub():
     import random
     return random.choice(SUB_AVAILABLE)
