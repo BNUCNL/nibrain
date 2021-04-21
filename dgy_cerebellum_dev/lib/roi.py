@@ -1,25 +1,72 @@
 import os
 import re
+import json
 import nibabel
 import collections
 import numpy as np
-from numpy.core.numeric import indices
 import pandas as pd
 
 from . import basic
 
-#--------------------------
-# Surface ROIs given by MMP
+class BaseROI(object):
+    roi_map = None # nibabel imaging object
+    name_id_mapping = {} # dict, {roi_name: roi_id}
+    
+    def get_data(self):
+        raise NotImplementedError
+    
+    def get_idx(self, roi_id, exclude_specified_id=False):
+        if not self.roi_map:
+            raise NotImplementedError
+        
+        if isinstance(roi_id, collections.Iterable):
+            indices = np.ones_like(self.get_data())
+            for i in roi_id:
+                indices *= self.get_data() - i
+            return np.where((indices != 0) if exclude_specified_id else (indices == 0))
+        else:
+            return (self.get_data() != roi_id) if exclude_specified_id \
+                else np.where(self.get_data() == roi_id)
 
-MMP_RAW = nibabel.load(os.path.join(basic.HCP_AVERAGE_DATADIR,
-    'Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii'))
+    def get_roi_id(self, roi_name):
+        if roi_name in self.name_id_mapping:
+            return self.name_id_mapping[roi_name]
+        else:
+            raise NotImplementedError
+    
+    def invert(self, data, roi_id, exclude_specified_id=False, fill_val=np.nan):
+        output = np.ones_like(self.get_data()) * fill_val
+        output[self.get_idx(roi_id, exclude_specified_id)] = data
+        return output
+    
+    def __call__(self, roi_id, exclude_specified_id=False):
+        return self.get_idx(roi_id, exclude_specified_id)
 
-def get_MMP_32k_indices(roi_id):    
-    return np.where(MMP_RAW.get_fdata()[0] == roi_id)[0]
+    def __iter__(self):
+        return iter(self.name_id_mapping.items())
 
-#------------
-# Volume ROIs
+class SurfROI(BaseROI):
+    def get_data(self):
+        return self.roi_map.get_fdata()[0]
 
+class MNIVolumeROI(BaseROI):
+    def get_data(self):
+        return self.roi_map.get_fdata()
+
+class SurfMMP(SurfROI):
+    roi_map = nibabel.load(os.path.join(basic.HCP_AVERAGE_DATADIR,
+        'Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii'))
+
+class VolumeAtlas(MNIVolumeROI):
+    roi_map = nibabel.load(os.path.join(basic.DATA_DIR(), 'ROI', 'Atlas_ROIs.2.nii'))
+    name_id_mapping = json.loads(open(os.path.join(basic.DATA_DIR(), 'ROI', 'Atlas_ROIs_mapping.json')).read())
+
+class VolumeMDTB(MNIVolumeROI):
+    roi_map = nibabel.load(os.path.join(basic.DATA_DIR(), 'ROI', 'mdtb_mni.2.nii.gz'))
+    name_id_mapping = json.loads(open(os.path.join(basic.DATA_DIR(), 'ROI', 'mdtb_mapping.json')).read())
+
+# Conventional atlas ROIs
+# TODO: Rewrite this part in a standard object-oriented manner
 class _VolumeROI(object):
     '''Volume ROI indices in .2 resolution.
 
