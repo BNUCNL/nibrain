@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 calculate the tSNR for pre- and post-denoising fMRI data
-@author: liuxingyu
 """
 
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 import nibabel as nib
+from collections import Counter
 
 sessidlist = ["sub001"]
 
@@ -15,15 +14,15 @@ sessidlist = ["sub001"]
 runidlist = ["001"]
 
 
-smth_cdt = 'unsmth'
-hemi = 'rh'
-projectdir = "/nfs/e5/studyforrest"
-after_funcname = "audiovisual3T_fslpreproc2surface_{0}_denoised".format(smth_cdt)
-before_funcname = "audiovisual3T_fslpreproc2surface_{0}".format(smth_cdt)    
-file_name = 'fmcpr.sm0.fsaverage.{0}.nii.gz'.format(hemi)
-
-analysis_dir = '/nfs/e5/studyforrest/data_lxy/result/tSNR/surface'
-figure_dir = '/nfs/e5/studyforrest/data_lxy/result/tSNR/figure'
+# smth_cdt = 'unsmth'
+# hemi = 'rh'
+# projectdir = "/nfs/e5/studyforrest"
+# after_funcname = "audiovisual3T_fslpreproc2surface_{0}_denoised".format(smth_cdt)
+# before_funcname = "audiovisual3T_fslpreproc2surface_{0}".format(smth_cdt)
+# file_name = 'fmcpr.sm0.fsaverage.{0}.nii.gz'.format(hemi)
+#
+# analysis_dir = '/nfs/e5/studyforrest/data_lxy/result/tSNR/surface'
+# figure_dir = '/nfs/e5/studyforrest/data_lxy/result/tSNR/figure'
 vertex_number = 163842
 
 
@@ -106,5 +105,37 @@ for subid in sessidlist:
     # nib.save(img, save_path)
     #
     # print('Saving_{0}'.format(subid))
+
+    before_counter = Counter(np.trunc(before_tSNR).tolist())
+    for key in list(before_counter.keys()):
+        if key < 1:
+            del before_counter[key]
+
+    after_counter = Counter(np.trunc(after_tSNR).tolist())
+    for key in list(after_counter.keys()):
+        if key < 1:
+            del after_counter[key]
+    # print(before_counter)
+    # print(after_counter)
+
+    def draw_from_dict(dicdata, RANGE, heng=0):
+        by_value = sorted(dicdata.items(), key=lambda item: item[1], reverse=True)
+        x = []
+        y = []
+        for d in by_value:
+            x.append(d[0])
+            y.append(d[1])
+        if heng == 0:
+            plt.bar(x[0:RANGE], y[0:RANGE])
+            plt.show()
+            return
+        elif heng == 1:
+            plt.barh(x[0:RANGE], y[0:RANGE])
+            plt.show()
+            return
+        else:
+            return "!"
+
+    draw_from_dict(before_counter, 1000000)
   
 print('======{0} done======='.format(subid))
