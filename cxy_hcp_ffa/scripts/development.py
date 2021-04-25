@@ -79,6 +79,30 @@ def get_subject_info_from_completeness(proj_name='HCPD'):
     out_df.to_csv(trg_file, index=False)
 
 
+def plot_age_distribution(proj_name='HCPD'):
+    import numpy as np
+    import pandas as pd
+    from matplotlib import pyplot as plt
+    from commontool.algorithm.plot import show_bar_value
+
+    age_type = 'age in years'
+    fname = f'{proj_name}_SubjInfo.csv'
+    info_file = pjoin(work_dir, fname)
+    data = pd.read_csv(info_file)
+    ages = data[age_type].to_list()
+    ages_uniq = np.unique(ages)
+
+    y = [ages.count(age) for age in ages_uniq]
+    rects = plt.bar(ages_uniq, y, edgecolor='k', facecolor='w')
+    show_bar_value(rects)
+    plt.xlabel(age_type)
+    plt.xticks(ages_uniq, ages_uniq, rotation=45)
+    plt.ylabel('#subjects')
+    plt.title(fname)
+    plt.tight_layout()
+    plt.show()
+
+
 def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1'):
     """
     Calculate thickness or myelination
@@ -157,7 +181,9 @@ if __name__ == '__main__':
     # get_subject_info_from_fmriresults01(proj_name='HCPA')
     # get_subject_info_from_completeness(proj_name='HCPD')
     # get_subject_info_from_completeness(proj_name='HCPA')
-    calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1')
-    calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1')
-    calc_TM(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1')
-    calc_TM(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1')
+    plot_age_distribution(proj_name='HCPD')
+    plot_age_distribution(proj_name='HCPA')
+    # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1')
+    # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1')
+    # calc_TM(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1')
+    # calc_TM(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1')
