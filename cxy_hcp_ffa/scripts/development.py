@@ -1,3 +1,4 @@
+import numpy as np
 from os.path import join as pjoin
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
@@ -80,7 +81,6 @@ def get_subject_info_from_completeness(proj_name='HCPD'):
 
 
 def plot_age_distribution(proj_name='HCPD'):
-    import numpy as np
     import pandas as pd
     from matplotlib import pyplot as plt
     from commontool.algorithm.plot import show_bar_value
@@ -108,7 +108,6 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1'):
     Calculate thickness or myelination
     """
     import time
-    import numpy as np
     import pandas as pd
     import nibabel as nib
     from cxy_hcp_ffa.lib.predefine import roi2label, hemi2stru
@@ -176,14 +175,78 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1'):
     df.to_csv(out_file, index=False)
 
 
+def prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
+                 n_samples=np.inf, save_out=True):
+    import pandas as pd
+
+    # prepare
+    hemis = ['lh', 'rh']
+    n1, n2 = 'pFus', 'mFus'
+    metrics = ('a-b', '(a-b)/std(a-b)', '(a-b)/(a+b)', '2(a-b)/(a+b)')
+    fname = pjoin(work_dir, f'{proj_name}_{meas_name}_{atlas_name}.csv')
+    data = pd.read_csv(fname)
+
+    # get ages
+    age_name = 'age in years'
+    ages = np.array(data[age_name])
+    ages_uniq = np.unique(ages)
+
+    # select subjects
+    indices = []
+    for age in ages_uniq:
+        indices_tmp = np.where(ages == age)[0]
+        n_indices_tmp = len(indices_tmp)
+        if n_indices_tmp > n_samples:
+            indices_tmp = np.random.choice(indices_tmp, n_samples, False)
+        indices.extend(indices_tmp)
+    data = data.loc[indices].reset_index(drop=True)
+    ages = np.array(data[age_name])
+    ages_uniq = np.unique(ages)
+
+    # calculate
+    for hemi in hemis:
+        col1 = f'{n1}_{hemi}'
+        col2 = f'{n2}_{hemi}'
+        a = np.array(data[col1])
+        b = np.array(data[col2])
+        diff = a - b
+        for metric in metrics:
+            if metric == 'a-b':
+                data[f'{n1}-{n2}_{hemi}'] = diff
+            elif metric == '(a-b)/std(a-b)':
+                age2std = {}
+                for age in ages_uniq:
+                    age2std[age] = np.std(diff[ages == age])
+                data[f'{n1}-{n2}_div-std_{hemi}'] = [diff[i]/age2std[age] for i, age in enumerate(ages)]
+            elif metric == '(a-b)/(a+b)':
+                data[f'{n1}-{n2}_div-sum_{hemi}'] = diff / (a + b)
+            elif metric == '2(a-b)/(a+b)':
+                data[f'{n1}-{n2}_div-mean_{hemi}'] = 2*diff / (a + b)
+            else:
+                raise ValueError('not supported metric:', metric)
+    if save_out:
+        out_file = pjoin(work_dir, f'{proj_name}_{meas_name}_{atlas_name}_prep_{n_samples}.csv')
+        data.to_csv(out_file, index=False)
+
+    return data
+
+
 if __name__ == '__main__':
     # get_subject_info_from_fmriresults01(proj_name='HCPD')
     # get_subject_info_from_fmriresults01(proj_name='HCPA')
     # get_subject_info_from_completeness(proj_name='HCPD')
     # get_subject_info_from_completeness(proj_name='HCPA')
-    plot_age_distribution(proj_name='HCPD')
-    plot_age_distribution(proj_name='HCPA')
+    # plot_age_distribution(proj_name='HCPD')
+    # plot_age_distribution(proj_name='HCPA')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1')
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1')
     # calc_TM(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1')
     # calc_TM(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1')
+    prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
+                 n_samples=np.inf, save_out=True)
+    prepare_plot(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1',
+                 n_samples=np.inf, save_out=True)
+    prepare_plot(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1',
+                 n_samples=np.inf, save_out=True)
+    prepare_plot(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1',
+                 n_samples=np.inf, save_out=True)
