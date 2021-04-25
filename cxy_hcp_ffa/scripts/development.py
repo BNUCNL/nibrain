@@ -231,6 +231,28 @@ def prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
     return data
 
 
+def plot_polyfit(meas_name='thickness'):
+    import pandas as pd
+    from matplotlib import pyplot as plt
+    from magicbox.vis.plot import polyfit_plot
+
+    hemi = 'rh'
+    cols = [f'pFus_{hemi}', f'mFus_{hemi}']
+    fname = f'HCPD_{meas_name}_MPM1_prep_inf.csv'
+    data = pd.read_csv(pjoin(work_dir, fname))
+
+    age_name = 'age in years'
+    ages = np.array(data[age_name])
+    for col in cols:
+        print(f'\n---{col}---\n')
+        polyfit_plot(ages, np.array(data[col]), 1)
+    plt.legend(cols)
+    plt.xlabel(age_name)
+    plt.title(fname)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     # get_subject_info_from_fmriresults01(proj_name='HCPD')
     # get_subject_info_from_fmriresults01(proj_name='HCPA')
@@ -242,11 +264,13 @@ if __name__ == '__main__':
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1')
     # calc_TM(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1')
     # calc_TM(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1')
-    prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
-                 n_samples=np.inf, save_out=True)
-    prepare_plot(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1',
-                 n_samples=np.inf, save_out=True)
-    prepare_plot(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1',
-                 n_samples=np.inf, save_out=True)
-    prepare_plot(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1',
-                 n_samples=np.inf, save_out=True)
+    # prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
+    #              n_samples=np.inf, save_out=True)
+    # prepare_plot(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1',
+    #              n_samples=np.inf, save_out=True)
+    # prepare_plot(proj_name='HCPA', meas_name='thickness', atlas_name='MPM1',
+    #              n_samples=np.inf, save_out=True)
+    # prepare_plot(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1',
+    #              n_samples=np.inf, save_out=True)
+    plot_polyfit(meas_name='thickness')
+    plot_polyfit(meas_name='myelin')
