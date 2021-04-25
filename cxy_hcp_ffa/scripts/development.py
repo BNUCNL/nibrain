@@ -253,6 +253,45 @@ def plot_polyfit(meas_name='thickness'):
     plt.show()
 
 
+def plot_polyfit_box(meas_name='thickness'):
+    import pandas as pd
+    from matplotlib import pyplot as plt
+    from magicbox.vis.plot import polyfit_plot
+
+    # hemi = 'lh'
+    # cols = [f'pFus_{hemi}', f'mFus_{hemi}']
+    # colors = ['green', 'blue']
+    cols = ['pFus-mFus_lh', 'pFus-mFus_rh']
+    colors = ['k', 'red']
+    fname = f'HCPD_{meas_name}_MPM1_prep_inf.csv'
+    data = pd.read_csv(pjoin(work_dir, fname))
+
+    age_name = 'age in years'
+    ages = np.array(data[age_name])
+    ages_uniq = np.unique(ages)
+
+    for col_idx, col in enumerate(cols):
+        print(f'\n---{col}---\n')
+        color = colors[col_idx]
+        points_list = []
+        for age in ages_uniq:
+            indices = np.where(ages == age)[0]
+            points_list.append(data[col].loc[indices].to_list())
+        bplot = plt.boxplot(points_list, positions=ages_uniq, patch_artist=True,
+                            showfliers=False, whiskerprops={'color': color},
+                            capprops={'color': color}, medianprops={'color': color})
+        for patch in bplot['boxes']:
+            patch.set_edgecolor(color)
+            patch.set_facecolor('w')
+        polyfit_plot(ages, np.asarray(data[col]), 1, scatter_plot=False,
+                     color=color, label=col)
+    plt.legend()
+    plt.title(fname)
+    plt.xlabel(age_name)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     # get_subject_info_from_fmriresults01(proj_name='HCPD')
     # get_subject_info_from_fmriresults01(proj_name='HCPA')
@@ -272,5 +311,7 @@ if __name__ == '__main__':
     #              n_samples=np.inf, save_out=True)
     # prepare_plot(proj_name='HCPA', meas_name='myelin', atlas_name='MPM1',
     #              n_samples=np.inf, save_out=True)
-    plot_polyfit(meas_name='thickness')
-    plot_polyfit(meas_name='myelin')
+    # plot_polyfit(meas_name='thickness')
+    # plot_polyfit(meas_name='myelin')
+    plot_polyfit_box(meas_name='thickness')
+    plot_polyfit_box(meas_name='myelin')
