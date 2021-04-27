@@ -236,7 +236,7 @@ def plot_polyfit(meas_name='thickness'):
     from matplotlib import pyplot as plt
     from magicbox.vis.plot import polyfit_plot
 
-    hemi = 'rh'
+    hemi = 'lh'
     cols = [f'pFus_{hemi}', f'mFus_{hemi}']
     fname = f'HCPD_{meas_name}_MPM1_prep_inf.csv'
     data = pd.read_csv(pjoin(work_dir, fname))

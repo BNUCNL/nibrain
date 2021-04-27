@@ -237,10 +237,49 @@ def compare_gdist():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
+def calc_prob_map(hemi='lh'):
+    import numpy as np
+    import nibabel as nib
+    from cxy_hcp_ffa.lib.predefine import roi2label
+    from magicbox.io.io import save2nifti
+
+    # inputs
+    n_roi = len(roi2label)
+    print(n_roi)
+    roi_file = pjoin(work_dir, f'rois_v3_{hemi}.nii.gz')
+
+    # outputs
+    out_file = pjoin(work_dir, f'prob_maps_v3_{hemi}.nii.gz')
+
+    # prepare
+    rois = nib.load(roi_file).get_fdata().squeeze().T
+    n_vtx = rois.shape[1]
+
+    # calculate
+    prob_maps = np.ones((n_roi, n_vtx)) * np.nan
+    for idx, roi in enumerate(roi2label.keys()):
+        label = roi2label[roi]
+        print(roi)
+
+        # get indices of subjects which contain the roi
+        indices = rois == label
+        subj_indices = np.any(indices, 1)
+
+        # calculate roi probability map among valid subjects
+        prob_map = np.mean(indices[subj_indices], 0)
+        prob_maps[idx] = prob_map
+
+    # save out
+    save2nifti(out_file, prob_maps.T[:, None, None, :])
+
+
+
 if __name__ == '__main__':
     # get_roi_idx_vec()
     # count_roi()
     # calc_gdist(method='min')
     # calc_gdist(method='peak')
-    plot_gdist()
-    compare_gdist()
+    # plot_gdist()
+    # compare_gdist()
+    calc_prob_map(hemi='lh')
+    calc_prob_map(hemi='rh')
