@@ -69,6 +69,39 @@ def test_retest_icc(hemi='lh'):
     pkl.dump(out_data, open(out_file, 'wb'))
 
 
+def icc_plot(hemi='lh'):
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+    from nibrain.util.plotfig import auto_bar_width
+
+    icc_file = pjoin(work_dir, f'ICC_{hemi}.pkl')
+    data = pkl.load(open(icc_file, 'rb'))
+    x = np.arange(len(data['roi_name']))
+    width = auto_bar_width(x, 2)
+
+    y_mpm = data['mpm'][1]
+    low_err_mpm = y_mpm - data['mpm'][0]
+    high_err_mpm = data['mpm'][2] - y_mpm
+    yerr_mpm = np.array([low_err_mpm, high_err_mpm])
+
+    y_ind = data['individual'][1]
+    low_err_ind = y_ind - data['individual'][0]
+    high_err_ind = data['individual'][2] - y_ind
+    yerr_ind = np.array([low_err_ind, high_err_ind])
+
+    plt.bar(x-(width/2), y_mpm, width, yerr=yerr_mpm, label='group')
+    plt.bar(x+(width/2), y_ind, width, yerr=yerr_ind, label='individual')
+    plt.xticks(x, data['roi_name'])
+    plt.ylabel('ICC')
+    plt.title(hemi)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    test_retest_icc(hemi='lh')
-    test_retest_icc(hemi='rh')
+    # test_retest_icc(hemi='lh')
+    # test_retest_icc(hemi='rh')
+    icc_plot(hemi='lh')
+    icc_plot(hemi='rh')
