@@ -313,7 +313,8 @@ def get_mpm(hemi='lh'):
     valid_count_vec_uniq = np.zeros_like(valid_count_vec)
     for i in range(len(valid_count_vec)):
         valid_supra_thr_idx_vec = valid_supra_thr_idx_arr[i]
-        valid_count_vec_uniq[i] = len(set(valid_arr[i, valid_supra_thr_idx_vec]))
+        valid_count_vec_uniq[i] = \
+            len(set(valid_arr[i, valid_supra_thr_idx_vec]))
     assert np.all(valid_count_vec == valid_count_vec_uniq)
 
     # save
