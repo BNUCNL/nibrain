@@ -4,6 +4,31 @@ proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/retest')
 
 
+def get_curvature(hemi='lh'):
+    import nibabel as nib
+    from magicbox.io.io import save2nifti
+
+    # inputs
+    src_file = pjoin(proj_dir, f'analysis/s2/{hemi}/curvature.nii.gz')
+    subj_test_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    subj_retest_file = pjoin(work_dir, 'subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, f'curvature_{hemi}.nii.gz')
+
+    # prepare
+    curv_maps = nib.load(src_file).get_fdata()
+    subj_ids_test = open(subj_test_file).read().splitlines()
+    subj_ids_retest = open(subj_retest_file).read().splitlines()
+    retest_indices = [subj_ids_test.index(i) for i in subj_ids_retest]
+
+    # calculate
+    curv_retest = curv_maps[..., retest_indices]
+
+    # save
+    save2nifti(out_file, curv_retest)
+
+
 def test_retest_icc(hemi='lh'):
     import numpy as np
     import pickle as pkl
@@ -43,12 +68,12 @@ def test_retest_icc(hemi='lh'):
         label = roi2label[roi_name]
         mpm_roi_idx_arr = mpm_mask == label
         individual_roi_idx_arr = individual_mask == label
-        valid_subj_idx_arr = np.any(individual_roi_idx_arr, 1)
-        individual_roi_idx_arr = individual_roi_idx_arr[valid_subj_idx_arr]
-        test_maps_tmp = test_maps[valid_subj_idx_arr]
-        retest_maps_tmp = retest_maps[valid_subj_idx_arr]
-        n_subj_tmp = test_maps_tmp.shape[0]
-        print(roi_name, n_subj_tmp, 'valid subjects')
+        valid_subj_idx_vec = np.any(individual_roi_idx_arr, 1)
+        individual_roi_idx_arr = individual_roi_idx_arr[valid_subj_idx_vec]
+        test_maps_tmp = test_maps[valid_subj_idx_vec]
+        retest_maps_tmp = retest_maps[valid_subj_idx_vec]
+        n_subj_valid = np.sum(valid_subj_idx_vec)
+        print(f'{hemi}_{roi_name}: {n_subj_valid} valid subjects')
 
         # calculate ICC for MPM
         test_series_mpm = np.mean(test_maps_tmp[:, mpm_roi_idx_arr], 1)
@@ -56,12 +81,12 @@ def test_retest_icc(hemi='lh'):
         mpm_iccs[:, i] = icc(test_series_mpm, retest_series_mpm, 10000, 95)
 
         # calculate ICC for individual
-        test_series_ind = np.zeros((n_subj_tmp,))
-        retest_series_ind = np.zeros((n_subj_tmp,))
-        for j in range(n_subj_tmp):
+        test_series_ind = np.zeros((n_subj_valid,))
+        retest_series_ind = np.zeros((n_subj_valid,))
+        for j in range(n_subj_valid):
             individual_roi_idx_vec = individual_roi_idx_arr[j]
-            test_series_ind[j] = np.mean(test_maps_tmp[j, individual_roi_idx_vec])
-            retest_series_ind[j] = np.mean(retest_maps_tmp[j, individual_roi_idx_vec])
+            test_series_ind[j] = np.mean(test_maps_tmp[j][individual_roi_idx_vec])
+            retest_series_ind[j] = np.mean(retest_maps_tmp[j][individual_roi_idx_vec])
         individual_iccs[:, i] = icc(test_series_ind, retest_series_ind, 10000, 95)
 
     # save
@@ -101,7 +126,9 @@ def icc_plot(hemi='lh'):
 
 
 if __name__ == '__main__':
+    get_curvature(hemi='lh')
+    get_curvature(hemi='rh')
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
-    icc_plot(hemi='lh')
-    icc_plot(hemi='rh')
+    # icc_plot(hemi='lh')
+    # icc_plot(hemi='rh')
