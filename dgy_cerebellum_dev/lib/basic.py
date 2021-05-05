@@ -32,6 +32,7 @@ def _SUBJECTS_AVAILABLE():
     
     return subjects
 
+# Mutiple types of objects are provided for flexible usage
 SUB_INFO_DF = pd.read_csv(SUB_INFO())
 SUB_INFO_DICT = {key: list(SUB_INFO_DF.to_dict()[key]) for key in SUB_INFO_DF.to_dict()}
 SUB_INFO_ARR = SUB_INFO_DF.to_numpy()
