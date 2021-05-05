@@ -5,13 +5,23 @@ from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from typing import List, Tuple, Callable, Any, Dict
 
-from . import basic, preprocess, niio, myelin
+from . import basic, preprocess, niio, myelin, roi
 
-def basic_grad_pca(maps: pd.DataFrame, fill_outliers_with_mean=False) -> Tuple[np.ndarray, PCA]:
-    from sklearn.decomposition import PCA
+def basic_grad_pca(maps: pd.DataFrame, fill_outliers=False) -> Tuple[np.ndarray, PCA]:
+    """Perform gradient analysis(PCA in essence) on maps of all subjects.
+
+    Note that `maps` is expected to be a pandas data frame with same structure as output from `get_maps_of_all_subs`.
+
+    Args:
+        maps (pd.DataFrame): Pandas data frame consisting basic information and the specific map of each subject.
+        fill_outliers (bool, optional): Whether to find out outliers and fill them with feature mean before PCA. Defaults to False.
+
+    Returns:
+        Tuple[np.ndarray, PCA]: PCA object with subject maps.
+    """
     matrix = np.row_stack(maps['data']) # n_sub * n_voxel
     
-    if fill_outliers_with_mean:
+    if fill_outliers:
         n_outliers = []
         for i, row in enumerate(np.copy(matrix)):
             outliers = preprocess.niqr_outlier_indices(row[0])
@@ -20,7 +30,7 @@ def basic_grad_pca(maps: pd.DataFrame, fill_outliers_with_mean=False) -> Tuple[n
             feat_mean = np.nanmean(matrix[i])
             matrix[i, outliers] = feat_mean
         
-        print(f'n_voxel: {matrix.shape[1]}')
+        print(f'Data length: {matrix.shape[1]}')
         print('Descriptive result of n_outliers: ')
         print(stats.describe(n_outliers))
     
@@ -30,6 +40,15 @@ def basic_grad_pca(maps: pd.DataFrame, fill_outliers_with_mean=False) -> Tuple[n
     return matrix, grad_pca
 
 def plot_pca_r2(r2: np.ndarray, roi_name=None, figsize=(7, 4), n_dot=30, n_plot=50) -> None:
+    """With PCA performed, provide plots of explained variance ratio of PCA components.
+
+    Args:
+        r2 (np.ndarray): Attribute of PCA object as `explained_variance_ratio_`.
+        roi_name ([type], optional): Defaults to None.
+        figsize (tuple, optional): Defaults to (7, 4).
+        n_dot (int, optional): Counts of components to be scattered for convenient view. Defaults to 30.
+        n_plot (int, optional): Counts of components to be plotted. Defaults to 50.
+    """
     plt.style.use('ggplot')
     fig = plt.figure(figsize = figsize)
     plt.scatter(np.arange(n_dot), r2[:n_dot], s = 24)
@@ -39,6 +58,15 @@ def plot_pca_r2(r2: np.ndarray, roi_name=None, figsize=(7, 4), n_dot=30, n_plot=
     plt.show()
 
 def get_time_profile(grad_pca: PCA, n_comp: int = 3) -> pd.DataFrame:
+    """With PCA performed, calculate `mean` and `std` of each age for each component.
+
+    Args:
+        grad_pca (PCA): PCA object.
+        n_comp (int, optional): Counts of components to be analyzed. Defaults to 3.
+
+    Returns:
+        pd.DataFrame: A pandas data frame consisting time profile information.
+    """
     w_sub = pd.DataFrame(columns=['age', 'data'])
     w_sub['age'] = basic.SUB_INFO_DF['Age in years']
     w_sub['data'] = list(grad_pca.components_[:n_comp, :].T)
@@ -73,28 +101,33 @@ def plot_time_profile(time_profile: pd.DataFrame, n_comp: int, roi_name=None, fi
         plt.savefig(fname)
     plt.show()
 
-def get_spatial_map(matrix: np.ndarray, grad_pca: PCA, nib_type: str, _map_func: Callable = None, n_comp: int = 3) -> List[Any]:
-    nib_objects = []
-    spatial_map = preprocess.rescale(grad_pca.transform(matrix), 1, 2).T
+def get_spatial_map(matrix: np.ndarray, grad_pca: PCA, n_comp: int = 3, lbound: float = 1, ubound: float = 2) -> List[Any]:
+    maps = []
+    spatial_map = preprocess.rescale(grad_pca.transform(matrix), lbound, ubound).T
     for i in range(n_comp):
-        if nib_type == 'nifti' and _map_func:
-            nib_data = myelin.invert_map(spatial_map[i], _map_func)
-            nib_objects.append(niio.get_volume_obj(nib_data))
-        elif nib_type == 'cifti':
-            nib_data = np.reshape(spatial_map[i], (1, 59412))
-            nib_objects.append(niio.get_surface_obj(nib_data))
-        else:
-            raise ValueError('Invalid nibabel type.')
+        maps.append(spatial_map)
     
-    return nib_objects
+    return maps
 
-def grad_analysis(maps: pd.DataFrame, nib_type: str, _map_func: Callable = None, n_comp: int = 3, plot: bool = True, roi_name: str = None, fill_outliers: bool = False) -> Dict[str, Any]:
+def grad_analysis(maps: pd.DataFrame, n_comp: int = 3, plot: bool = True, roi_name: str = None, fill_outliers: bool = False) -> Dict[str, Any]:
+    """A pipeline or wrapped version of gradient analysis. Not adpoted in formal analysis.
+
+    Args:
+        maps (pd.DataFrame): [description]
+        n_comp (int, optional): [description]. Defaults to 3.
+        plot (bool, optional): [description]. Defaults to True.
+        roi_name (str, optional): [description]. Defaults to None.
+        fill_outliers (bool, optional): [description]. Defaults to False.
+
+    Returns:
+        Dict[str, Any]: Results of analysis.
+    """
     matrix, grad_pca = basic_grad_pca(maps, fill_outliers)
     time_profile = get_time_profile(grad_pca, n_comp)
     if plot:
         plot_pca_r2(grad_pca.explained_variance_ratio_, roi_name)
         plot_time_profile(time_profile, n_comp, roi_name)
-    spatial_map = get_spatial_map(matrix, grad_pca, nib_type, _map_func, n_comp)
+    spatial_map = get_spatial_map(matrix, grad_pca, n_comp)
     results =  {
         'matrix': matrix,
         'grad_pca': grad_pca,
