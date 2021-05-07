@@ -3,9 +3,29 @@ import numpy as np
 import scipy.stats as stats
 from matplotlib import pyplot as plt
 
-from . import preprocess, niio
+def corr_func(arr1: np.ndarray, arr2: np.ndarray, alpha: float = 0.05) -> dict:
+    """For two 1-D arrays, calculates their Pearson r sliding in different distances each time.
 
-def corr_func(arr1, arr2, alpha=0.05):
+    For example, if `arr1` is [1, 2, 3, 4, 5] and `arr2` is [2, 3, 4, 5, 6], correlation coefficients will be calculated as:
+
+        - delta = 0, r([1, 2, 3, 4, 5], [2, 3, 4, 5, 6])
+        
+        - delta = -1, r([1, 2, 3, 4], [3, 4, 5, 6])
+        
+        - delta = 1, r([2, 3, 4, 5], [2, 3, 4, 5])
+
+    , where `delta` is the independent variable of correlation function.
+
+    Note that statistical significance is also calculated, so shift stops when left array length is less than 4.
+    
+    Args:
+        arr1 (np.ndarray): First array.
+        arr2 (np.ndarray): Second array.
+        alpha (float, optional): Defaults to 0.05.
+
+    Returns:
+        dict: A `dict` consisting all correlation results as 'delta', 'r', 'sig', 'ci_lb', 'ci_ub'.
+    """
     _arr1, _arr2 = arr1.flatten(), arr2.flatten()
     assert len(_arr1) == len(_arr2)
     length = len(_arr1)
@@ -38,7 +58,14 @@ def corr_func(arr1, arr2, alpha=0.05):
 
     return results
 
-def plot_corr_func(corr_results, title, fname=None):
+def plot_corr_func(corr_results: dict, title: str, fname: str = None):
+    """Plots results given by `corr_func`.
+
+    Args:
+        corr_results (dict): Results given by `corr_func`.
+        title (str): Figure title.
+        fname (str, optional): Filename of output. Defaults to None.
+    """
     plt.figure(figsize=(8, 4))
     plt.errorbar(
         corr_results['delta'], corr_results['r'],
@@ -53,10 +80,26 @@ def plot_corr_func(corr_results, title, fname=None):
     plt.show()
 
 def nancorr(a: np.ndarray, b: np.ndarray) -> float:
+    """Calculates Pearson r of two 1-D arrays while ignoring `np.nan`, similar to `np.nanmean`.
+
+    Args:
+        a (np.ndarray): First array.
+        b (np.ndarray): Second array.
+
+    Returns:
+        float: Correlation coefficient.
+    """
     valid_idx = np.where(np.logical_and(np.logical_not(np.isnan(a)), np.logical_not(np.isnan(b))))
     return stats.pearsonr(a[valid_idx], b[valid_idx])
 
-def plot_corr_mat(mean_maps, vmin=0, fname=None):
+def plot_corr_mat(mean_maps: dict, vmin: float = 0, fname: str = None):
+    """Shows correlation matrix of data as {age: mean_map}.
+
+    Args:
+        mean_maps (dict): Mean maps of all ages.
+        vmin (float, optional): Minimun value of correlation matrix, set to modify color gradients. Defaults to 0.
+        fname (str, optional): Output filename. Defaults to None.
+    """
     from matplotlib import cm
     cmap = cm.viridis
     plt.figure()
@@ -72,7 +115,23 @@ def plot_corr_mat(mean_maps, vmin=0, fname=None):
         plt.savefig(fname)
     plt.show()
 
-def resample_roi_array(target_affine, target_shape, source_affine, source_shape, source_data):    
+def resample_roi_array(target_affine: np.ndarray, target_shape: tuple,
+        source_affine: np.ndarray, source_shape: tuple, source_data: np.ndarray) -> np.ndarray:
+    """Resamples source ROI array with affine matrices of both source space and target space.
+
+    Since transformation is performed by matrix multiplications, target coordinate (i, j, k) is rounded to `int` type.
+    It is probably acceptable for ROI data or other discrete data, but rather questionable for continuous data.
+    
+    Args:
+        target_affine (np.ndarray): Affine matrix of target space.
+        target_shape (tuple): Shape of target.
+        source_affine (np.ndarray): Affine matrix of source space.
+        source_shape (tuple): Shape of source.
+        source_data (np.ndarray): Source data.
+
+    Returns:
+        np.ndarray: Output in target shape.
+    """
     from numpy.linalg import linalg
     output_array = np.zeros(target_shape)
     output_array[:, :, :] = np.nan
@@ -94,8 +153,16 @@ def resample_roi_array(target_affine, target_shape, source_affine, source_shape,
 
     return output_array
 
-def resample_roi_map(ftarget, fsource, fname):
-    """Warped version of `resample_roi_array`.
+def resample_roi_map(ftarget: str, fsource: str, fname: str) -> nibabel.nifti1.Nifti1Image:
+    """Wrapped version of `resample_roi_array`.
+
+    Args:
+        ftarget (str): Target image file.
+        fsource (str): Source image file(ROI map).
+        fname (str): Output filename.
+
+    Returns:
+        nibabel.nifti1.Nifti1Image: Resampled `nibabel` image object.
     """
     target, source = nibabel.load(ftarget), nibabel.load(fsource)
     array = resample_roi_array(target.affine, target.shape, source.affine, source.shape, source.get_fdata())
