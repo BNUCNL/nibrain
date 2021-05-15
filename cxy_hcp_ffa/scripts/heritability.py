@@ -542,7 +542,7 @@ def calc_pattern_corr_between_twins(meas_name='thickness'):
     """
     import pandas as pd
     import nibabel as nib
-    from commontool.io.io import CiftiReader
+    from magicbox.io.io import CiftiReader
     from scipy.stats import pearsonr
 
     twins_id_file = pjoin(work_dir, 'twins_id_1080.csv')
@@ -587,6 +587,27 @@ def calc_pattern_corr_between_twins(meas_name='thickness'):
     out_df.to_csv(out_file, index=False)
 
 
+def pattern_corr_fisher_z(meas='thickness'):
+    import numpy as np
+    import pandas as pd
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('IOG', 'pFus', 'mFus')
+    df_file = pjoin(work_dir, f'twins_pattern-corr_{meas}.csv')
+
+    # outputs
+    out_file = df_file.split('.')[0] + '_fisherZ.csv'
+
+    df = pd.read_csv(df_file)
+    for hemi in hemis:
+        for roi in rois:
+            col = f'{hemi}_{roi}'
+            df[col] = np.arctanh(df[col])
+
+    df.to_csv(out_file, index=False)
+
+
 def plot_pattern_corr1():
     import numpy as np
     import pandas as pd
@@ -604,7 +625,7 @@ def plot_pattern_corr1():
     zygosity = ('MZ', 'DZ')
     zyg2color = {'MZ': (0.33, 0.33, 0.33, 1), 'DZ': (0.66, 0.66, 0.66, 1)}
     hemis = ('lh', 'rh')
-    df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
+    df_file = pjoin(work_dir, 'twins_pattern-corr_{}_fisherZ.csv')
 
     n_zyg = len(zygosity)
     x = np.arange(len(rois))
@@ -830,11 +851,14 @@ if __name__ == '__main__':
     # prepare_heritability_calculation_TMAV()
     # prepare_heritability_calculation_RSFC()
     # calc_Falconer_h2()
-    plot_Falconer_h2_TMAV()
+    # plot_Falconer_h2_TMAV()
     # calc_pattern_corr_between_twins(meas_name='thickness')
     # calc_pattern_corr_between_twins(meas_name='myelin')
     # calc_pattern_corr_between_twins(meas_name='activ')
-    # plot_pattern_corr1()
+    # pattern_corr_fisher_z(meas='thickness')
+    # pattern_corr_fisher_z(meas='myelin')
+    # pattern_corr_fisher_z(meas='activ')
+    plot_pattern_corr1()
     # plot_pattern_corr2()
     # plot_SEM_h2_TMA()
     # plot_SEM_h2_RSFC()
