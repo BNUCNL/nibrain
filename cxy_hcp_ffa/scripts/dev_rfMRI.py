@@ -310,6 +310,50 @@ def rsfc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def plot_rsfc_line(hemi='lh'):
+    """
+    对于每个ROI，在每个年龄，求出ROI和targets连接的均值的
+    被试间均值和SEM并画折线图
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+    from scipy.stats.stats import sem
+    from matplotlib import pyplot as plt
+    from cxy_hcp_ffa.lib.predefine import roi2color
+
+    # inputs
+    rois = ('pFus-face', 'mFus-face')
+    subj_info_file = pjoin(dev_dir, 'HCPD_SubjInfo.csv')
+    rsfc_file = pjoin(work_dir, f'rsfc_MPM2Cole_{hemi}.pkl')
+
+    # load
+    subj_info = pd.read_csv(subj_info_file)
+    age_vec = np.array(subj_info['age in years'])
+    rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
+
+    # plot
+    for roi in rois:
+        fc_vec = np.mean(rsfc_dict[roi], 1)
+        non_nan_vec = ~np.isnan(fc_vec)
+        fcs = fc_vec[non_nan_vec]
+        ages = age_vec[non_nan_vec]
+        age_uniq = np.unique(ages)
+        ys = np.zeros_like(age_uniq, np.float64)
+        yerrs = np.zeros_like(age_uniq, np.float64)
+        for idx, age in enumerate(age_uniq):
+            sample = fcs[ages == age]
+            ys[idx] = np.mean(sample)
+            yerrs[idx] = sem(sample)
+        plt.errorbar(age_uniq, ys, yerrs,
+                     label=roi, color=roi2color[roi])
+    plt.ylabel('RSFC')
+    plt.xlabel('age in years')
+    plt.title(hemi)
+    plt.legend()
+    plt.show()
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='AP')
     # get_valid_id(sess=1, run='PA')
@@ -320,15 +364,17 @@ if __name__ == '__main__':
     # prepare_series(sess=1, run='PA')
     # prepare_series(sess=2, run='AP')
     # prepare_series(sess=2, run='PA')
-    rsfc(sess=1, run='AP', hemi='lh')
-    rsfc(sess=1, run='AP', hemi='rh')
-    rsfc(sess=1, run='PA', hemi='lh')
-    rsfc(sess=1, run='PA', hemi='rh')
-    rsfc(sess=2, run='AP', hemi='lh')
-    rsfc(sess=2, run='AP', hemi='rh')
-    rsfc(sess=2, run='PA', hemi='lh')
-    rsfc(sess=2, run='PA', hemi='rh')
-    rsfc_mean_among_run(hemi='lh')
-    rsfc_mean_among_run(hemi='rh')
-    rsfc_merge_MMP(hemi='lh')
-    rsfc_merge_MMP(hemi='rh')
+    # rsfc(sess=1, run='AP', hemi='lh')
+    # rsfc(sess=1, run='AP', hemi='rh')
+    # rsfc(sess=1, run='PA', hemi='lh')
+    # rsfc(sess=1, run='PA', hemi='rh')
+    # rsfc(sess=2, run='AP', hemi='lh')
+    # rsfc(sess=2, run='AP', hemi='rh')
+    # rsfc(sess=2, run='PA', hemi='lh')
+    # rsfc(sess=2, run='PA', hemi='rh')
+    # rsfc_mean_among_run(hemi='lh')
+    # rsfc_mean_among_run(hemi='rh')
+    # rsfc_merge_MMP(hemi='lh')
+    # rsfc_merge_MMP(hemi='rh')
+    plot_rsfc_line(hemi='lh')
+    plot_rsfc_line(hemi='rh')
