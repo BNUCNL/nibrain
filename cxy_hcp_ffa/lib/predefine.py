@@ -11,6 +11,13 @@ roi2label = {
     'mFus-face': 3
 }
 
+# map roi names to colors
+roi2color = {
+    'IOG-face': 'red',
+    'pFus-face': 'limegreen',
+    'mFus-face': 'cornflowerblue'
+}
+
 # map Cole network name to label
 # /nfs/p1/atlases/ColeAnticevicNetPartition/network_labelfile.txt
 net2label_cole = {
