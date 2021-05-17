@@ -29,9 +29,9 @@ def get_parcel2label_by_ColeName(net_names):
     根军Cole Network的名字提取所有包含的parcel及其label
 
     Args:
-        net_names (str|sequence): ColeNet names
+        net_names (str|list): ColeNet names
             If is str, one ColeNet name.
-            If is sequence, a sequence of ColeNet names.
+            If is list, a list of ColeNet names.
             12 valid names: Primary Visual, Secondary Visual,
             Somatomotor, Cingulo-Opercular, Dorsal-attention,
             Language, Frontoparietal, Auditory, Default,
@@ -39,6 +39,10 @@ def get_parcel2label_by_ColeName(net_names):
     """
     if isinstance(net_names, str):
         net_names = [net_names]
+    elif isinstance(net_names, list):
+        pass
+    else:
+        raise TypeError("Please input str or list!")
 
     info_file = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev/'\
         'data/ColeNetwork/net_parcel_info.txt'
