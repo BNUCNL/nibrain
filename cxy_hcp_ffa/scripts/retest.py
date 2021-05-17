@@ -125,10 +125,70 @@ def icc_plot(hemi='lh'):
     plt.show()
 
 
+def FFA_config_confusion_matrix(hemi='lh'):
+    import numpy as np
+    import nibabel as nib
+
+    gids = (-1, 0, 1, 2)
+    configs = ('pFus-only', 'mFus-only', 'two-connected', 'two-separate')
+    gid_file1 = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                                f'grouping/group_id_{hemi}.npy')
+    gid_file2 = pjoin(work_dir, f'grouping/group_id_{hemi}.npy')
+    subj_file1 = pjoin(proj_dir, 'analysis/s2/subject_id')
+    subj_file2 = pjoin(work_dir, 'subject_id')
+    rois_file1 = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                                 f'rois_v3_{hemi}.nii.gz')
+    rois_file2 = pjoin(work_dir, f'rois_{hemi}_v2.nii.gz')
+
+    subj_ids1 = open(subj_file1).read().splitlines()
+    subj_ids2 = open(subj_file2).read().splitlines()
+    subj_indices = [subj_ids1.index(i) for i in subj_ids2]
+    gid_vec1 = np.load(gid_file1)[subj_indices]
+    gid_vec2 = np.load(gid_file2)
+    roi_maps1 = nib.load(rois_file1).get_fdata().squeeze().T[subj_indices]
+    roi_maps2 = nib.load(rois_file2).get_fdata().squeeze().T
+
+    for i, gid in enumerate(gid_vec1):
+        if gid == 0:
+            roi_labels = set(roi_maps1[i])
+            if 2 in roi_labels and 3 in roi_labels:
+                raise ValueError("impossible1")
+            elif 2 in roi_labels:
+                gid_vec1[i] = -1
+            elif 3 in roi_labels:
+                pass
+            else:
+                raise ValueError("impossible2")
+
+    for i, gid in enumerate(gid_vec2):
+        if gid == 0:
+            roi_labels = set(roi_maps2[i])
+            if 2 in roi_labels and 3 in roi_labels:
+                raise ValueError("impossible3")
+            elif 2 in roi_labels:
+                gid_vec2[i] = -1
+            elif 3 in roi_labels:
+                pass
+            else:
+                raise ValueError("impossible4")
+
+    print('\t' + '\t'.join(configs))
+    for i, gid1 in enumerate(gids):
+        row = [configs[i]]
+        for gid2 in gids:
+            gid_idx_vec1 = gid_vec1 == gid1
+            gid_idx_vec2 = gid_vec2 == gid2
+            gid_idx_vec = np.logical_and(gid_idx_vec1, gid_idx_vec2)
+            row.append(str(np.sum(gid_idx_vec)))
+        print('\t'.join(row))
+
+
 if __name__ == '__main__':
-    get_curvature(hemi='lh')
-    get_curvature(hemi='rh')
+    # get_curvature(hemi='lh')
+    # get_curvature(hemi='rh')
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
     # icc_plot(hemi='lh')
     # icc_plot(hemi='rh')
+    FFA_config_confusion_matrix(hemi='lh')
+    FFA_config_confusion_matrix(hemi='rh')
