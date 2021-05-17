@@ -5,25 +5,6 @@ proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/ColeNetwork')
 
 
-def get_name_label_of_ColeNetwork():
-    import numpy as np
-
-    rf = open(pjoin(cole_dir, 'network_labelfile.txt'))
-    names = []
-    labels = []
-    while True:
-        name = rf.readline()
-        if name == '':
-            break
-        names.append(name.rstrip('\n'))
-        labels.append(int(rf.readline().split(' ')[0]))
-    indices_sorted = np.argsort(labels)
-    names = [names[i] for i in indices_sorted]
-    labels = [labels[i] for i in indices_sorted]
-
-    return names, labels
-
-
 def separate_networks():
     """
     把ColeNetwork的12个网络分到单独的map里。
@@ -35,6 +16,7 @@ def separate_networks():
     import numpy as np
     import nibabel as nib
     from scipy.io import loadmat
+    from cxy_visual_dev.lib.ColeNet import get_name_label_of_ColeNetwork
     from magicbox.io.io import CiftiReader, save2cifti
 
     # inputs
