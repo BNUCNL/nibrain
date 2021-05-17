@@ -108,6 +108,29 @@ def extract_net_parcel_info():
     wf.close()
 
 
+def check_parcel_num():
+    """
+    统计每个网络包含的parcel数量，以及左右半脑成对情况
+    """
+    info_file = pjoin(work_dir, 'net_parcel_info.txt')
+
+    lines = open(info_file).read().splitlines()
+    parcels = []
+    for line in lines:
+        if line.startswith('>>>'):
+            print(line.lstrip('>>>'))
+        elif line == '<<<':
+            n_parcel = len(parcels)
+            parcels = [i.split('_')[-1] for i in parcels]
+            n_parcel_uniq = len(set(parcels))
+            n_paired = n_parcel - n_parcel_uniq
+            print(f'#parcel: {n_parcel}\t#LR-paired: {n_paired}\n')
+            parcels = []
+        else:
+            parcels.append(line.split('-')[-1])
+
+
 if __name__ == '__main__':
     # separate_networks()
-    extract_net_parcel_info()
+    # extract_net_parcel_info()
+    check_parcel_num()
