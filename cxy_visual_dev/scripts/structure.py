@@ -57,6 +57,62 @@ def calc_TM(proj_name='HCPD', meas_name='thickness'):
     df.to_csv(out_file, index=False)
 
 
+def plot_line(proj_name='HCPD', meas_name='thickness'):
+    import numpy as np
+    import pandas as pd
+    from scipy.stats.stats import sem
+    from matplotlib import pyplot as plt
+    from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
+
+    # inputs
+    Hemis = ('L', 'R')
+    net2rc = {
+        'Primary Visual': (1, 3),
+        'Secondary Visual': (4, 7),
+        'Posterior Multimodal': (2, 2),
+        'Ventral Multimodal': (1, 2)
+    }  # ColeNet name to n_row and n_col
+    df_file = pjoin(work_dir, f'{proj_name}_{meas_name}.csv')
+
+    # load
+    df = pd.read_csv(df_file)
+    ages = np.array(df['age in years'])
+    age_uniq = np.unique(ages)
+
+    for net, rc in net2rc.items():
+        parcel2label = get_parcel2label_by_ColeName(net)
+        parcels_without_hemi = [i.split('_')[1] for i in parcel2label.keys()]
+        parcels_uniq = np.unique(parcels_without_hemi)
+        _, axes = plt.subplots(rc[0], rc[1])
+        if axes.shape != rc:
+            axes = axes.reshape(rc)
+        for i, parcel_without_hemi in enumerate(parcels_uniq):
+            row_idx = int(i / rc[1])
+            col_idx = i % rc[1]
+            ax = axes[row_idx, col_idx]
+            for Hemi in Hemis:
+                parcel = f'{Hemi}_{parcel_without_hemi}'
+                if parcel not in parcel2label.keys():
+                    continue
+                meas_vec = np.array(df[parcel])
+                ys = []
+                yerrs = []
+                for age in age_uniq:
+                    meas_tmp = meas_vec[ages == age]
+                    ys.append(np.mean(meas_tmp))
+                    yerrs.append(sem(meas_tmp))
+                ax.errorbar(age_uniq, ys, yerrs, label=parcel)
+            if col_idx == 0:
+                ax.set_ylabel(meas_name)
+            if row_idx+1 == rc[0]:
+                ax.set_xlabel('age in years')
+            ax.legend()
+        plt.tight_layout()
+        plt.show()
+
+
 if __name__ == '__main__':
-    calc_TM(proj_name='HCPD', meas_name='thickness')
-    calc_TM(proj_name='HCPD', meas_name='myelin')
+    # calc_TM(proj_name='HCPD', meas_name='thickness')
+    # calc_TM(proj_name='HCPD', meas_name='myelin')
+    plot_line(proj_name='HCPD', meas_name='thickness')
+    plot_line(proj_name='HCPD', meas_name='myelin')
