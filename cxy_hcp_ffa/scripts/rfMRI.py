@@ -212,7 +212,8 @@ def pre_ANOVA_rm():
     """
     Preparation for two-way repeated-measures ANOVA
     半球x脑区
-    Only the subjects who have all four ROIs will be used.
+    If use individual ROIs, only the subjects who have
+    all four ROIs will be used.
     """
     import numpy as np
     import pandas as pd
@@ -221,13 +222,13 @@ def pre_ANOVA_rm():
     # inputs
     hemis = ('lh', 'rh')
     rois = ('pFus-face', 'mFus-face')
-    src_file = pjoin(work_dir, 'rsfc_individual2Cole_{}.pkl')
+    src_file = pjoin(work_dir, 'rsfc_mpm2Cole_{}.pkl')
 
     # outputs
-    trg_file = pjoin(work_dir, 'rsfc_individual2Cole_preANOVA-rm.csv')
+    trg_file = pjoin(work_dir, 'rsfc_mpm2Cole_preANOVA-rm.csv')
 
     out_dict = {}
-    nan_idx_vec = np.zeros(1080, dtype=np.bool)
+    nan_idx_vec = np.zeros(1080, dtype=bool)
     for hemi in hemis:
         data = pkl.load(open(src_file.format(hemi), 'rb'))
         for roi in rois:
@@ -380,6 +381,52 @@ def multitest_correct_ttest():
     data.to_csv(out_file, index=False)
 
 
+def plot_bar():
+    import numpy as np
+    import pickle as pkl
+    from scipy.stats import sem
+    from matplotlib import pyplot as plt
+    from nibrain.util.plotfig import auto_bar_width
+
+    # inputs
+    hemis = ('lh', 'rh')
+    seeds = ('pFus-face', 'mFus-face')
+    seed2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
+    rsfc_file = pjoin(work_dir, 'rsfc_mpm2Cole_{hemi}.pkl')
+
+    n_hemi = len(hemis)
+    n_seed = len(seeds)
+    x = np.arange(n_hemi)
+    width = auto_bar_width(x, n_seed)
+    plt.figure()
+    ax = plt.gca()
+    hemi2meas = {
+        'lh': pkl.load(open(rsfc_file.format(hemi='lh'), 'rb')),
+        'rh': pkl.load(open(rsfc_file.format(hemi='rh'), 'rb'))}
+
+    offset = -(n_seed - 1) / 2
+    for seed in seeds:
+        y = np.zeros(n_hemi)
+        y_err = np.zeros(n_hemi)
+        for hemi_idx, hemi in enumerate(hemis):
+            meas = np.mean(hemi2meas[hemi][seed], 1)
+            meas = meas[~np.isnan(meas)]
+            y[hemi_idx] = np.mean(meas)
+            y_err[hemi_idx] = sem(meas)
+        ax.bar(x+width*offset, y, width, yerr=y_err,
+            label=seed.split('-')[0], color=seed2color[seed])
+        offset += 1
+    ax.set_xticks(x)
+    ax.set_xticklabels(hemis)
+    ax.set_ylabel('RSFC')
+    ax.set_ylim(0.1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 def prepare_plot(hemi='lh'):
     import numpy as np
     import pickle as pkl
@@ -451,4 +498,5 @@ if __name__ == '__main__':
     # prepare_plot(hemi='rh')
     # roi_pair_ttest()
     # multitest_correct_ttest()
-    pre_ANOVA_rm()
+    # pre_ANOVA_rm()
+    plot_bar()
