@@ -31,19 +31,19 @@ def run_cmd(args):
                         runs.append(re.findall('run-(.+?)_bold', filename)[0])
             for run in runs:
                 # adjust cmd
-                if 'subject' in cmd:
-                    cmd = cmd.replace('subject', subject)
-                if 'session' in cmd:
-                    cmd = cmd.replace('session', session)
-                if 'run' in cmd:
-                    cmd = cmd.replace('run', run)
-                print(cmd)
+                if '<subject>' in cmd:
+                    cmd1 = cmd.replace('<subject>', subject)
+                if '<session>' in cmd:
+                    cmd1 = cmd1.replace('<session>', session)
+                if '<run>' in cmd:
+                    cmd1 = cmd1.replace('<run>', str(int(run)))
+                print(cmd1)
                 # run cmd
-                # if not args.preview:
-                #     try:
-                #         subprocess.check_call(cmd, shell=True)
-                #     except subprocess.CalledProcessError:
-                #         raise Exception('RUN CMD: Error happened in subject {}'.format(subject))
+                if not args.preview:
+                    try:
+                        subprocess.check_call(cmd, shell=True)
+                    except subprocess.CalledProcessError:
+                        raise Exception('RUN CMD: Error happened in subject {}'.format(subject))
 
 if __name__ == '__main__':
 
