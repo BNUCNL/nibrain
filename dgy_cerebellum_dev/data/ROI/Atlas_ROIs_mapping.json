@@ -1,4 +1,5 @@
 {
+    "NONE": 0,
     "CEREBELLUM": [8, 47],
     "CEREBELLUM_LEFT": 8,
     "THALAMUS_LEFT": 10,

@@ -237,10 +237,98 @@ def compare_gdist():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
+def calc_prob_map(hemi='lh'):
+    import numpy as np
+    import nibabel as nib
+    from cxy_hcp_ffa.lib.predefine import roi2label
+    from magicbox.io.io import save2nifti
+
+    # inputs
+    n_roi = len(roi2label)
+    print(n_roi)
+    roi_file = pjoin(work_dir, f'rois_v3_{hemi}.nii.gz')
+
+    # outputs
+    out_file = pjoin(work_dir, f'prob_maps_v3_{hemi}.nii.gz')
+
+    # prepare
+    rois = nib.load(roi_file).get_fdata().squeeze().T
+    n_vtx = rois.shape[1]
+
+    # calculate
+    prob_maps = np.ones((n_roi, n_vtx)) * np.nan
+    for idx, roi in enumerate(roi2label.keys()):
+        label = roi2label[roi]
+        print(roi)
+
+        # get indices of subjects which contain the roi
+        indices = rois == label
+        subj_indices = np.any(indices, 1)
+
+        # calculate roi probability map among valid subjects
+        prob_map = np.mean(indices[subj_indices], 0)
+        prob_maps[idx] = prob_map
+
+    # save out
+    save2nifti(out_file, prob_maps.T[:, None, None, :])
+
+
+def get_mpm(hemi='lh'):
+    """maximal probability map"""
+    import numpy as np
+    import nibabel as nib
+    from cxy_hcp_ffa.lib.predefine import roi2label
+    from magicbox.io.io import save2nifti
+
+    # inputs
+    thr = 0.25
+    map_indices = [1, 2]
+    idx2roi = {
+        0: 'IOG-face',
+        1: 'pFus-face',
+        2: 'mFus-face'}
+    prob_file = pjoin(work_dir, f'prob_maps_v3_{hemi}.nii.gz')
+
+    # outputs
+    out_file = pjoin(work_dir, f'MPM_v3_{hemi}_{thr}_FFA.nii.gz')
+
+    # prepare
+    prob_maps = nib.load(prob_file).get_fdata()[..., map_indices]
+    mpm_map = np.zeros(prob_maps.shape[:3])
+
+    # calculate
+    supra_thr_idx_arr = prob_maps > thr
+    valid_idx_arr = np.any(supra_thr_idx_arr, 3)
+    valid_arr = prob_maps[valid_idx_arr, :]
+    mpm_tmp = np.argmax(valid_arr, -1)
+    for i, idx in enumerate(map_indices):
+        roi = idx2roi[idx]
+        idx_arr = np.zeros_like(mpm_map, dtype=np.bool8)
+        idx_arr[valid_idx_arr] = mpm_tmp == i
+        mpm_map[idx_arr] = roi2label[roi]
+
+    # verification
+    valid_supra_thr_idx_arr = supra_thr_idx_arr[valid_idx_arr, :]
+    valid_count_vec = np.sum(valid_supra_thr_idx_arr, -1)
+    valid_count_vec_uniq = np.zeros_like(valid_count_vec)
+    for i in range(len(valid_count_vec)):
+        valid_supra_thr_idx_vec = valid_supra_thr_idx_arr[i]
+        valid_count_vec_uniq[i] = \
+            len(set(valid_arr[i, valid_supra_thr_idx_vec]))
+    assert np.all(valid_count_vec == valid_count_vec_uniq)
+
+    # save
+    save2nifti(out_file, mpm_map)
+
+
 if __name__ == '__main__':
     # get_roi_idx_vec()
     # count_roi()
     # calc_gdist(method='min')
     # calc_gdist(method='peak')
-    plot_gdist()
-    compare_gdist()
+    # plot_gdist()
+    # compare_gdist()
+    # calc_prob_map(hemi='lh')
+    # calc_prob_map(hemi='rh')
+    get_mpm(hemi='lh')
+    get_mpm(hemi='rh')
