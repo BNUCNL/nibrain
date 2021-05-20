@@ -5,25 +5,6 @@ proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/ColeNetwork')
 
 
-def get_name_label_of_ColeNetwork():
-    import numpy as np
-
-    rf = open(pjoin(cole_dir, 'network_labelfile.txt'))
-    names = []
-    labels = []
-    while True:
-        name = rf.readline()
-        if name == '':
-            break
-        names.append(name.rstrip('\n'))
-        labels.append(int(rf.readline().split(' ')[0]))
-    indices_sorted = np.argsort(labels)
-    names = [names[i] for i in indices_sorted]
-    labels = [labels[i] for i in indices_sorted]
-
-    return names, labels
-
-
 def separate_networks():
     """
     把ColeNetwork的12个网络分到单独的map里。
@@ -35,6 +16,7 @@ def separate_networks():
     import numpy as np
     import nibabel as nib
     from scipy.io import loadmat
+    from cxy_visual_dev.lib.ColeNet import get_name_label_of_ColeNetwork
     from magicbox.io.io import CiftiReader, save2cifti
 
     # inputs
@@ -108,6 +90,29 @@ def extract_net_parcel_info():
     wf.close()
 
 
+def check_parcel_num():
+    """
+    统计每个网络包含的parcel数量，以及左右半脑成对情况
+    """
+    info_file = pjoin(work_dir, 'net_parcel_info.txt')
+
+    lines = open(info_file).read().splitlines()
+    parcels = []
+    for line in lines:
+        if line.startswith('>>>'):
+            print(line.lstrip('>>>'))
+        elif line == '<<<':
+            n_parcel = len(parcels)
+            parcels = [i.split('_')[-1] for i in parcels]
+            n_parcel_uniq = len(set(parcels))
+            n_paired = n_parcel - n_parcel_uniq
+            print(f'#parcel: {n_parcel}\t#LR-paired: {n_paired}\n')
+            parcels = []
+        else:
+            parcels.append(line.split('-')[-1])
+
+
 if __name__ == '__main__':
     # separate_networks()
-    extract_net_parcel_info()
+    # extract_net_parcel_info()
+    check_parcel_num()
