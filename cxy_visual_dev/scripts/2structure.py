@@ -52,7 +52,7 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR'):
     df.to_csv(out_file, index=False)
 
 
-def plot_line(fpath, rois, ylabel):
+def plot_line(fpath, rois, ylabel, n_row, n_col):
     import numpy as np
     import pandas as pd
     from scipy.stats.stats import sem
@@ -60,14 +60,13 @@ def plot_line(fpath, rois, ylabel):
 
     # inputs
     Hemis = ('L', 'R')
-    n_row, n_col = 4, 7
 
     # load
     df = pd.read_csv(fpath)
     ages = np.array(df['age in years'])
     age_uniq = np.unique(ages)
 
-    rois_without_hemi = [i.split('_')[1] for i in rois]
+    rois_without_hemi = ['_'.join(i.split('_')[1:]) for i in rois]
     rois_uniq = np.unique(rois_without_hemi)
     max_row_idx = int((len(rois_uniq)-1) / n_col)
     _, axes = plt.subplots(n_row, n_col)
@@ -99,19 +98,41 @@ def plot_line(fpath, rois, ylabel):
 
 
 if __name__ == '__main__':
-    from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
 
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_ROI')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_ROI')
 
     # plot line for Cole_visual_ROI
+    # from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
+    # meas_names = ('myelin', 'thickness')
+    # fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_ROI.csv')
+    # net_names = ('Primary Visual', 'Secondary Visual',
+    #              'Posterior Multimodal', 'Ventral Multimodal')
+    # for meas_name in meas_names:
+    #     fpath = fpaths.format(meas_name)
+    #     for net_name in net_names:
+    #         plot_line(fpath=fpath,
+    #                   rois=list(get_parcel2label_by_ColeName(net_name).keys()),
+    #                   ylabel=meas_name, n_row=4, n_col=7)
+
+    # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='LR')
+    # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR')
+
+    # plot line for LR
     meas_names = ('myelin', 'thickness')
-    fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_ROI.csv')
-    net_names = ('Primary Visual', 'Secondary Visual',
-                 'Posterior Multimodal', 'Ventral Multimodal')
+    fpaths = pjoin(work_dir, 'HCPD_{}_LR.csv')
+    rois = ('L_cortex', 'R_cortex')
     for meas_name in meas_names:
-        fpath = fpaths.format(meas_name)
-        for net_name in net_names:
-            plot_line(fpath=fpath,
-                      rois=list(get_parcel2label_by_ColeName(net_name).keys()),
-                      ylabel=meas_name)
+        plot_line(fpath=fpaths.format(meas_name),
+                  rois=rois, ylabel=meas_name, n_row=2, n_col=1)
+
+    # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_LR')
+    # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_LR')
+
+    # plot line for Cole_visual_LR
+    meas_names = ('myelin', 'thickness')
+    fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_LR.csv')
+    rois = ('L_cole_visual', 'R_cole_visual')
+    for meas_name in meas_names:
+        plot_line(fpath=fpaths.format(meas_name),
+                  rois=rois, ylabel=meas_name, n_row=2, n_col=1)
