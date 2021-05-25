@@ -4,7 +4,8 @@ proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'analysis/structure')
 
 
-def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR'):
+def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR',
+            zscore_flag=False):
     """
     Calculate thickness or myelination
     """
@@ -12,7 +13,9 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR'):
     import numpy as np
     import pandas as pd
     import nibabel as nib
-    from cxy_visual_dev.lib.predefine import Atlas
+    from scipy.stats import zscore
+    from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k
+    from cxy_visual_dev.lib.predefine import R_offset_32k, R_count_32k
 
     # inputs
     info_file = f'/nfs/e1/{proj_name}/{proj_name}_SubjInfo.csv'
@@ -31,7 +34,10 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR'):
     meas_file = meas2file[meas_name]
 
     # outputs
-    out_file = pjoin(work_dir, f'{proj_name}_{meas_name}_{atlas_name}.csv')
+    if zscore_flag:
+        out_file = pjoin(work_dir, f'{proj_name}_{meas_name}_{atlas_name}_zscore.csv')
+    else:
+        out_file = pjoin(work_dir, f'{proj_name}_{meas_name}_{atlas_name}.csv')
 
     # prepare
     atlas = Atlas(atlas_name)
@@ -43,6 +49,13 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR'):
         time1 = time.time()
         sid = df.loc[idx, 'subID']
         meas_map = nib.load(meas_file.format(sid=sid)).get_fdata()
+        if zscore:
+            meas_map_L = meas_map[:, L_offset_32k:(L_offset_32k+L_count_32k)]
+            meas_map_R = meas_map[:, R_offset_32k:(R_offset_32k+R_count_32k)]
+            meas_map_L = zscore(meas_map_L, 1)
+            meas_map_R = zscore(meas_map_R, 1)
+            meas_map[:, L_offset_32k:(L_offset_32k+L_count_32k)] = meas_map_L
+            meas_map[:, R_offset_32k:(R_offset_32k+R_count_32k)] = meas_map_R
         for roi, lbl in atlas.roi2label.items():
             meas = np.mean(meas_map[atlas.maps == lbl])
             df.loc[idx, roi] = meas
@@ -119,20 +132,36 @@ if __name__ == '__main__':
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR')
 
     # plot line for LR
-    meas_names = ('myelin', 'thickness')
-    fpaths = pjoin(work_dir, 'HCPD_{}_LR.csv')
-    rois = ('L_cortex', 'R_cortex')
-    for meas_name in meas_names:
-        plot_line(fpath=fpaths.format(meas_name),
-                  rois=rois, ylabel=meas_name, n_row=2, n_col=1)
+    # meas_names = ('myelin', 'thickness')
+    # fpaths = pjoin(work_dir, 'HCPD_{}_LR.csv')
+    # rois = ('L_cortex', 'R_cortex')
+    # for meas_name in meas_names:
+    #     plot_line(fpath=fpaths.format(meas_name),
+    #               rois=rois, ylabel=meas_name, n_row=2, n_col=1)
 
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_LR')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_LR')
 
     # plot line for Cole_visual_LR
+    # meas_names = ('myelin', 'thickness')
+    # fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_LR.csv')
+    # rois = ('L_cole_visual', 'R_cole_visual')
+    # for meas_name in meas_names:
+    #     plot_line(fpath=fpaths.format(meas_name),
+    #               rois=rois, ylabel=meas_name, n_row=2, n_col=1)
+
+    calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_ROI', zscore_flag=True)
+    calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_ROI', zscore_flag=True)
+
+    # plot line for Cole_visual_ROI after zscore
+    from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
     meas_names = ('myelin', 'thickness')
-    fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_LR.csv')
-    rois = ('L_cole_visual', 'R_cole_visual')
+    fpaths = pjoin(work_dir, 'HCPD_{}_Cole_visual_ROI_zscore.csv')
+    net_names = ('Primary Visual', 'Secondary Visual',
+                 'Posterior Multimodal', 'Ventral Multimodal')
     for meas_name in meas_names:
-        plot_line(fpath=fpaths.format(meas_name),
-                  rois=rois, ylabel=meas_name, n_row=2, n_col=1)
+        fpath = fpaths.format(meas_name)
+        for net_name in net_names:
+            plot_line(fpath=fpath,
+                      rois=list(get_parcel2label_by_ColeName(net_name).keys()),
+                      ylabel=meas_name, n_row=4, n_col=7)
