@@ -26,7 +26,7 @@ for name, lbl in zip(*get_name_label_of_ColeNetwork()):
 
 def get_parcel2label_by_ColeName(net_names):
     """
-    根军Cole Network的名字提取所有包含的parcel及其label
+    根据Cole Network的名字提取所有包含的parcel及其label
 
     Args:
         net_names (str|list): ColeNet names
