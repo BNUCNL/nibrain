@@ -99,6 +99,7 @@ def calc_prob_map_similarity():
     """
     import numpy as np
     import nibabel as nib
+    import pickle as pkl
     from scipy.stats import pearsonr
 
     # inputs
@@ -107,15 +108,25 @@ def calc_prob_map_similarity():
     roi2idx = {'pFus-face': 1, 'mFus-face': 2}
     prob_file = pjoin(work_dir, 'prob_maps_{}_{}.nii.gz')
 
+    # outputs
+    out_file = pjoin(work_dir, 'prob_map_similarity.pkl')
+
     # calculate
+    n_gid = len(gids)
+    data = {'shape': 'n_gid x n_gid',
+            'gid': gids}
     for hemi in hemis:
         gid2prob_map = {}
         for gid in gids:
             gid2prob_map[gid] = nib.load(
                 prob_file.format(gid, hemi)).get_fdata().squeeze().T
-        for idx1, gid1 in enumerate(gids[:-1]):
-            for gid2 in gids[idx1+1:]:
-                for roi, prob_idx in roi2idx.items():
+        for roi, prob_idx in roi2idx.items():
+            roi_dice = f"{hemi}_{roi.split('-')[0]}_dice"
+            roi_corr = f"{hemi}_{roi.split('-')[0]}_corr"
+            data[roi_dice] = np.zeros((n_gid, n_gid))
+            data[roi_corr] = np.zeros((n_gid, n_gid))
+            for idx1, gid1 in enumerate(gids):
+                for idx2, gid2 in enumerate(gids):
                     prob_map1 = gid2prob_map[gid1][prob_idx]
                     prob_map2 = gid2prob_map[gid2][prob_idx]
                     idx_map1 = prob_map1 != 0
@@ -124,9 +135,64 @@ def calc_prob_map_similarity():
                     dice = 2 * np.sum(idx_map) / \
                         (np.sum(idx_map1) + np.sum(idx_map2))
                     r = pearsonr(prob_map1[idx_map], prob_map2[idx_map])[0]
-                    print(f'\n==={hemi}_G{gid1}-vs-G{gid2}_{roi}===')
-                    print('Dice:', dice)
-                    print('Pearson r:', r)
+                    data[roi_dice][idx1, idx2] = dice
+                    data[roi_corr][idx1, idx2] = r
+
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def plot_prob_map_similarity():
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+
+    # inputs
+    rois = ('pFus', 'mFus')
+    hemis = ('lh', 'rh')
+    meas = 'corr'  # corr or dice
+    data_file = pjoin(work_dir, 'prob_map_similarity.pkl')
+    gid2name = {
+        0: 'single',
+        1: 'two-C',
+        2: 'two-S'}
+
+    # prepare
+    data = pkl.load(open(data_file, 'rb'))
+    n_gid = len(data['gid'])
+    ticks = np.arange(n_gid)
+    gid_names = [gid2name[gid] for gid in data['gid']]
+
+    _, axes = plt.subplots(len(rois), len(hemis))
+    for roi_idx, roi in enumerate(rois):
+        for hemi_idx, hemi in enumerate(hemis):
+            ax = axes[roi_idx, hemi_idx]
+            arr = data[f'{hemi}_{roi}_{meas}']
+            img = ax.imshow(arr, 'autumn')
+
+            if roi_idx == 1:
+                ax.set_xticks(ticks)
+                ax.set_xticklabels(gid_names)
+                plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+                         rotation_mode="anchor")
+                if hemi_idx == 0:
+                    ax.set_yticks(ticks)
+                    ax.set_yticklabels(gid_names)
+                else:
+                    ax.tick_params(left=False, labelleft=False)
+            else:
+                ax.tick_params(bottom=False, labelbottom=False)
+                if hemi_idx == 0:
+                    ax.set_yticks(ticks)
+                    ax.set_yticklabels(gid_names)
+                else:
+                    ax.tick_params(left=False, labelleft=False)
+
+            for i in range(n_gid):
+                for j in range(n_gid):
+                    ax.text(j, i, '{:.2f}'.format(arr[i, j]),
+                            ha="center", va="center", color="k")
+            ax.set_title(f'{hemi}_{roi}')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -142,4 +208,5 @@ if __name__ == '__main__':
     # plot_roi_info(gid=1, hemi='rh')
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
-    calc_prob_map_similarity()
+    # calc_prob_map_similarity()
+    plot_prob_map_similarity()
