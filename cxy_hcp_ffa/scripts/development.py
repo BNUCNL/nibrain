@@ -231,6 +231,51 @@ def prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
     return data
 
 
+def plot_line(meas_name='thickness'):
+    """
+    对于每个ROI，在每个年龄，求出measurement的
+    被试间均值和SEM并画折线图
+    """
+    import pandas as pd
+    from scipy.stats.stats import sem
+    from matplotlib import pyplot as plt
+
+    # inputs
+    figsize = (9, 4)
+    cols = ['pFus_{hemi}', 'mFus_{hemi}']
+    colors = ('limegreen', 'cornflowerblue')
+    hemis = ('lh', 'rh')
+    fpath = pjoin(work_dir, f'HCPD_{meas_name}_MPM1_prep_inf.csv')
+
+    # prepare
+    data = pd.read_csv(fpath)
+    age_name = 'age in years'
+    ages = np.array(data[age_name])
+    age_uniq = np.unique(ages)
+
+    # plot
+    _, axes = plt.subplots(1, len(hemis), figsize=figsize)
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx]
+        for col_idx, col in enumerate(cols):
+            col = col.format(hemi=hemi)
+            meas_vec = np.array(data[col])
+            ys = np.zeros_like(age_uniq, np.float64)
+            yerrs = np.zeros_like(age_uniq, np.float64)
+            for age_idx, age in enumerate(age_uniq):
+                sample = meas_vec[ages == age]
+                ys[age_idx] = np.mean(sample)
+                yerrs[age_idx] = sem(sample)
+            ax.errorbar(age_uniq, ys, yerrs, label=col,
+                        color=colors[col_idx])
+        ax.legend()
+        ax.set_xlabel(age_name)
+        if hemi_idx == 0:
+            ax.set_ylabel(meas_name)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_polyfit(meas_name='thickness'):
     import pandas as pd
     from matplotlib import pyplot as plt
@@ -313,5 +358,7 @@ if __name__ == '__main__':
     #              n_samples=np.inf, save_out=True)
     # plot_polyfit(meas_name='thickness')
     # plot_polyfit(meas_name='myelin')
-    plot_polyfit_box(meas_name='thickness')
-    plot_polyfit_box(meas_name='myelin')
+    # plot_polyfit_box(meas_name='thickness')
+    # plot_polyfit_box(meas_name='myelin')
+    plot_line(meas_name='thickness')
+    plot_line(meas_name='myelin')
