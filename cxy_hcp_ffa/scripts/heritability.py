@@ -587,6 +587,48 @@ def calc_pattern_corr_between_twins(meas_name='thickness'):
     out_df.to_csv(out_file, index=False)
 
 
+def calc_pattern_corr_between_twins_rsfc():
+    """
+    Calculate connectivity pattern correlation between each twin pair.
+    """
+    import pandas as pd
+    import pickle as pkl
+    from scipy.stats import pearsonr
+    from cxy_hcp_ffa.lib.predefine import zyg2label
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    subj_id_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    twins_id_file = pjoin(work_dir, 'twins_id_rfMRI.csv')
+    rsfc_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                      'rfMRI/rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc.csv')
+
+    # prepare
+    df = pd.read_csv(twins_id_file)
+    subj_ids = [int(i) for i in open(subj_id_file).read().splitlines()]
+    twin1_indices = [subj_ids.index(i) for i in df['twin1']]
+    twin2_indices = [subj_ids.index(i) for i in df['twin2']]
+
+    # calculate
+    out_df = pd.DataFrame()
+    out_df['zygosity'] = df['zygosity']
+    out_df['zyg'] = [zyg2label[zyg] for zyg in df['zygosity']]
+    for hemi in hemis:
+        rsfc_dict = pkl.load(open(rsfc_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            rsfc1 = rsfc_dict[roi][twin1_indices]
+            rsfc2 = rsfc_dict[roi][twin2_indices]
+            out_df[f"{hemi}_{roi.split('-')[0]}"] = [
+                pearsonr(i, j)[0] for i, j in zip(rsfc1, rsfc2)]
+
+    # save
+    out_df.to_csv(out_file, index=False)
+
+
 def pattern_corr_fisher_z(meas='thickness'):
     import numpy as np
     import pandas as pd
@@ -616,16 +658,16 @@ def plot_pattern_corr1():
     from nibrain.util.plotfig import auto_bar_width
 
     rois = ('pFus', 'mFus')
-    meas_names = ('thickness', 'myelin', 'activ')
+    meas_names = ('thickness', 'myelin', 'activ', 'rsfc')
     meas2ylabel = {
         'thickness': 'thickness',
         'myelin': 'myelin',
-        'activ': 'face-avg'
-    }
+        'activ': 'face-avg',
+        'rsfc': 'RSFC'}
     zygosity = ('MZ', 'DZ')
     zyg2color = {'MZ': (0.33, 0.33, 0.33, 1), 'DZ': (0.66, 0.66, 0.66, 1)}
     hemis = ('lh', 'rh')
-    df_file = pjoin(work_dir, 'twins_pattern-corr_{}_fisherZ.csv')
+    df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
 
     n_zyg = len(zygosity)
     x = np.arange(len(rois))
@@ -862,3 +904,4 @@ if __name__ == '__main__':
     # plot_pattern_corr2()
     # plot_SEM_h2_TMA()
     # plot_SEM_h2_RSFC()
+    # calc_pattern_corr_between_twins_rsfc()

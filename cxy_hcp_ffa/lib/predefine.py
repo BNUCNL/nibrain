@@ -18,6 +18,9 @@ roi2color = {
     'mFus-face': 'cornflowerblue'
 }
 
+# map zygosity to label
+zyg2label = {'MZ': 1, 'DZ': 2}
+
 # map Cole network name to label
 # /nfs/p1/atlases/ColeAnticevicNetPartition/network_labelfile.txt
 net2label_cole = {
