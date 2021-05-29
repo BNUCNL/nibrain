@@ -142,6 +142,12 @@ def calc_prob_map_similarity():
 
 
 def plot_prob_map_similarity():
+    """
+    References:
+        1. https://blog.csdn.net/qq_27825451/article/details/105652244
+        2. https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
+        3. https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
+    """
     import numpy as np
     import pickle as pkl
     from matplotlib import pyplot as plt

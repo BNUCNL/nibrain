@@ -4,6 +4,55 @@ proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/retest')
 
 
+def get_subID(meas_name='thickness'):
+    import os
+    import time
+    import nibabel as nib
+
+    # parameters
+    par_dir = '/nfs/m1/hcp/retest'
+    meas2file = {
+        'thickness': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                           '{0}.thickness_MSMAll.32k_fs_LR.dscalar.nii'),
+        'myelin': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                        '{0}.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii')}
+
+    # outputs
+    log_file = pjoin(work_dir, f'get_subID_log_{meas_name}')
+    trg_file = pjoin(work_dir, f'subject_id_{meas_name}')
+
+    # prepare
+    folders = [i for i in os.listdir(par_dir)
+               if os.path.isdir(pjoin(par_dir, i))]
+    n_folder = len(folders)
+    valid_ids = []
+    log_writer = open(log_file, 'w')
+
+    # calculate
+    for idx, folder in enumerate(folders, 1):
+        time1 = time.time()
+        meas_file = meas2file[meas_name].format(folder)
+        if not os.path.exists(meas_file):
+            msg = f'{meas_file} is not exist.'
+            print(msg)
+            log_writer.write(f'{msg}\n')
+            continue
+        try:
+            nib.load(meas_file).get_fdata()
+        except OSError:
+            msg = f'{meas_file} meets OSError.'
+            print(msg)
+            log_writer.write(f'{msg}\n')
+            continue
+        valid_ids.append(folder)
+        print(f'Finished: {idx}/{n_folder}, cost: {time.time()-time1} seconds')
+    log_writer.close()
+
+    # save out
+    with open(trg_file, 'w') as wf:
+        wf.write('\n'.join(sorted(valid_ids)))
+
+
 def get_curvature(hemi='lh'):
     import nibabel as nib
     from magicbox.io.io import save2nifti
@@ -184,11 +233,13 @@ def FFA_config_confusion_matrix(hemi='lh'):
 
 
 if __name__ == '__main__':
+    get_subID(meas_name='thickness')
+    get_subID(meas_name='myelin')
     # get_curvature(hemi='lh')
     # get_curvature(hemi='rh')
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
     # icc_plot(hemi='lh')
     # icc_plot(hemi='rh')
-    FFA_config_confusion_matrix(hemi='lh')
-    FFA_config_confusion_matrix(hemi='rh')
+    # FFA_config_confusion_matrix(hemi='lh')
+    # FFA_config_confusion_matrix(hemi='rh')
