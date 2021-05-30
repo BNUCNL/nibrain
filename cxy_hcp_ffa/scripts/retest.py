@@ -15,7 +15,12 @@ def get_subID(meas_name='thickness'):
         'thickness': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
                            '{0}.thickness_MSMAll.32k_fs_LR.dscalar.nii'),
         'myelin': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
-                        '{0}.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii')}
+                        '{0}.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'),
+        'curv': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                      '{0}.curvature_MSMAll.32k_fs_LR.dscalar.nii'),
+        'activ': pjoin(par_dir, '{0}/MNINonLinear/Results/tfMRI_WM/'
+                       'tfMRI_WM_hp200_s2_level2_MSMAll.feat/GrayordinatesStats/'
+                       'cope20.feat/zstat1.dtseries.nii')}
 
     # outputs
     log_file = pjoin(work_dir, f'get_subID_log_{meas_name}')
@@ -53,7 +58,10 @@ def get_subID(meas_name='thickness'):
         wf.write('\n'.join(sorted(valid_ids)))
 
 
-def get_curvature(hemi='lh'):
+def get_curvature_from_test(hemi='lh'):
+    """
+    这里就是把45个retest被试在test session里的曲率拿过来了
+    """
     import nibabel as nib
     from magicbox.io.io import save2nifti
 
@@ -63,7 +71,7 @@ def get_curvature(hemi='lh'):
     subj_retest_file = pjoin(work_dir, 'subject_id')
 
     # outputs
-    out_file = pjoin(work_dir, f'curvature_{hemi}.nii.gz')
+    out_file = pjoin(work_dir, f'curvature_{hemi}_ses-test.nii.gz')
 
     # prepare
     curv_maps = nib.load(src_file).get_fdata()
@@ -76,6 +84,47 @@ def get_curvature(hemi='lh'):
 
     # save
     save2nifti(out_file, curv_retest)
+
+
+def get_curvature(hemi='lh'):
+    """
+    把45个retest被试在retest session的curvature合并成左右脑两个nifti文件，
+    主要是为了我那个程序在标定个体ROI的时候读取和显示曲率。
+    之前服务器上没有retest的结构数据，我想当然地认为同一个被试的沟回曲率在
+    两次测量应该是一模一样的，所以在标定v1和v2版ROI的时候参照的是test session的曲率；
+    这次我下了retest的结构数据，决定用retest session的曲率修订一下retest个体ROI。
+    """
+    import numpy as np
+    from magicbox.io.io import CiftiReader, save2nifti
+    from cxy_hcp_ffa.lib.predefine import hemi2stru
+
+    # inputs
+    hemis = ('lh', 'rh')
+    fpath = '/nfs/m1/hcp/retest/{0}/MNINonLinear/fsaverage_LR32k/'\
+            '{0}.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+    subj_id_file = pjoin(work_dir, 'subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, 'curvature_{hemi}.nii.gz')
+
+    # prepare
+    subj_ids = open(subj_id_file).read().splitlines()
+    n_subj = len(subj_ids)
+    hemi2data = {}
+    for hemi in hemis:
+        hemi2data[hemi] = np.zeros((32492, 1, 1, n_subj), np.float64)
+
+    # calculate
+    for subj_idx, subj_id in enumerate(subj_ids):
+        reader = CiftiReader(fpath.format(subj_id))
+        for hemi in hemis:
+            data_tmp = reader.get_data(hemi2stru[hemi], True)[0]
+            hemi2data[hemi][:, 0, 0, subj_idx] = data_tmp
+        print(f'Finished: {subj_idx+1}/{n_subj}')
+
+    # save
+    for hemi in hemis:
+        save2nifti(out_file.format(hemi=hemi), hemi2data[hemi])
 
 
 def test_retest_icc(hemi='lh'):
@@ -233,10 +282,11 @@ def FFA_config_confusion_matrix(hemi='lh'):
 
 
 if __name__ == '__main__':
-    get_subID(meas_name='thickness')
-    get_subID(meas_name='myelin')
-    # get_curvature(hemi='lh')
-    # get_curvature(hemi='rh')
+    # get_subID(meas_name='thickness')
+    # get_subID(meas_name='myelin')
+    # get_subID(meas_name='curv')
+    # get_subID(meas_name='activ')
+    get_curvature()
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
     # icc_plot(hemi='lh')
