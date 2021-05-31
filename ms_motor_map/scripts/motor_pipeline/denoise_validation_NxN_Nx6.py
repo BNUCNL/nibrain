@@ -38,9 +38,9 @@ def read_task(design_file):
     task_df['Uplimb'] = task_df.loc[:, ['Finger', 'Wrist', 'Forearm', 'Upperarm']].sum(axis=1)
     task_df['Lowlimb'] = task_df.loc[:, ['Toe', 'Ankle', 'LeftLeg', 'RightLeg']].sum(axis=1)
     task_df['All'] = task_df.loc[:,:].sum(axis=1)
-    task_df.iloc[:, 0:-4].plot()
+    # task_df.iloc[:, 0:-4].plot()
     # task_df.iloc[:, -4:].plot()
-    plt.show()
+    # plt.show()
     return task_df
 
 # sorting
@@ -120,17 +120,19 @@ def rater(subject):
         'wys': range(30, 34),
         'dgy': range(34, 38),
         'lmx': range(38, 43),
-        'zyj': [],
-        'wjy': [],
+        'wjy': range(43, 49),
+        'zyj': range(49, 51),
         'dyx': range(52, 56),
         'lww': range(56, 59),
-        'yly': range(65, 69)
+        'yly': range(65, 69),
+        'ms': [1, 2, 3, 4, 59, 60, 61, 62, 63]
     }
     for key, value in rater_dict.items():
+        # print(key)
+        # print(value)
         if int(subject.replace('sub-', '')) in value:
             return key
-        else:
-            return 'ms'
+            break
 
 def init_output_dir(subject, fig_type):
     # fig type
@@ -168,11 +170,19 @@ if __name__ == '__main__':
     for fig_type in fig_type_list:
         print('##########FIG_TYPE##########')
         print(fig_type)
-        subject_list = ['sub-01']
+        subject_list = [sub for sub in os.listdir('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/melodic') if "sub-" in sub]
+        subject_list.remove('sub-01')
+        subject_list.remove('sub-04')
+        subject_list.remove('sub-60')
+        subject_list.remove('sub-61')
+        subject_list.remove('sub-62')
+        subject_list.remove('sub-63')
         for subject in subject_list:
             print('##########SUBJECT##########')
             print(subject)
             rater_name = rater(subject)
+            print('##########RATER##########')
+            print(rater_name)
             melodic_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/melodic', subject)
             fmriprep_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/fmriprep', subject)
             design_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/design_matrix', subject)
@@ -188,7 +198,7 @@ if __name__ == '__main__':
                 tmodes_file = os.path.join(ica_dir, 'melodic_mix')
                 results_file = os.path.join(ica_dir, 'results_' + rater_name + '.txt')
                 confounds_file = os.path.join(fmriprep_dir, 'ses-1', 'func', subject + '_ses-1_task-motor_run-' + str(runid) + '_desc-confounds_timeseries.tsv')
-                design_file = os.path.join(design_dir, 'ses-1', 'run-' + str(runid), 'design.mat')
+                design_file = os.path.join(design_dir, 'run-' + str(runid), 'design.mat')
                 # read data
                 ic_ts = read_ic_ts(tmodes_file)
                 results = read_results(results_file)
