@@ -371,6 +371,75 @@ def rsfc_merge_MMP(hemi='lh', atlas_name='MPM'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def get_rsfc_from_test(hemi='lh', atlas_name='MPM'):
+    import pickle as pkl
+
+    # inputs
+    new2old = {'MPM': 'mpm', 'ROIv3': 'individual'}
+    src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               f'rfMRI/rsfc_{new2old[atlas_name]}2Cole_{hemi}.pkl')
+    subj_file_42 = pjoin(work_dir, 'rfMRI_REST_id')
+
+    # outputs
+    out_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}_test.pkl')
+
+    # prepare
+    subj_ids_42 = open(subj_file_42).read().splitlines()
+    data = pkl.load(open(src_file, 'rb'))
+    subj_idx_in_data = [data['subject'].index(i) for i in subj_ids_42]
+
+    # calculate
+    data['subject'] = subj_ids_42
+    for k, v in data.items():
+        if k.endswith('-face'):
+            data[k] = v[subj_idx_in_data]
+
+    # save
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def get_roi_idx_vec():
+    """
+    Get index vector with bool values for each ROI.
+    The length of each index vector is matched with 42 subjects.
+    True value means the ROI is delineated in the corresponding subject.
+    """
+    import pandas as pd
+
+    # inputs
+    src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               'rois_v3_idx_vec.csv')
+    subj_file_42 = pjoin(work_dir, 'rfMRI_REST_id')
+    subj_file_1080 = pjoin(proj_dir, 'analysis/s2/subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, 'rois_v3_idx_vec.csv')
+
+    # prepare
+    subj_ids_42 = open(subj_file_42).read().splitlines()
+    subj_ids_1080 = open(subj_file_1080).read().splitlines()
+    subj_idx_in_1080 = [subj_ids_1080.index(i) for i in subj_ids_42]
+    src_df = pd.read_csv(src_file)
+
+    # calculate
+    df = src_df.loc[subj_idx_in_1080]
+
+    # save
+    df.to_csv(out_file, index=False)
+
+
+def count_roi():
+    """
+    Count valid subjects for each ROI
+    """
+    import numpy as np
+    import pandas as pd
+
+    df = pd.read_csv(pjoin(work_dir, 'rois_v3_idx_vec.csv'))
+    for col in df.columns:
+        print(f'#subjects of {col}:', np.sum(df[col]))
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='LR')
     # get_valid_id(sess=1, run='RL')
@@ -397,7 +466,13 @@ if __name__ == '__main__':
     # rsfc_mean_among_run(hemi='rh', atlas_name='MPM')
     # rsfc_mean_among_run(hemi='lh', atlas_name='ROIv3')
     # rsfc_mean_among_run(hemi='rh', atlas_name='ROIv3')
-    rsfc_merge_MMP(hemi='lh', atlas_name='MPM')
-    rsfc_merge_MMP(hemi='rh', atlas_name='MPM')
-    rsfc_merge_MMP(hemi='lh', atlas_name='ROIv3')
-    rsfc_merge_MMP(hemi='rh', atlas_name='ROIv3')
+    # rsfc_merge_MMP(hemi='lh', atlas_name='MPM')
+    # rsfc_merge_MMP(hemi='rh', atlas_name='MPM')
+    # rsfc_merge_MMP(hemi='lh', atlas_name='ROIv3')
+    # rsfc_merge_MMP(hemi='rh', atlas_name='ROIv3')
+    get_rsfc_from_test(hemi='lh', atlas_name='MPM')
+    get_rsfc_from_test(hemi='rh', atlas_name='MPM')
+    get_rsfc_from_test(hemi='lh', atlas_name='ROIv3')
+    get_rsfc_from_test(hemi='rh', atlas_name='ROIv3')
+    # get_roi_idx_vec()
+    # count_roi()
