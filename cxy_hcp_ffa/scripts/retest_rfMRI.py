@@ -451,9 +451,9 @@ def remove_subjects(hemi='lh', atlas_name='MPM', ses='test'):
     # inputs
     idx_file = pjoin(work_dir, 'rois_v3_idx_vec.csv')
     if ses == 'test':
-        fpath=pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}_test.pkl')
+        fpath = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}_test.pkl')
     elif ses == 'retest':
-        fpath=pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}.pkl')
+        fpath = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}.pkl')
     else:
         raise ValueError('error session name:', ses)
 
@@ -474,6 +474,42 @@ def remove_subjects(hemi='lh', atlas_name='MPM', ses='test'):
             hemi_roi = f'{hemi}_{k}'
             data[k] = v[idx_df[hemi_roi]]
             print(hemi_roi, data[k].shape)
+
+    # save
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def test_retest_icc(atlas_name='MPM'):
+    import time
+    import numpy as np
+    import pickle as pkl
+    from cxy_hcp_ffa.lib.heritability import icc
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    test_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_'
+                                '{hemi}_test_rm-subj.pkl')
+    retest_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_'
+                                  '{hemi}_rm-subj.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, f'{atlas_name}_rm-subj_icc.pkl')
+
+    # prepare
+    data = {}
+
+    # calculate
+    for hemi in hemis:
+        rsfc_test = pkl.load(open(test_file.format(hemi=hemi), 'rb'))
+        rsfc_retest = pkl.load(open(retest_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            time1 = time.time()
+            test_vec = np.mean(rsfc_test[roi], 1)
+            retest_vec = np.mean(rsfc_retest[roi], 1)
+            k = f"{hemi}_{roi.split('-')[0]}"
+            data[k] = icc(test_vec, retest_vec, 10000, 95)
+            print(f'Finished {k}: cost {time.time()-time1} seconds.')
 
     # save
     pkl.dump(data, open(out_file, 'wb'))
@@ -515,11 +551,13 @@ if __name__ == '__main__':
     # get_rsfc_from_test(hemi='rh', atlas_name='ROIv3')
     # get_roi_idx_vec()
     # count_roi()
-    remove_subjects(hemi='lh', atlas_name='MPM', ses='test')
-    remove_subjects(hemi='rh', atlas_name='MPM', ses='test')
-    remove_subjects(hemi='lh', atlas_name='ROIv3', ses='test')
-    remove_subjects(hemi='rh', atlas_name='ROIv3', ses='test')
-    remove_subjects(hemi='lh', atlas_name='MPM', ses='retest')
-    remove_subjects(hemi='rh', atlas_name='MPM', ses='retest')
-    remove_subjects(hemi='lh', atlas_name='ROIv3', ses='retest')
-    remove_subjects(hemi='rh', atlas_name='ROIv3', ses='retest')
+    # remove_subjects(hemi='lh', atlas_name='MPM', ses='test')
+    # remove_subjects(hemi='rh', atlas_name='MPM', ses='test')
+    # remove_subjects(hemi='lh', atlas_name='ROIv3', ses='test')
+    # remove_subjects(hemi='rh', atlas_name='ROIv3', ses='test')
+    # remove_subjects(hemi='lh', atlas_name='MPM', ses='retest')
+    # remove_subjects(hemi='rh', atlas_name='MPM', ses='retest')
+    # remove_subjects(hemi='lh', atlas_name='ROIv3', ses='retest')
+    # remove_subjects(hemi='rh', atlas_name='ROIv3', ses='retest')
+    test_retest_icc(atlas_name='MPM')
+    test_retest_icc(atlas_name='ROIv3')
