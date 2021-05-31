@@ -127,6 +127,49 @@ def get_curvature(hemi='lh'):
         save2nifti(out_file.format(hemi=hemi), hemi2data[hemi])
 
 
+def get_roi_idx_vec():
+    """
+    Get index vector with bool values for each ROI.
+    The length of each index vector is matched with 45 subjects.
+    True value means the ROI is delineated in the corresponding subject.
+    """
+    import pandas as pd
+
+    # inputs
+    src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               'rois_v3_idx_vec.csv')
+    subj_file_45 = pjoin(proj_dir, 'data/HCP/wm/analysis_s2/'
+                                   'retest/subject_id')
+    subj_file_1080 = pjoin(proj_dir, 'analysis/s2/subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, 'rois_v3_idx_vec.csv')
+
+    # prepare
+    subj_ids_45 = open(subj_file_45).read().splitlines()
+    subj_ids_1080 = open(subj_file_1080).read().splitlines()
+    retest_idx_in_1080 = [subj_ids_1080.index(i) for i in subj_ids_45]
+    src_df = pd.read_csv(src_file)
+
+    # calculate
+    df = src_df.loc[retest_idx_in_1080]
+
+    # save
+    df.to_csv(out_file, index=False)
+
+
+def count_roi():
+    """
+    Count valid subjects for each ROI
+    """
+    import numpy as np
+    import pandas as pd
+
+    df = pd.read_csv(pjoin(work_dir, 'rois_v3_idx_vec.csv'))
+    for col in df.columns:
+        print(f'#subjects of {col}:', np.sum(df[col]))
+
+
 def test_retest_icc(hemi='lh'):
     import numpy as np
     import pickle as pkl
@@ -286,7 +329,9 @@ if __name__ == '__main__':
     # get_subID(meas_name='myelin')
     # get_subID(meas_name='curv')
     # get_subID(meas_name='activ')
-    get_curvature()
+    # get_curvature()
+    get_roi_idx_vec()
+    count_roi()
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
     # icc_plot(hemi='lh')
