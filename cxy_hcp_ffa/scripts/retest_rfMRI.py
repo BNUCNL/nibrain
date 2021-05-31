@@ -1,4 +1,5 @@
 from os.path import join as pjoin
+from re import sub
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
@@ -402,14 +403,17 @@ def get_roi_idx_vec():
     """
     Get index vector with bool values for each ROI.
     The length of each index vector is matched with 42 subjects.
-    True value means the ROI is delineated in the corresponding subject.
+    True代表该被试在test能标定出各个ROI且也具有4个静息run。
     """
+    import numpy as np
     import pandas as pd
 
     # inputs
     src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                                'rois_v3_idx_vec.csv')
     subj_file_42 = pjoin(work_dir, 'rfMRI_REST_id')
+    subj_file_995 = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                          'refined_with_Kevin/rfMRI/rfMRI_REST_id')
     subj_file_1080 = pjoin(proj_dir, 'analysis/s2/subject_id')
 
     # outputs
@@ -417,12 +421,16 @@ def get_roi_idx_vec():
 
     # prepare
     subj_ids_42 = open(subj_file_42).read().splitlines()
+    subj_ids_995 = open(subj_file_995).read().splitlines()
+    subj_not_995_flag = [i not in subj_ids_995 for i in subj_ids_42]
+    print(np.sum(subj_not_995_flag))
     subj_ids_1080 = open(subj_file_1080).read().splitlines()
     subj_idx_in_1080 = [subj_ids_1080.index(i) for i in subj_ids_42]
     src_df = pd.read_csv(src_file)
 
     # calculate
     df = src_df.loc[subj_idx_in_1080]
+    df.loc[subj_not_995_flag] = False
 
     # save
     df.to_csv(out_file, index=False)
@@ -515,6 +523,42 @@ def test_retest_icc(atlas_name='MPM'):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def test_retest_corr(atlas_name='MPM'):
+    import time
+    import pickle as pkl
+    from scipy.stats.stats import pearsonr
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    test_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_'
+                                '{hemi}_test_rm-subj.pkl')
+    retest_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_'
+                                  '{hemi}_rm-subj.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, f'{atlas_name}_rm-subj_corr.pkl')
+
+    # prepare
+    data = {}
+
+    # calculate
+    for hemi in hemis:
+        rsfc_test = pkl.load(open(test_file.format(hemi=hemi), 'rb'))
+        rsfc_retest = pkl.load(open(retest_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            time1 = time.time()
+            k = f"{hemi}_{roi.split('-')[0]}"
+            v = []
+            for vec1, vec2 in zip(rsfc_test[roi], rsfc_retest[roi]):
+                v.append(pearsonr(vec1, vec2)[0])
+            data[k] = v
+            print(f'Finished {k}: cost {time.time()-time1} seconds.')
+
+    # save
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='LR')
     # get_valid_id(sess=1, run='RL')
@@ -549,8 +593,8 @@ if __name__ == '__main__':
     # get_rsfc_from_test(hemi='rh', atlas_name='MPM')
     # get_rsfc_from_test(hemi='lh', atlas_name='ROIv3')
     # get_rsfc_from_test(hemi='rh', atlas_name='ROIv3')
-    # get_roi_idx_vec()
-    # count_roi()
+    get_roi_idx_vec()
+    count_roi()
     # remove_subjects(hemi='lh', atlas_name='MPM', ses='test')
     # remove_subjects(hemi='rh', atlas_name='MPM', ses='test')
     # remove_subjects(hemi='lh', atlas_name='ROIv3', ses='test')
@@ -559,5 +603,7 @@ if __name__ == '__main__':
     # remove_subjects(hemi='rh', atlas_name='MPM', ses='retest')
     # remove_subjects(hemi='lh', atlas_name='ROIv3', ses='retest')
     # remove_subjects(hemi='rh', atlas_name='ROIv3', ses='retest')
-    test_retest_icc(atlas_name='MPM')
-    test_retest_icc(atlas_name='ROIv3')
+    # test_retest_icc(atlas_name='MPM')
+    # test_retest_icc(atlas_name='ROIv3')
+    # test_retest_corr(atlas_name='MPM')
+    # test_retest_corr(atlas_name='ROIv3')
