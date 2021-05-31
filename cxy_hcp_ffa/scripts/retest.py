@@ -92,7 +92,7 @@ def get_curvature(hemi='lh'):
     主要是为了我那个程序在标定个体ROI的时候读取和显示曲率。
     之前服务器上没有retest的结构数据，我想当然地认为同一个被试的沟回曲率在
     两次测量应该是一模一样的，所以在标定v1和v2版ROI的时候参照的是test session的曲率；
-    这次我下了retest的结构数据，决定用retest session的曲率修订一下retest个体ROI。
+    这次我下了retest的结构数据，决定用retest session的曲率校对一下retest个体ROI。
     """
     import numpy as np
     from magicbox.io.io import CiftiReader, save2nifti
