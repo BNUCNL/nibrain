@@ -144,21 +144,32 @@ def remove_subjects(fpath=pjoin(work_dir, 'activ_MPM.pkl')):
 
 
 def test_retest_icc(meas_name='activ', atlas_name='MPM'):
+    import time
     import pickle as pkl
     from cxy_hcp_ffa.lib.heritability import icc
 
     # inputs
     hemis = ('lh', 'rh')
     rois = ('pFus', 'mFus')
-    meas_file = pjoin(work_dir, f'{meas_name}_{atlas_name}.pkl')
+    meas_file = pjoin(work_dir, f'{meas_name}_{atlas_name}_rm-subj.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, f'{meas_name}_{atlas_name}_rm-subj_icc.pkl')
 
     # prepare
-    meas_dict = pkl.load(open(meas_file, 'rb'))
+    meas = pkl.load(open(meas_file, 'rb'))
+    data = {}
 
     # calculate
     for hemi in hemis:
         for roi in rois:
-            item = f'{hemi}_{roi}'
+            time1 = time.time()
+            k = f'{hemi}_{roi}'
+            data[k] = icc(meas[f'{k}_test'], meas[f'{k}_retest'], 10000, 95)
+            print(f'Finished {k}: cost {time.time()-time1} seconds.')
+
+    # save
+    pkl.dump(data, open(out_file, 'wb'))
 
 
 def test_retest_corr(meas_name='activ', atlas_name='MPM'):
@@ -285,9 +296,15 @@ if __name__ == '__main__':
     # remove_subjects(fpath=pjoin(work_dir, 'myelin_ROIv3.pkl'))
     # remove_subjects(fpath=pjoin(work_dir, 'thickness_MPM.pkl'))
     # remove_subjects(fpath=pjoin(work_dir, 'thickness_ROIv3.pkl'))
-    test_retest_corr(meas_name='activ', atlas_name='MPM')
-    test_retest_corr(meas_name='activ', atlas_name='ROIv3')
-    test_retest_corr(meas_name='myelin', atlas_name='MPM')
-    test_retest_corr(meas_name='myelin', atlas_name='ROIv3')
-    test_retest_corr(meas_name='thickness', atlas_name='MPM')
-    test_retest_corr(meas_name='thickness', atlas_name='ROIv3')
+    test_retest_icc(meas_name='activ', atlas_name='MPM')
+    test_retest_icc(meas_name='activ', atlas_name='ROIv3')
+    test_retest_icc(meas_name='myelin', atlas_name='MPM')
+    test_retest_icc(meas_name='myelin', atlas_name='ROIv3')
+    test_retest_icc(meas_name='thickness', atlas_name='MPM')
+    test_retest_icc(meas_name='thickness', atlas_name='ROIv3')
+    # test_retest_corr(meas_name='activ', atlas_name='MPM')
+    # test_retest_corr(meas_name='activ', atlas_name='ROIv3')
+    # test_retest_corr(meas_name='myelin', atlas_name='MPM')
+    # test_retest_corr(meas_name='myelin', atlas_name='ROIv3')
+    # test_retest_corr(meas_name='thickness', atlas_name='MPM')
+    # test_retest_corr(meas_name='thickness', atlas_name='ROIv3')
