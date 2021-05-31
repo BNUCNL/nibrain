@@ -335,6 +335,42 @@ def rsfc_mean_among_run(hemi='lh', atlas_name='MPM'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def rsfc_merge_MMP(hemi='lh', atlas_name='MPM'):
+    """
+    用ColeAnticevicNetPartition将MMP合并成12个网络
+    """
+    import numpy as np
+    import pickle as pkl
+    from scipy.io import loadmat
+
+    # inputs
+    seeds = ('IOG-face', 'pFus-face', 'mFus-face')
+    rsfc_file = pjoin(work_dir, f'rsfc_{atlas_name}2MMP_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}.pkl')
+
+    # prepare
+    rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
+    roi2net_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
+        'cortex_parcel_network_assignments.mat'
+    roi2net = loadmat(roi2net_file)['netassignments'][:, 0]
+    roi2net = np.r_[roi2net[180:], roi2net[:180]]
+    net_labels = sorted(set(roi2net))
+    n_net = len(net_labels)
+
+    # calculate
+    for seed in seeds:
+        data = np.zeros((rsfc_dict[seed].shape[0], n_net))
+        for net_idx, net_lbl in enumerate(net_labels):
+            data[:, net_idx] = np.mean(rsfc_dict[seed][:, roi2net == net_lbl], 1)
+        rsfc_dict[seed] = data
+    rsfc_dict['trg_label'] = net_labels
+
+    # save
+    pkl.dump(rsfc_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='LR')
     # get_valid_id(sess=1, run='RL')
@@ -357,7 +393,11 @@ if __name__ == '__main__':
     # rsfc(sess=2, run='LR', hemi='rh')
     # rsfc(sess=2, run='RL', hemi='lh')
     # rsfc(sess=2, run='RL', hemi='rh')
-    rsfc_mean_among_run(hemi='lh', atlas_name='MPM')
-    rsfc_mean_among_run(hemi='rh', atlas_name='MPM')
-    rsfc_mean_among_run(hemi='lh', atlas_name='ROIv3')
-    rsfc_mean_among_run(hemi='rh', atlas_name='ROIv3')
+    # rsfc_mean_among_run(hemi='lh', atlas_name='MPM')
+    # rsfc_mean_among_run(hemi='rh', atlas_name='MPM')
+    # rsfc_mean_among_run(hemi='lh', atlas_name='ROIv3')
+    # rsfc_mean_among_run(hemi='rh', atlas_name='ROIv3')
+    rsfc_merge_MMP(hemi='lh', atlas_name='MPM')
+    rsfc_merge_MMP(hemi='rh', atlas_name='MPM')
+    rsfc_merge_MMP(hemi='lh', atlas_name='ROIv3')
+    rsfc_merge_MMP(hemi='rh', atlas_name='ROIv3')
