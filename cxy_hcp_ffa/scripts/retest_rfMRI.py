@@ -253,6 +253,88 @@ def prepare_series_ind(sess=1, run='LR'):
     pkl.dump(hemi2seed_dict['rh'], open(out_seed_rh, 'wb'))
 
 
+def rsfc(sess=1, run='LR', hemi='lh'):
+    """
+    计算静息态功能连接
+    """
+    import numpy as np
+    import pickle as pkl
+    from scipy.spatial.distance import cdist
+
+    # prepare seeds
+    seed_file = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_{hemi}.pkl')
+    seed_dict = pkl.load(open(seed_file, 'rb'))
+
+    # prepare outputs
+    out_file = pjoin(work_dir, f'rsfc_ROIv32MMP_{hemi}_{sess}_{run}.pkl')
+
+    # prepare targets
+    trg_file = pjoin(work_dir, f'rfMRI{sess}_{run}_MMP.pkl')
+    trg_dict = pkl.load(open(trg_file, 'rb'))
+    n_trg = len(trg_dict['trg_label'])
+
+    assert seed_dict['subject'] == trg_dict['subject']
+    n_subj = len(seed_dict['subject'])
+
+    # prepare FC dictionary
+    fc_dict = {
+        'shape': 'n_subject x n_target',
+        'subject': seed_dict['subject'],
+        'trg_label': trg_dict['trg_label']}
+    for seed in seed_dict['seed']:
+        fc_dict[seed] = np.ones((n_subj, n_trg)) * np.nan
+
+    # start
+    for valid_idx in range(n_subj):
+        print('Progress: {}/{}'.format(valid_idx+1, n_subj))
+        for seed_idx, seed in enumerate(seed_dict['seed']):
+            seed_series = seed_dict['rfMRI'][valid_idx, [seed_idx]]
+            if not np.isnan(seed_series[0, 0]):
+                fc = 1 - cdist(seed_series, trg_dict['rfMRI'][valid_idx],
+                               metric='correlation')[0]
+                fc_dict[seed][valid_idx] = fc
+
+    # save
+    pkl.dump(fc_dict, open(out_file, 'wb'))
+
+
+def rsfc_mean_among_run(hemi='lh', atlas_name='MPM'):
+    import numpy as np
+    import pickle as pkl
+
+    # inputs
+    sessions = (1, 2)
+    runs = ('LR', 'RL')
+    fpaths = [pjoin(work_dir, f'rsfc_{atlas_name}2MMP_{hemi}_{ses}_{run}.pkl')
+              for ses in sessions for run in runs]
+    rois = ['IOG-face', 'pFus-face', 'mFus-face']
+
+    # outputs
+    out_file = pjoin(work_dir, f'rsfc_{atlas_name}2MMP_{hemi}.pkl')
+
+    # calculate
+    rsfc_dict = dict()
+    for idx, f in enumerate(fpaths):
+        tmp_rsfc = pkl.load(open(f, 'rb'))
+        if idx == 0:
+            rsfc_dict['shape'] = tmp_rsfc['shape']
+            rsfc_dict['subject'] = tmp_rsfc['subject']
+            rsfc_dict['trg_label'] = tmp_rsfc['trg_label']
+            for roi in rois:
+                rsfc_dict[roi] = [tmp_rsfc[roi]]
+        else:
+            assert rsfc_dict['shape'] == tmp_rsfc['shape']
+            assert rsfc_dict['subject'] == tmp_rsfc['subject']
+            assert rsfc_dict['trg_label'] == tmp_rsfc['trg_label']
+            for roi in rois:
+                rsfc_dict[roi].append(tmp_rsfc[roi])
+    for roi in rois:
+        rsfc_dict[roi] = np.mean(rsfc_dict[roi], 0)
+
+    # save
+    pkl.dump(rsfc_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='LR')
     # get_valid_id(sess=1, run='RL')
@@ -263,7 +345,19 @@ if __name__ == '__main__':
     # prepare_series(sess=1, run='RL')
     # prepare_series(sess=2, run='LR')
     # prepare_series(sess=2, run='RL')
-    prepare_series_ind(sess=1, run='LR')
-    prepare_series_ind(sess=1, run='RL')
-    prepare_series_ind(sess=2, run='LR')
-    prepare_series_ind(sess=2, run='RL')
+    # prepare_series_ind(sess=1, run='LR')
+    # prepare_series_ind(sess=1, run='RL')
+    # prepare_series_ind(sess=2, run='LR')
+    # prepare_series_ind(sess=2, run='RL')
+    # rsfc(sess=1, run='LR', hemi='lh')
+    # rsfc(sess=1, run='LR', hemi='rh')
+    # rsfc(sess=1, run='RL', hemi='lh')
+    # rsfc(sess=1, run='RL', hemi='rh')
+    # rsfc(sess=2, run='LR', hemi='lh')
+    # rsfc(sess=2, run='LR', hemi='rh')
+    # rsfc(sess=2, run='RL', hemi='lh')
+    # rsfc(sess=2, run='RL', hemi='rh')
+    rsfc_mean_among_run(hemi='lh', atlas_name='MPM')
+    rsfc_mean_among_run(hemi='rh', atlas_name='MPM')
+    rsfc_mean_among_run(hemi='lh', atlas_name='ROIv3')
+    rsfc_mean_among_run(hemi='rh', atlas_name='ROIv3')
