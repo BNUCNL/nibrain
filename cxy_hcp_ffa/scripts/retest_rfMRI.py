@@ -440,6 +440,45 @@ def count_roi():
         print(f'#subjects of {col}:', np.sum(df[col]))
 
 
+def remove_subjects(hemi='lh', atlas_name='MPM', ses='test'):
+    """
+    对每个ROI，比如右脑mFus-face，从数据中去掉未标定出该ROI的被试
+    """
+    import os
+    import pandas as pd
+    import pickle as pkl
+
+    # inputs
+    idx_file = pjoin(work_dir, 'rois_v3_idx_vec.csv')
+    if ses == 'test':
+        fpath=pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}_test.pkl')
+    elif ses == 'retest':
+        fpath=pjoin(work_dir, f'rsfc_{atlas_name}2Cole_{hemi}.pkl')
+    else:
+        raise ValueError('error session name:', ses)
+
+    # outputs
+    fname = os.path.basename(fpath)
+    fname = f"{fname.rstrip('.pkl')}_rm-subj.pkl"
+    out_file = pjoin(work_dir, fname)
+
+    # prepare
+    data = pkl.load(open(fpath, 'rb'))
+    idx_df = pd.read_csv(idx_file)
+
+    # calculate
+    for k, v in data.items():
+        if k == 'subject':
+            data[k] = []
+        elif k.endswith('-face'):
+            hemi_roi = f'{hemi}_{k}'
+            data[k] = v[idx_df[hemi_roi]]
+            print(hemi_roi, data[k].shape)
+
+    # save
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_valid_id(sess=1, run='LR')
     # get_valid_id(sess=1, run='RL')
@@ -470,9 +509,17 @@ if __name__ == '__main__':
     # rsfc_merge_MMP(hemi='rh', atlas_name='MPM')
     # rsfc_merge_MMP(hemi='lh', atlas_name='ROIv3')
     # rsfc_merge_MMP(hemi='rh', atlas_name='ROIv3')
-    get_rsfc_from_test(hemi='lh', atlas_name='MPM')
-    get_rsfc_from_test(hemi='rh', atlas_name='MPM')
-    get_rsfc_from_test(hemi='lh', atlas_name='ROIv3')
-    get_rsfc_from_test(hemi='rh', atlas_name='ROIv3')
+    # get_rsfc_from_test(hemi='lh', atlas_name='MPM')
+    # get_rsfc_from_test(hemi='rh', atlas_name='MPM')
+    # get_rsfc_from_test(hemi='lh', atlas_name='ROIv3')
+    # get_rsfc_from_test(hemi='rh', atlas_name='ROIv3')
     # get_roi_idx_vec()
     # count_roi()
+    remove_subjects(hemi='lh', atlas_name='MPM', ses='test')
+    remove_subjects(hemi='rh', atlas_name='MPM', ses='test')
+    remove_subjects(hemi='lh', atlas_name='ROIv3', ses='test')
+    remove_subjects(hemi='rh', atlas_name='ROIv3', ses='test')
+    remove_subjects(hemi='lh', atlas_name='MPM', ses='retest')
+    remove_subjects(hemi='rh', atlas_name='MPM', ses='retest')
+    remove_subjects(hemi='lh', atlas_name='ROIv3', ses='retest')
+    remove_subjects(hemi='rh', atlas_name='ROIv3', ses='retest')
