@@ -470,13 +470,16 @@ def plot_bar():
     hemis = ('lh', 'rh')
     seeds = ('pFus-face', 'mFus-face')
     seed2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
-    rsfc_file = pjoin(work_dir, 'rsfc_individual2Cole_{hemi}.pkl')
+    rsfc_file = pjoin(work_dir, 'rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'bar_mpm.jpg')
 
     n_hemi = len(hemis)
     n_seed = len(seeds)
     x = np.arange(n_hemi)
     width = auto_bar_width(x, n_seed)
-    plt.figure()
+    plt.figure(figsize=(6, 3))
     ax = plt.gca()
     hemi2meas = {
         'lh': pkl.load(open(rsfc_file.format(hemi='lh'), 'rb')),
@@ -500,9 +503,10 @@ def plot_bar():
     ax.set_ylim(0.1)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.legend()
+    # ax.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def prepare_plot(hemi='lh'):
@@ -552,6 +556,65 @@ def prepare_plot(hemi='lh'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def plot_radar():
+    """
+    https://www.pythoncharts.com/2019/04/16/radar-charts/
+    """
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+
+    # inputs
+    hemis = ('lh', 'rh')
+    n_hemi = len(hemis)
+    seed_names = ['pFus-face', 'mFus-face']
+    seed2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
+    data_file = pjoin(work_dir, 'plot_rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'radar_mpm.jpg')
+
+    trg_names = None
+    trg_labels = None
+    _, axes = plt.subplots(1, n_hemi, subplot_kw=dict(polar=True),
+                           figsize=(6.4, 4.8))
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx]
+        data = pkl.load(open(data_file.format(hemi=hemi), 'rb'))
+
+        if trg_names is None:
+            trg_names = data['target']
+            trg_labels = data['trg_label']
+
+        indices = [data['target'].index(n) for n in trg_names]
+        n_trg = len(trg_names)
+        print(n_trg)
+        means = data['mean'][:, indices]
+        errs = data['sem'][:, indices] * 2
+
+        angles = np.linspace(0, 2 * np.pi, n_trg, endpoint=False)
+        angles = np.concatenate((angles, [angles[0]]))
+        means = np.c_[means, means[:, [0]]]
+        errs = np.c_[errs, errs[:, [0]]]
+        for seed_name in seed_names:
+            seed_idx = data['seed'].index(seed_name)
+            ax.plot(angles, means[seed_idx], linewidth=1,
+                    linestyle='solid', label=seed_name.split('-')[0],
+                    color=seed2color[seed_name])
+            ax.fill_between(angles, means[seed_idx]-errs[seed_idx],
+                            means[seed_idx]+errs[seed_idx],
+                            color=seed2color[seed_name], alpha=0.25)
+        # ax.legend(loc='upper center')
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(trg_labels)
+        ax.grid(axis='y')
+    plt.tight_layout()
+    plt.savefig(out_file)
+
+    for lbl, name in zip(trg_labels, trg_names):
+        print(lbl, name)
+
+
 if __name__ == '__main__':
     # get_valid_id(1, 'LR')
     # get_valid_id(1, 'RL')
@@ -577,8 +640,9 @@ if __name__ == '__main__':
     # pre_ANOVA_rm()
     # roi_ttest()
     # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
-    roi_pair_ttest()
-    multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest_paired.csv')
-    prepare_plot(hemi='lh')
-    prepare_plot(hemi='rh')
-    # plot_bar()
+    # roi_pair_ttest()
+    # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest_paired.csv')
+    # prepare_plot(hemi='lh')
+    # prepare_plot(hemi='rh')
+    plot_bar()
+    # plot_radar()

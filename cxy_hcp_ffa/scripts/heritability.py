@@ -478,7 +478,9 @@ def plot_Falconer_h2():
     from matplotlib import pyplot as plt
     from nibrain.util.plotfig import auto_bar_width
 
-    figsize = (9, 4)
+    # figsize = (9, 4)
+    figsize = (7, 4.8)
+    out_file = pjoin(work_dir, 'Falconer_h2.jpg')
     meas2file = {
         'thickness': pjoin(work_dir, 'heritability_icc_TMA.csv'),
         'myelin': pjoin(work_dir, 'heritability_icc_TMA.csv'),
@@ -531,18 +533,18 @@ def plot_Falconer_h2():
                     ax.bar(x + width0 * offset, y, width0, yerr=yerr,
                            label=lbl, ec=roi2color[roi], fc='w',
                            hatch='//')
-                    ax.plot(x + width0 * offset,
-                            np.array(df.loc['ICC_MZ', cols]),
-                            linestyle='', marker='*', ms=10,
-                            markeredgecolor='k', markerfacecolor='w')
+                    # ax.plot(x + width0 * offset,
+                    #         np.array(df.loc['ICC_MZ', cols]),
+                    #         linestyle='', marker='*', ms=10,
+                    #         markeredgecolor='k', markerfacecolor='w')
                 else:
                     ax.bar(x + width0 * offset, y, width0, yerr=yerr,
                            label=lbl, ec=roi2color[roi], fc='w',
                            hatch='\\')
-                    ax.plot(x + width0 * offset,
-                            np.array(df.loc['ICC_DZ', cols]),
-                            linestyle='', marker='*', ms=10,
-                            markeredgecolor='k', markerfacecolor='w')
+                    # ax.plot(x + width0 * offset,
+                    #         np.array(df.loc['ICC_DZ', cols]),
+                    #         linestyle='', marker='*', ms=10,
+                    #         markeredgecolor='k', markerfacecolor='w')
                 offset += 1
         ax.set_title(meas2title[meas_name])
         ax.set_xticks(x)
@@ -567,13 +569,15 @@ def plot_Falconer_h2():
             low_err = y - np.array(df.loc['h2_lb', cols])
             high_err = np.array(df.loc['h2_ub', cols]) - y
             yerr = np.array([low_err, high_err])
+            # ax.bar(x + width1 * offset, y, width1, yerr=yerr,
+            #        label=roi2label[roi], ec=roi2color[roi], fc='w',
+            #        hatch='//')
             ax.bar(x + width1 * offset, y, width1, yerr=yerr,
-                   label=roi2label[roi], ec=roi2color[roi], fc='w',
-                   hatch='//')
-            ax.plot(x + width1 * offset,
-                    np.array(df.loc['H2', cols]),
-                    linestyle='', marker='*', ms=10,
-                    markeredgecolor='k', markerfacecolor='w')
+                   label=roi2label[roi], color=roi2color[roi])
+            # ax.plot(x + width1 * offset,
+            #         np.array(df.loc['H2', cols]),
+            #         linestyle='', marker='*', ms=10,
+            #         markeredgecolor='k', markerfacecolor='w')
             offset += 1
         ax.set_xticks(x)
         ax.set_xticklabels(hemis)
@@ -581,11 +585,12 @@ def plot_Falconer_h2():
         ax.spines['right'].set_visible(False)
         if meas_idx == 0:
             ax.set_ylabel('heritability')
-        if meas_idx == 1:
-            ax.legend()
+        # if meas_idx == 1:
+        #     ax.legend()
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def calc_pattern_corr_between_twins(meas_name='thickness'):
@@ -721,10 +726,13 @@ def plot_pattern_corr1():
     hemis = ('lh', 'rh')
     df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
 
+    # outputs
+    out_file = pjoin(work_dir, 'pattern_corr1.jpg')
+
     n_zyg = len(zygosity)
     x = np.arange(len(rois))
     width = auto_bar_width(x, n_zyg)
-    _, axes = plt.subplots(len(hemis), len(meas_names))
+    _, axes = plt.subplots(len(hemis), len(meas_names), figsize=(6.4, 4.8))
     for meas_idx, meas_name in enumerate(meas_names):
         df = pd.read_csv(df_file.format(meas_name))
         for hemi_idx, hemi in enumerate(hemis):
@@ -740,16 +748,17 @@ def plot_pattern_corr1():
                        label=zyg, color=zyg2color[zyg])
                 offset += 1
             ax.set_ylabel(meas2ylabel[meas_name])
-            if meas_idx == 1:
-                ax.set_title(hemi)
-                if hemi_idx == 0:
-                    ax.legend()
+            # if meas_idx == 1:
+            #     ax.set_title(hemi)
+            #     if hemi_idx == 0:
+            #         ax.legend()
             ax.set_xticks(x)
             ax.set_xticklabels(rois)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def plot_pattern_corr2():
