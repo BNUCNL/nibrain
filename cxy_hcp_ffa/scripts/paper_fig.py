@@ -112,7 +112,7 @@ def plot_prob_map_similarity():
     from matplotlib import pyplot as plt
 
     # inputs
-    figsize = (4, 4)
+    figsize = (3, 3)
     aspect = 2
     rois = ('pFus', 'mFus')
     meas = 'corr'  # corr or dice
@@ -138,21 +138,41 @@ def plot_prob_map_similarity():
         k_rh = f'rh_{roi}_{meas}'
         arr = data[k_lh]
         for i in range(n_gid):
-            arr = np.insert(arr, i*2, data[k_rh][:, i], axis=1)
-        img = ax.imshow(arr, 'autumn', aspect=aspect)
+            j = 2 * i
+            arr = np.insert(arr, j, data[k_rh][:, i], axis=1)
+            arr[i, j] = 0
+            arr[i, j+1] = 0
+        ax.imshow(arr, 'autumn', aspect=aspect)
 
+        ax.tick_params(top=True, bottom=False,
+                      labeltop=True, labelbottom=False)
         ax.set_xticks(ticks * 2 + 0.5)
         ax.set_xticklabels(gid_names)
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+        # plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+        #          rotation_mode="anchor")
+        plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
                  rotation_mode="anchor")
         ax.set_yticks(ticks)
         ax.set_yticklabels(gid_names)
 
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
+        ax.set_xticks(np.arange(n_gid)*2-.5, minor=True)
+        ax.set_yticks(np.arange(n_gid)-.5, minor=True)
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        ax.tick_params(which="minor", bottom=False, left=False)
+
         for i in range(n_gid):
             for j in range(n_gid*2):
+                if j == 2*i or j == 2*i+1:
+                    continue
                 ax.text(j, i, '{:.2f}'.format(arr[i, j]),
                         ha="center", va="center", color="k")
         ax.set_title(roi)
+        plt.tight_layout()
         plt.savefig(out_file.format(roi))
     # plt.show()
 
