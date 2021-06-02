@@ -177,6 +177,81 @@ def plot_prob_map_similarity():
     # plt.show()
 
 
+def plot_retest_reliabilty_icc():
+    import numpy as np
+    import pickle as pkl
+    from nibrain.util.plotfig import auto_bar_width
+
+    # inputs
+    figsize = (6.4, 4.8)
+    hemis = ('lh', 'rh')
+    rois = ('pFus', 'mFus')
+    retest_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                                 'refined_with_Kevin/retest')
+    atlas_names = ('MPM', 'ROIv3')
+    meas2file = {
+        'thickness': pjoin(retest_dir, 'reliability/thickness_{atlas}_rm-subj_icc.pkl'),
+        'myelin': pjoin(retest_dir, 'reliability/myelin_{atlas}_rm-subj_icc.pkl'),
+        'activ': pjoin(retest_dir, 'reliability/activ_{atlas}_rm-subj_icc.pkl'),
+        'rsfc': pjoin(retest_dir, 'rfMRI/{atlas}_rm-subj_icc.pkl'),
+    }
+    meas2title = {
+        'thickness': 'thickness',
+        'myelin': 'myelination',
+        'activ': 'face selectivity',
+        'rsfc': 'RSFC'
+    }
+    atlas2color = {'MPM': (0.33, 0.33, 0.33, 1),
+                   'ROIv3': (0.66, 0.66, 0.66, 1)}
+
+    # outputs
+    out_file = pjoin(work_dir, 'retest_reliabilty_icc.jpg')
+
+    # prepare
+    n_hemi = len(hemis)
+    n_roi = len(rois)
+    n_atlas = len(atlas_names)
+    n_meas = len(meas2file)
+    x = np.arange(n_roi)
+
+    # plot
+    _, axes = plt.subplots(n_meas, n_hemi, figsize=figsize)
+    offset = -(n_atlas - 1) / 2
+    width = auto_bar_width(x, n_atlas)
+    for atlas_idx, atlas_name in enumerate(atlas_names):
+        for meas_idx, meas_name in enumerate(meas2file.keys()):
+            fpath = meas2file[meas_name].format(atlas=atlas_name)
+            data = pkl.load(open(fpath, 'rb'))
+            for hemi_idx, hemi in enumerate(hemis):
+                ax = axes[meas_idx, hemi_idx]
+                ys = np.zeros(n_roi)
+                yerrs = np.zeros((2, n_roi))
+                for roi_idx, roi in enumerate(rois):
+                    k = f'{hemi}_{roi}'
+                    y = data[k][1]
+                    low_err = y - data[k][0]
+                    high_err = data[k][2] - y
+                    ys[roi_idx] = y
+                    yerrs[0, roi_idx] = low_err
+                    yerrs[1, roi_idx] = high_err
+                ax.bar(x+width*offset, ys, width, yerr=yerrs,
+                       label=atlas_name, color=atlas2color[atlas_name])
+                if atlas_idx == 1:
+                    ax.set_title(meas2title[meas_name])
+                    # ax.legend()
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    ax.set_xticks(x)
+                    ax.set_xticklabels(rois)
+                    if hemi_idx == 0:
+                        ax.set_ylabel('ICC')
+        offset += 1
+    plt.tight_layout()
+    plt.savefig(out_file)
+    # plt.show()
+
+
 if __name__ == '__main__':
     # plot_development()
-    plot_prob_map_similarity()
+    # plot_prob_map_similarity()
+    plot_retest_reliabilty_icc()
