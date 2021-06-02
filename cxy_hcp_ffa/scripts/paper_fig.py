@@ -177,7 +177,7 @@ def plot_prob_map_similarity():
     # plt.show()
 
 
-def plot_retest_reliabilty_icc():
+def plot_retest_reliability_icc():
     import numpy as np
     import pickle as pkl
     from nibrain.util.plotfig import auto_bar_width
@@ -254,4 +254,4 @@ def plot_retest_reliabilty_icc():
 if __name__ == '__main__':
     # plot_development()
     # plot_prob_map_similarity()
-    plot_retest_reliabilty_icc()
+    plot_retest_reliability_icc()
