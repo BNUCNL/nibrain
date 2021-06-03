@@ -89,12 +89,88 @@ def plot_development():
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             # ax.legend()
-            if meas_idx+1 == n_meas:
-                ax.set_xlabel(age_name)
             ax.set_ylabel(meas2ylabel[meas_name])
             x_ticks = age_uniq[::2]
             ax.set_xticks(x_ticks)
             ax.set_xticklabels(x_ticks)
+        if meas_idx+1 == n_meas:
+            ax.set_xlabel(age_name)
+    plt.tight_layout()
+    plt.savefig(out_file)
+    # plt.show()
+
+
+def plot_development_pattern_corr():
+    import numpy as np
+    import pandas as pd
+    from scipy.stats.stats import sem
+    from cxy_hcp_ffa.lib.predefine import roi2color
+
+    # inputs
+    figsize = (4, 6)
+    rois = ('pFus-face', 'mFus-face')
+    hemis = ('lh', 'rh')
+    hemi2style = {'lh': '-', 'rh': '--'}
+    dev_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                              'development')
+    subj_info_file = pjoin(dev_dir, 'HCPD_SubjInfo.csv')
+    meas2file = {
+        'thickness': pjoin(dev_dir, 'HCPD_thickness-corr_MPM1.csv'),
+        'myelin': pjoin(dev_dir, 'HCPD_myelin-corr_MPM1.csv'),
+        'rsfc': pjoin(dev_dir, 'rfMRI/rsfc-corr_MPM.csv'),
+    }
+    meas2title = {
+        'thickness': 'thickness',
+        'myelin': 'myelination',
+        'rsfc': 'RSFC'
+    }
+
+    # outputs
+    out_file = pjoin(work_dir, 'dev-corr_line.jpg')
+
+    # prepare
+    age_name = 'age in years'
+    subj_info = pd.read_csv(subj_info_file)
+    subj_ids = subj_info['subID'].to_list()
+    ages = np.array(subj_info[age_name])
+    n_meas = len(meas2file)
+
+    # plot
+    _, axes = plt.subplots(n_meas, 1, figsize=figsize)
+    for meas_idx, meas_name in enumerate(meas2file.keys()):
+        ax = axes[meas_idx]
+        data = pd.read_csv(meas2file[meas_name])
+        assert subj_ids == data['subID'].to_list()
+        for hemi in hemis:
+            for roi in rois:
+                roi_name = roi.split('-')[0]
+                col = f"{roi_name}_{hemi}"
+                meas_vec = np.array(data[col])
+                non_nan_vec = ~np.isnan(meas_vec)
+                meas_vec = meas_vec[non_nan_vec]
+                age_vec = ages[non_nan_vec]
+                print(f'{meas_name}_{hemi}_{roi}:', meas_vec.shape)
+                age_uniq = np.unique(age_vec)
+                ys = np.zeros_like(age_uniq, np.float64)
+                yerrs = np.zeros_like(age_uniq, np.float64)
+                for age_idx, age in enumerate(age_uniq):
+                    sample = meas_vec[age_vec == age]
+                    ys[age_idx] = np.mean(sample)
+                    yerrs[age_idx] = sem(sample)
+                ax.errorbar(age_uniq, ys, yerrs, label=f'{hemi}_{roi_name}',
+                            color=roi2color[roi], linestyle=hemi2style[hemi])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        # ax.legend()
+        if meas_name == 'thickness':
+            ax.set_ylim(-0.3, 0.6)
+        if meas_idx+1 == n_meas:
+            ax.set_xlabel(age_name)
+        # ax.set_title(meas2title[meas_name])
+        ax.set_ylabel('pearson R')
+        x_ticks = np.unique(ages)[::2]
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels(x_ticks)
     plt.tight_layout()
     plt.savefig(out_file)
     # plt.show()
@@ -323,7 +399,8 @@ def plot_retest_reliability_corr():
 
 
 if __name__ == '__main__':
-    # plot_development()
+    plot_development()
+    plot_development_pattern_corr()
     # plot_prob_map_similarity()
     # plot_retest_reliability_icc()
-    plot_retest_reliability_corr()
+    # plot_retest_reliability_corr()
