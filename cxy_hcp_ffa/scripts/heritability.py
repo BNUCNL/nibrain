@@ -103,6 +103,25 @@ def filter_twinsID_G1G2():
             h2.count_twins_id(trg_file_tmp)
 
 
+def count_gender():
+    import pandas as pd
+
+    # inputs
+    twin_file = pjoin(work_dir, 'twins_id_1080.csv')
+    gender_file = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+
+    # prepare
+    twin_df = pd.read_csv(twin_file)
+    gender_df = pd.read_csv(gender_file, index_col='Subject')
+    twin_ids = twin_df['twin1'].to_list() + twin_df['twin2'].to_list()
+
+    # calculate
+    gender_df = gender_df.loc[twin_ids]
+    genders = gender_df['Gender'].to_list()
+    print('#Male:', genders.count('M'))
+    print('#Female:', genders.count('F'))
+
+
 def map_twinsID_to_groupID():
     """
     Find corresponding group ID for each twin.
@@ -370,6 +389,47 @@ def prepare_heritability_calculation_RSFC():
     df_out.to_csv(out_file, index=False)
 
 
+def prepare_heritability_calculation_meanRSFC():
+    """
+    Preparation for heritability calculation for mean RSFC across ColeNet
+    """
+    import numpy as np
+    import pandas as pd
+    import pickle as pkl
+
+    hemis = ('lh', 'rh')
+    rois = ('IOG-face', 'pFus-face', 'mFus-face')
+    zyg2label = {'MZ': 1, 'DZ': 3}
+    subjs_1080_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    rsfc_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                      'rfMRI/rsfc_mpm2Cole_{hemi}.pkl')
+    twins_file = pjoin(work_dir, 'twins_id_rfMRI.csv')
+    out_file = pjoin(work_dir, 'pre-heritability_rsfc-mean.csv')
+
+    # prepare data
+    df = pd.read_csv(twins_file)
+    subjs_1080 = [int(i) for i in open(subjs_1080_file).read().splitlines()]
+    subj_indices1 = [subjs_1080.index(_) for _ in df['twin1']]
+    subj_indices2 = [subjs_1080.index(_) for _ in df['twin2']]
+
+    # preparing
+    df_out = {'zygosity': df['zygosity'],
+              'zyg': [zyg2label[_] for _ in df['zygosity']]}
+    for hemi in hemis:
+        rsfc = pkl.load(open(rsfc_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            col1 = f"{roi.split('-')[0]}_{hemi}1"
+            col2 = f"{roi.split('-')[0]}_{hemi}2"
+            df_out[col1] = np.mean(rsfc[roi][subj_indices1], 1)
+            df_out[col2] = np.mean(rsfc[roi][subj_indices2], 1)
+        col1 = f'pFus_mFus_{hemi}1'
+        col2 = f'pFus_mFus_{hemi}2'
+        df_out[col1] = df_out[f'pFus_{hemi}1'] - df_out[f'mFus_{hemi}1']
+        df_out[col2] = df_out[f'pFus_{hemi}2'] - df_out[f'mFus_{hemi}2']
+    df_out = pd.DataFrame(df_out)
+    df_out.to_csv(out_file, index=False)
+
+
 def calc_Falconer_h2():
     """
     Calculate Falconer's heritability by using ICC.
@@ -380,8 +440,8 @@ def calc_Falconer_h2():
 
     n_bootstrap = 10000
     confidence = 95
-    data_file = pjoin(work_dir, 'pre-heritability_TMAV_individual.csv')
-    out_file = pjoin(work_dir, 'heritability_icc_TMAV_individual.csv')
+    data_file = pjoin(work_dir, 'pre-heritability_rsfc-mean.csv')
+    out_file = pjoin(work_dir, 'heritability_icc_rsfc-mean.csv')
 
     data = pd.read_csv(data_file)
     mz_indices = data['zyg'] == 1
@@ -428,16 +488,23 @@ def calc_Falconer_h2():
     out_df.to_csv(out_file, index=True)
 
 
-def plot_Falconer_h2_TMAV():
+def plot_Falconer_h2():
     """
-    thickness, myelin, face-avg
+    thickness, myelin, face-avg, mean RSFC
     """
     import numpy as np
     import pandas as pd
     from matplotlib import pyplot as plt
     from nibrain.util.plotfig import auto_bar_width
 
-    h2_file = pjoin(work_dir, 'heritability_icc_TMAV_individual.csv')
+    # figsize = (9, 4)
+    figsize = (7, 4.8)
+    out_file = pjoin(work_dir, 'Falconer_h2.jpg')
+    meas2file = {
+        'thickness': pjoin(work_dir, 'heritability_icc_TMA.csv'),
+        'myelin': pjoin(work_dir, 'heritability_icc_TMA.csv'),
+        'activ': pjoin(work_dir, 'heritability_icc_TMA.csv'),
+        'rsfc': pjoin(work_dir, 'heritability_icc_rsfc-mean.csv')}
     zygosity = ('mz', 'dz')
     hemis = ('lh', 'rh')
     # rois = ('pFus', 'mFus', 'pFus_mFus')
@@ -445,31 +512,36 @@ def plot_Falconer_h2_TMAV():
     roi2color = {
         'pFus': 'limegreen',
         'mFus': 'cornflowerblue',
-        'pFus_mFus': 'black'
-    }
+        'pFus_mFus': 'black'}
     roi2label = {'pFus': 'pFus', 'mFus': 'mFus', 'pFus_mFus': 'pFus-mFus'}
     meas2title = {
         'thickness': 'thickness',
         'myelin': 'myelination',
         'activ': 'face selectivity',
-        'va': 'vertex area'
-    }
+        'va': 'surface area',
+        'rsfc': 'RSFC'}
+    meas2str = {
+        'thickness': '_thickness_',
+        'myelin': '_myelin_',
+        'activ': '_activ_',
+        'va': '_va_',
+        'rsfc': '_'}
 
     n_roi = len(rois)
     n_hemi = len(hemis)
-    n_meas = len(meas2title)
-    df = pd.read_csv(h2_file, index_col=0)
+    n_meas = len(meas2file)
     x = np.arange(n_hemi)
-    _, axes = plt.subplots(2, n_meas)
+    _, axes = plt.subplots(2, n_meas, figsize=figsize)
 
     # plot ICC
     n_item0 = 2 * n_roi
     width0 = auto_bar_width(x, n_item0)
-    for meas_idx, meas_name in enumerate(meas2title.keys()):
+    for meas_idx, meas_name in enumerate(meas2file.keys()):
+        df = pd.read_csv(meas2file[meas_name], index_col=0)
         ax = axes[0, meas_idx]
         offset = -(n_item0 - 1) / 2
         for roi in rois:
-            cols = [f'{roi}_{meas_name}_{hemi}' for hemi in hemis]
+            cols = [f'{roi}{meas2str[meas_name]}{hemi}' for hemi in hemis]
             for zyg in zygosity:
                 lbl = roi2label[roi] + '_' + zyg
                 y = np.array(df.loc[f'r_{zyg}', cols])
@@ -480,18 +552,18 @@ def plot_Falconer_h2_TMAV():
                     ax.bar(x + width0 * offset, y, width0, yerr=yerr,
                            label=lbl, ec=roi2color[roi], fc='w',
                            hatch='//')
-                    ax.plot(x + width0 * offset,
-                            np.array(df.loc['ICC_MZ', cols]),
-                            linestyle='', marker='*', ms=10,
-                            markeredgecolor='k', markerfacecolor='w')
+                    # ax.plot(x + width0 * offset,
+                    #         np.array(df.loc['ICC_MZ', cols]),
+                    #         linestyle='', marker='*', ms=10,
+                    #         markeredgecolor='k', markerfacecolor='w')
                 else:
                     ax.bar(x + width0 * offset, y, width0, yerr=yerr,
                            label=lbl, ec=roi2color[roi], fc='w',
                            hatch='\\')
-                    ax.plot(x + width0 * offset,
-                            np.array(df.loc['ICC_DZ', cols]),
-                            linestyle='', marker='*', ms=10,
-                            markeredgecolor='k', markerfacecolor='w')
+                    # ax.plot(x + width0 * offset,
+                    #         np.array(df.loc['ICC_DZ', cols]),
+                    #         linestyle='', marker='*', ms=10,
+                    #         markeredgecolor='k', markerfacecolor='w')
                 offset += 1
         ax.set_title(meas2title[meas_name])
         ax.set_xticks(x)
@@ -506,22 +578,25 @@ def plot_Falconer_h2_TMAV():
     # plot heritability
     n_item1 = n_roi
     width1 = auto_bar_width(x, n_item1)
-    for meas_idx, meas_name in enumerate(meas2title.keys()):
+    for meas_idx, meas_name in enumerate(meas2file.keys()):
+        df = pd.read_csv(meas2file[meas_name], index_col=0)
         ax = axes[1, meas_idx]
         offset = -(n_item1 - 1) / 2
         for roi in rois:
-            cols = [f'{roi}_{meas_name}_{hemi}' for hemi in hemis]
+            cols = [f'{roi}{meas2str[meas_name]}{hemi}' for hemi in hemis]
             y = np.array(df.loc['h2', cols])
             low_err = y - np.array(df.loc['h2_lb', cols])
             high_err = np.array(df.loc['h2_ub', cols]) - y
             yerr = np.array([low_err, high_err])
+            # ax.bar(x + width1 * offset, y, width1, yerr=yerr,
+            #        label=roi2label[roi], ec=roi2color[roi], fc='w',
+            #        hatch='//')
             ax.bar(x + width1 * offset, y, width1, yerr=yerr,
-                   label=roi2label[roi], ec=roi2color[roi], fc='w',
-                   hatch='//')
-            ax.plot(x + width1 * offset,
-                    np.array(df.loc['H2', cols]),
-                    linestyle='', marker='*', ms=10,
-                    markeredgecolor='k', markerfacecolor='w')
+                   label=roi2label[roi], color=roi2color[roi])
+            # ax.plot(x + width1 * offset,
+            #         np.array(df.loc['H2', cols]),
+            #         linestyle='', marker='*', ms=10,
+            #         markeredgecolor='k', markerfacecolor='w')
             offset += 1
         ax.set_xticks(x)
         ax.set_xticklabels(hemis)
@@ -529,11 +604,12 @@ def plot_Falconer_h2_TMAV():
         ax.spines['right'].set_visible(False)
         if meas_idx == 0:
             ax.set_ylabel('heritability')
-        if meas_idx == 1:
-            ax.legend()
+        # if meas_idx == 1:
+        #     ax.legend()
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def calc_pattern_corr_between_twins(meas_name='thickness'):
@@ -587,6 +663,48 @@ def calc_pattern_corr_between_twins(meas_name='thickness'):
     out_df.to_csv(out_file, index=False)
 
 
+def calc_pattern_corr_between_twins_rsfc():
+    """
+    Calculate connectivity pattern correlation between each twin pair.
+    """
+    import pandas as pd
+    import pickle as pkl
+    from scipy.stats import pearsonr
+    from cxy_hcp_ffa.lib.predefine import zyg2label
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('pFus-face', 'mFus-face')
+    subj_id_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    twins_id_file = pjoin(work_dir, 'twins_id_rfMRI.csv')
+    rsfc_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                      'rfMRI/rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc.csv')
+
+    # prepare
+    df = pd.read_csv(twins_id_file)
+    subj_ids = [int(i) for i in open(subj_id_file).read().splitlines()]
+    twin1_indices = [subj_ids.index(i) for i in df['twin1']]
+    twin2_indices = [subj_ids.index(i) for i in df['twin2']]
+
+    # calculate
+    out_df = pd.DataFrame()
+    out_df['zygosity'] = df['zygosity']
+    out_df['zyg'] = [zyg2label[zyg] for zyg in df['zygosity']]
+    for hemi in hemis:
+        rsfc_dict = pkl.load(open(rsfc_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            rsfc1 = rsfc_dict[roi][twin1_indices]
+            rsfc2 = rsfc_dict[roi][twin2_indices]
+            out_df[f"{hemi}_{roi.split('-')[0]}"] = [
+                pearsonr(i, j)[0] for i, j in zip(rsfc1, rsfc2)]
+
+    # save
+    out_df.to_csv(out_file, index=False)
+
+
 def pattern_corr_fisher_z(meas='thickness'):
     import numpy as np
     import pandas as pd
@@ -616,21 +734,24 @@ def plot_pattern_corr1():
     from nibrain.util.plotfig import auto_bar_width
 
     rois = ('pFus', 'mFus')
-    meas_names = ('thickness', 'myelin', 'activ')
+    meas_names = ('thickness', 'myelin', 'activ', 'rsfc')
     meas2ylabel = {
         'thickness': 'thickness',
         'myelin': 'myelin',
-        'activ': 'face-avg'
-    }
+        'activ': 'face-avg',
+        'rsfc': 'RSFC'}
     zygosity = ('MZ', 'DZ')
     zyg2color = {'MZ': (0.33, 0.33, 0.33, 1), 'DZ': (0.66, 0.66, 0.66, 1)}
     hemis = ('lh', 'rh')
-    df_file = pjoin(work_dir, 'twins_pattern-corr_{}_fisherZ.csv')
+    df_file = pjoin(work_dir, 'twins_pattern-corr_{}.csv')
+
+    # outputs
+    out_file = pjoin(work_dir, 'pattern_corr1.jpg')
 
     n_zyg = len(zygosity)
     x = np.arange(len(rois))
     width = auto_bar_width(x, n_zyg)
-    _, axes = plt.subplots(len(hemis), len(meas_names))
+    _, axes = plt.subplots(len(hemis), len(meas_names), figsize=(6.4, 4.8))
     for meas_idx, meas_name in enumerate(meas_names):
         df = pd.read_csv(df_file.format(meas_name))
         for hemi_idx, hemi in enumerate(hemis):
@@ -646,16 +767,17 @@ def plot_pattern_corr1():
                        label=zyg, color=zyg2color[zyg])
                 offset += 1
             ax.set_ylabel(meas2ylabel[meas_name])
-            if meas_idx == 1:
-                ax.set_title(hemi)
-                if hemi_idx == 0:
-                    ax.legend()
+            # if meas_idx == 1:
+            #     ax.set_title(hemi)
+            #     if hemi_idx == 0:
+            #         ax.legend()
             ax.set_xticks(x)
             ax.set_xticklabels(rois)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def plot_pattern_corr2():
@@ -844,21 +966,24 @@ if __name__ == '__main__':
     # filter_twinsID_1080()
     # filter_twinsID_rfMRI()
     # filter_twinsID_G1G2()
+    count_gender()
     # map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
     # count_twin_pair_G0G1G2()
     # plot_probability_if_twins_belong_to_same_group()
     # prepare_heritability_calculation_TMAV()
     # prepare_heritability_calculation_RSFC()
+    # prepare_heritability_calculation_meanRSFC()
     # calc_Falconer_h2()
-    # plot_Falconer_h2_TMAV()
+    # plot_Falconer_h2()
     # calc_pattern_corr_between_twins(meas_name='thickness')
     # calc_pattern_corr_between_twins(meas_name='myelin')
     # calc_pattern_corr_between_twins(meas_name='activ')
     # pattern_corr_fisher_z(meas='thickness')
     # pattern_corr_fisher_z(meas='myelin')
     # pattern_corr_fisher_z(meas='activ')
-    plot_pattern_corr1()
+    # plot_pattern_corr1()
     # plot_pattern_corr2()
     # plot_SEM_h2_TMA()
     # plot_SEM_h2_RSFC()
+    # calc_pattern_corr_between_twins_rsfc()

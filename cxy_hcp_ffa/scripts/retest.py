@@ -4,7 +4,64 @@ proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/retest')
 
 
-def get_curvature(hemi='lh'):
+def get_subID(meas_name='thickness'):
+    import os
+    import time
+    import nibabel as nib
+
+    # parameters
+    par_dir = '/nfs/m1/hcp/retest'
+    meas2file = {
+        'thickness': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                           '{0}.thickness_MSMAll.32k_fs_LR.dscalar.nii'),
+        'myelin': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                        '{0}.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'),
+        'curv': pjoin(par_dir, '{0}/MNINonLinear/fsaverage_LR32k/'
+                      '{0}.curvature_MSMAll.32k_fs_LR.dscalar.nii'),
+        'activ': pjoin(par_dir, '{0}/MNINonLinear/Results/tfMRI_WM/'
+                       'tfMRI_WM_hp200_s2_level2_MSMAll.feat/GrayordinatesStats/'
+                       'cope20.feat/zstat1.dtseries.nii')}
+
+    # outputs
+    log_file = pjoin(work_dir, f'get_subID_log_{meas_name}')
+    trg_file = pjoin(work_dir, f'subject_id_{meas_name}')
+
+    # prepare
+    folders = [i for i in os.listdir(par_dir)
+               if os.path.isdir(pjoin(par_dir, i))]
+    n_folder = len(folders)
+    valid_ids = []
+    log_writer = open(log_file, 'w')
+
+    # calculate
+    for idx, folder in enumerate(folders, 1):
+        time1 = time.time()
+        meas_file = meas2file[meas_name].format(folder)
+        if not os.path.exists(meas_file):
+            msg = f'{meas_file} is not exist.'
+            print(msg)
+            log_writer.write(f'{msg}\n')
+            continue
+        try:
+            nib.load(meas_file).get_fdata()
+        except OSError:
+            msg = f'{meas_file} meets OSError.'
+            print(msg)
+            log_writer.write(f'{msg}\n')
+            continue
+        valid_ids.append(folder)
+        print(f'Finished: {idx}/{n_folder}, cost: {time.time()-time1} seconds')
+    log_writer.close()
+
+    # save out
+    with open(trg_file, 'w') as wf:
+        wf.write('\n'.join(sorted(valid_ids)))
+
+
+def get_curvature_from_test(hemi='lh'):
+    """
+    这里就是把45个retest被试在test session里的曲率拿过来了
+    """
     import nibabel as nib
     from magicbox.io.io import save2nifti
 
@@ -14,7 +71,7 @@ def get_curvature(hemi='lh'):
     subj_retest_file = pjoin(work_dir, 'subject_id')
 
     # outputs
-    out_file = pjoin(work_dir, f'curvature_{hemi}.nii.gz')
+    out_file = pjoin(work_dir, f'curvature_{hemi}_ses-test.nii.gz')
 
     # prepare
     curv_maps = nib.load(src_file).get_fdata()
@@ -27,6 +84,90 @@ def get_curvature(hemi='lh'):
 
     # save
     save2nifti(out_file, curv_retest)
+
+
+def get_curvature(hemi='lh'):
+    """
+    把45个retest被试在retest session的curvature合并成左右脑两个nifti文件，
+    主要是为了我那个程序在标定个体ROI的时候读取和显示曲率。
+    之前服务器上没有retest的结构数据，我想当然地认为同一个被试的沟回曲率在
+    两次测量应该是一模一样的，所以在标定v1和v2版ROI的时候参照的是test session的曲率；
+    这次我下了retest的结构数据，决定用retest session的曲率校对一下retest个体ROI。
+    """
+    import numpy as np
+    from magicbox.io.io import CiftiReader, save2nifti
+    from cxy_hcp_ffa.lib.predefine import hemi2stru
+
+    # inputs
+    hemis = ('lh', 'rh')
+    fpath = '/nfs/m1/hcp/retest/{0}/MNINonLinear/fsaverage_LR32k/'\
+            '{0}.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+    subj_id_file = pjoin(work_dir, 'subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, 'curvature_{hemi}.nii.gz')
+
+    # prepare
+    subj_ids = open(subj_id_file).read().splitlines()
+    n_subj = len(subj_ids)
+    hemi2data = {}
+    for hemi in hemis:
+        hemi2data[hemi] = np.zeros((32492, 1, 1, n_subj), np.float64)
+
+    # calculate
+    for subj_idx, subj_id in enumerate(subj_ids):
+        reader = CiftiReader(fpath.format(subj_id))
+        for hemi in hemis:
+            data_tmp = reader.get_data(hemi2stru[hemi], True)[0]
+            hemi2data[hemi][:, 0, 0, subj_idx] = data_tmp
+        print(f'Finished: {subj_idx+1}/{n_subj}')
+
+    # save
+    for hemi in hemis:
+        save2nifti(out_file.format(hemi=hemi), hemi2data[hemi])
+
+
+def get_roi_idx_vec():
+    """
+    Get index vector with bool values for each ROI.
+    The length of each index vector is matched with 45 subjects.
+    True value means the ROI is delineated in the corresponding subject.
+    """
+    import pandas as pd
+
+    # inputs
+    src_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               'rois_v3_idx_vec.csv')
+    subj_file_45 = pjoin(proj_dir, 'data/HCP/wm/analysis_s2/'
+                                   'retest/subject_id')
+    subj_file_1080 = pjoin(proj_dir, 'analysis/s2/subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, 'rois_v3_idx_vec.csv')
+
+    # prepare
+    subj_ids_45 = open(subj_file_45).read().splitlines()
+    subj_ids_1080 = open(subj_file_1080).read().splitlines()
+    retest_idx_in_1080 = [subj_ids_1080.index(i) for i in subj_ids_45]
+    src_df = pd.read_csv(src_file)
+
+    # calculate
+    df = src_df.loc[retest_idx_in_1080]
+
+    # save
+    df.to_csv(out_file, index=False)
+
+
+def count_roi():
+    """
+    Count valid subjects for each ROI
+    """
+    import numpy as np
+    import pandas as pd
+
+    df = pd.read_csv(pjoin(work_dir, 'rois_v3_idx_vec.csv'))
+    for col in df.columns:
+        print(f'#subjects of {col}:', np.sum(df[col]))
 
 
 def test_retest_icc(hemi='lh'):
@@ -125,70 +266,15 @@ def icc_plot(hemi='lh'):
     plt.show()
 
 
-def FFA_config_confusion_matrix(hemi='lh'):
-    import numpy as np
-    import nibabel as nib
-
-    gids = (-1, 0, 1, 2)
-    configs = ('pFus-only', 'mFus-only', 'two-connected', 'two-separate')
-    gid_file1 = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                                f'grouping/group_id_{hemi}.npy')
-    gid_file2 = pjoin(work_dir, f'grouping/group_id_{hemi}.npy')
-    subj_file1 = pjoin(proj_dir, 'analysis/s2/subject_id')
-    subj_file2 = pjoin(work_dir, 'subject_id')
-    rois_file1 = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                                 f'rois_v3_{hemi}.nii.gz')
-    rois_file2 = pjoin(work_dir, f'rois_{hemi}_v2.nii.gz')
-
-    subj_ids1 = open(subj_file1).read().splitlines()
-    subj_ids2 = open(subj_file2).read().splitlines()
-    subj_indices = [subj_ids1.index(i) for i in subj_ids2]
-    gid_vec1 = np.load(gid_file1)[subj_indices]
-    gid_vec2 = np.load(gid_file2)
-    roi_maps1 = nib.load(rois_file1).get_fdata().squeeze().T[subj_indices]
-    roi_maps2 = nib.load(rois_file2).get_fdata().squeeze().T
-
-    for i, gid in enumerate(gid_vec1):
-        if gid == 0:
-            roi_labels = set(roi_maps1[i])
-            if 2 in roi_labels and 3 in roi_labels:
-                raise ValueError("impossible1")
-            elif 2 in roi_labels:
-                gid_vec1[i] = -1
-            elif 3 in roi_labels:
-                pass
-            else:
-                raise ValueError("impossible2")
-
-    for i, gid in enumerate(gid_vec2):
-        if gid == 0:
-            roi_labels = set(roi_maps2[i])
-            if 2 in roi_labels and 3 in roi_labels:
-                raise ValueError("impossible3")
-            elif 2 in roi_labels:
-                gid_vec2[i] = -1
-            elif 3 in roi_labels:
-                pass
-            else:
-                raise ValueError("impossible4")
-
-    print('\t' + '\t'.join(configs))
-    for i, gid1 in enumerate(gids):
-        row = [configs[i]]
-        for gid2 in gids:
-            gid_idx_vec1 = gid_vec1 == gid1
-            gid_idx_vec2 = gid_vec2 == gid2
-            gid_idx_vec = np.logical_and(gid_idx_vec1, gid_idx_vec2)
-            row.append(str(np.sum(gid_idx_vec)))
-        print('\t'.join(row))
-
-
 if __name__ == '__main__':
-    # get_curvature(hemi='lh')
-    # get_curvature(hemi='rh')
+    # get_subID(meas_name='thickness')
+    # get_subID(meas_name='myelin')
+    # get_subID(meas_name='curv')
+    # get_subID(meas_name='activ')
+    # get_curvature()
+    get_roi_idx_vec()
+    count_roi()
     # test_retest_icc(hemi='lh')
     # test_retest_icc(hemi='rh')
     # icc_plot(hemi='lh')
     # icc_plot(hemi='rh')
-    FFA_config_confusion_matrix(hemi='lh')
-    FFA_config_confusion_matrix(hemi='rh')
