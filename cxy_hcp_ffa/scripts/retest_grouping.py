@@ -83,6 +83,9 @@ def FFA_config_confusion_matrix(hemi='lh'):
 
 
 def plot_FFA_config_confusion_matrix():
+    """
+    样图参见figures-20210602.pptx Supplemental Figure S2
+    """
     import numpy as np
     import pickle as pkl
     from matplotlib import pyplot as plt
@@ -138,7 +141,75 @@ def plot_FFA_config_confusion_matrix():
     # plt.show()
 
 
+def plot_FFA_config_confusion_matrix1():
+    """
+    样图参见figures-20210604.pptx Supplemental Figure S2
+    """
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+
+    # inputs
+    hemis = ('lh', 'rh')
+    figsize = (6.4, 4.8)
+    fpath = pjoin(work_dir, 'FFA_config_confusion_mat_{}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'FFA_config_confusion_mat1.jpg')
+
+    # prepare
+    n_hemi = len(hemis)
+
+    # plot
+    _, axes = plt.subplots(1, n_hemi, figsize=figsize)
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx]
+
+        data = pkl.load(open(fpath.format(hemi), 'rb'))
+        configs = data['configuration']
+        n_config = len(configs)
+        ticks = np.arange(n_config)
+
+        arr = data['matrix'] + data['matrix'].T
+        diag_idx_arr = np.eye(n_config, dtype=bool)
+        arr[diag_idx_arr] = arr[diag_idx_arr] / 2
+        tril_mask = np.tri(n_config, k=-1)
+        arr = np.ma.array(arr, mask=tril_mask)
+
+        ax.imshow(arr, 'autumn')
+        ax.tick_params(top=True, bottom=False,
+                       labeltop=True, labelbottom=False)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(configs)
+        plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+                 rotation_mode="anchor")
+        if hemi_idx == 0:
+            ax.set_yticks(ticks)
+            ax.set_yticklabels(configs)
+        else:
+            ax.set_yticks(ticks)
+            ax.tick_params(left=False, labelleft=False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
+        ax.set_xticks(np.arange(n_config)-.5, minor=True)
+        ax.set_yticks(np.arange(n_config)-.5, minor=True)
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        ax.tick_params(which="minor", bottom=False, left=False)
+
+        for i in range(n_config):
+            for j in range(n_config):
+                ax.text(j, i, arr[i, j],
+                        ha="center", va="center", color="k")
+    plt.tight_layout()
+    plt.savefig(out_file)
+    # plt.show()
+
+
 if __name__ == '__main__':
     # FFA_config_confusion_matrix(hemi='lh')
     # FFA_config_confusion_matrix(hemi='rh')
-    plot_FFA_config_confusion_matrix()
+    # plot_FFA_config_confusion_matrix()
+    plot_FFA_config_confusion_matrix1()
