@@ -103,6 +103,25 @@ def filter_twinsID_G1G2():
             h2.count_twins_id(trg_file_tmp)
 
 
+def count_gender():
+    import pandas as pd
+
+    # inputs
+    twin_file = pjoin(work_dir, 'twins_id_1080.csv')
+    gender_file = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+
+    # prepare
+    twin_df = pd.read_csv(twin_file)
+    gender_df = pd.read_csv(gender_file, index_col='Subject')
+    twin_ids = twin_df['twin1'].to_list() + twin_df['twin2'].to_list()
+
+    # calculate
+    gender_df = gender_df.loc[twin_ids]
+    genders = gender_df['Gender'].to_list()
+    print('#Male:', genders.count('M'))
+    print('#Female:', genders.count('F'))
+
+
 def map_twinsID_to_groupID():
     """
     Find corresponding group ID for each twin.
@@ -947,6 +966,7 @@ if __name__ == '__main__':
     # filter_twinsID_1080()
     # filter_twinsID_rfMRI()
     # filter_twinsID_G1G2()
+    count_gender()
     # map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
     # count_twin_pair_G0G1G2()
@@ -955,7 +975,7 @@ if __name__ == '__main__':
     # prepare_heritability_calculation_RSFC()
     # prepare_heritability_calculation_meanRSFC()
     # calc_Falconer_h2()
-    plot_Falconer_h2()
+    # plot_Falconer_h2()
     # calc_pattern_corr_between_twins(meas_name='thickness')
     # calc_pattern_corr_between_twins(meas_name='myelin')
     # calc_pattern_corr_between_twins(meas_name='activ')
