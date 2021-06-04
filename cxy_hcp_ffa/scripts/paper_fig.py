@@ -178,6 +178,7 @@ def plot_development_pattern_corr():
 
 def plot_prob_map_similarity():
     """
+    样图参见 figures-20210602.pptx Supplemental Figure S3 heatmap
     References:
         1. https://blog.csdn.net/qq_27825451/article/details/105652244
         2. https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
@@ -248,6 +249,80 @@ def plot_prob_map_similarity():
                 ax.text(j, i, '{:.2f}'.format(arr[i, j]),
                         ha="center", va="center", color="k")
         ax.set_title(roi)
+        plt.tight_layout()
+        plt.savefig(out_file.format(roi))
+    # plt.show()
+
+
+def plot_prob_map_similarity1():
+    """
+    样图参见 figures-20210604.pptx Supplemental Figure S3 heatmap
+    References:
+        1. https://blog.csdn.net/qq_27825451/article/details/105652244
+        2. https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
+        3. https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
+    """
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+
+    # inputs
+    figsize = (2, 2)
+    rois = ('pFus', 'mFus')
+    meas = 'corr'  # corr or dice
+    data_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                                'grouping/prob_map_similarity.pkl')
+    gid2name = {
+        0: 'single',
+        1: 'two-C',
+        2: 'two-S'}
+
+    # outputs
+    out_file = pjoin(work_dir, 'prob_similarity1_{}.jpg')
+
+    # prepare
+    data = pkl.load(open(data_file, 'rb'))
+    n_gid = len(data['gid'])
+    ticks = np.arange(n_gid)
+    gid_names = [gid2name[gid] for gid in data['gid']]
+
+    for roi in rois:
+        _, ax = plt.subplots(figsize=figsize)
+        k_lh = f'lh_{roi}_{meas}'
+        k_rh = f'rh_{roi}_{meas}'
+        tril_mask = np.tri(n_gid, k=-1, dtype=bool)
+        arr = data[k_rh].copy()
+        arr[tril_mask] = data[k_lh][tril_mask]
+        diag_mask = np.eye(n_gid, dtype=bool)
+        arr[diag_mask] = 0
+        ax.imshow(arr, 'autumn')
+
+        ax.tick_params(top=True, bottom=False,
+                       labeltop=True, labelbottom=False)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(gid_names)
+        plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+                 rotation_mode="anchor")
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(gid_names)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
+        ax.set_xticks(np.arange(n_gid)-.5, minor=True)
+        ax.set_yticks(np.arange(n_gid)-.5, minor=True)
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        ax.tick_params(which="minor", bottom=False, left=False)
+
+        for i in range(n_gid):
+            for j in range(n_gid):
+                if i == j:
+                    continue
+                ax.text(j, i, '{:.2f}'.format(arr[i, j]),
+                        ha="center", va="center", color="k")
+        # ax.set_title(roi)
         plt.tight_layout()
         plt.savefig(out_file.format(roi))
     # plt.show()
@@ -399,8 +474,9 @@ def plot_retest_reliability_corr():
 
 
 if __name__ == '__main__':
-    plot_development()
-    plot_development_pattern_corr()
+    # plot_development()
+    # plot_development_pattern_corr()
     # plot_prob_map_similarity()
+    plot_prob_map_similarity1()
     # plot_retest_reliability_icc()
     # plot_retest_reliability_corr()
