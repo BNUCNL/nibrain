@@ -64,6 +64,7 @@ def plot_radar():
             # ax.legend(loc='upper center')
             ax.set_xticks(angles[:-1])
             ax.set_xticklabels(trg_labels)
+            # ax.set_ylim(0.05, 0.4)
             ax.grid(axis='y')
         plt.tight_layout()
         plt.savefig(out_file.format(gid))
@@ -134,5 +135,5 @@ def plot_bar():
 
 
 if __name__ == '__main__':
-    # plot_radar()
-    plot_bar()
+    plot_radar()
+    # plot_bar()
