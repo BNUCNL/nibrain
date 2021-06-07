@@ -16,12 +16,11 @@ def separate_networks():
     import numpy as np
     import nibabel as nib
     from scipy.io import loadmat
+    from cxy_visual_dev.lib.predefine import mmp_file
     from cxy_visual_dev.lib.ColeNet import get_name_label_of_ColeNetwork
     from magicbox.io.io import CiftiReader, save2cifti
 
     # inputs
-    mmp_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
-               'MMP_mpmLR32k.dlabel.nii'
     roi2net_file = pjoin(cole_dir, 'cortex_parcel_network_assignments.mat')
 
     # outputs
