@@ -67,6 +67,13 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR',
     out_df.to_csv(out_file, index=False)
 
 
+def calc_TM_map(proj_name='HCPD', meas_name='thickness'):
+    """
+    计算每个年龄的measure map
+    """
+    pass
+
+
 if __name__ == '__main__':
 
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_ROI')
