@@ -69,6 +69,7 @@ class Atlas:
                 'LR': 左右脑分别作为两个大ROI
                 'Cole_visual_LR': ColeNet的左右视觉相关区域分别作为两个大ROI
                 'Cole_visual_ROI': ColeNet和视觉相关的各个ROI
+                'HCP_MMP1': HCP MMP1.0的所有ROI
         """
         self.atlas_name = atlas_name
 
@@ -95,6 +96,9 @@ class Atlas:
                 else:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_cole_visual': 1, 'R_cole_visual': 2}
+        elif atlas_name == 'HCP_MMP1':
+            self.maps = nib.load(mmp_file).get_fdata()
+            self.roi2label = mmp_name2label
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')
         self.n_roi = len(self.roi2label)

@@ -15,7 +15,7 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR',
     import nibabel as nib
     from scipy.stats import zscore
     from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k
-    from cxy_visual_dev.lib.predefine import R_offset_32k, R_count_32k
+    from cxy_visual_dev.lib.predefine import R_offset_32k, R_count_32k, LR_count_32k
 
     # inputs
     info_file = f'/nfs/e1/{proj_name}/{proj_name}_SubjInfo.csv'
@@ -44,6 +44,7 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR',
     df = pd.read_csv(info_file)
     n_subj = df.shape[0]
     out_df = pd.DataFrame()
+    assert atlas.maps.shape == (1, LR_count_32k)
 
     # calculate
     for i, idx in enumerate(df.index, 1):
@@ -123,12 +124,17 @@ if __name__ == '__main__':
 
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_ROI')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_ROI')
+    calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='HCP_MMP1')
+    calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='HCP_MMP1')
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='LR')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='LR')
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_LR')
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_LR')
     # calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='Cole_visual_ROI', zscore_flag=True)
     # calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='Cole_visual_ROI', zscore_flag=True)
+    calc_TM(proj_name='HCPD', meas_name='myelin', atlas_name='HCP_MMP1', zscore_flag=True)
+    calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='HCP_MMP1', zscore_flag=True)
+    # HCP_MMP1 atlas 包含 Cole_visual_ROI
 
     # plot line for Cole_visual_ROI
     # from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
@@ -167,14 +173,14 @@ if __name__ == '__main__':
     # )
 
     # plot line for Cole_visual_LR
-    info_file = '/nfs/e1/HCPD/HCPD_SubjInfo.csv'
-    rois = ('L_cole_visual', 'R_cole_visual')
-    plot_line(
-        data_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_LR.csv'),
-        info_file=info_file, rois=rois,
-        ylabel='myelin', n_row=1, n_col=1, figsize=(6, 3),
-        out_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_LR_plot-line.jpg')
-    )
+    # info_file = '/nfs/e1/HCPD/HCPD_SubjInfo.csv'
+    # rois = ('L_cole_visual', 'R_cole_visual')
+    # plot_line(
+    #     data_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_LR.csv'),
+    #     info_file=info_file, rois=rois,
+    #     ylabel='myelin', n_row=1, n_col=1, figsize=(6, 3),
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_LR_plot-line.jpg')
+    # )
     # plot_line(
     #     data_file=pjoin(work_dir, 'HCPD_thickness_Cole_visual_LR.csv'),
     #     info_file=info_file, rois=rois,
