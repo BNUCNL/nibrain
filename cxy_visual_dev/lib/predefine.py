@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import nibabel as nib
 from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
 
@@ -9,8 +10,33 @@ L_count_32k = 29696
 R_offset_32k = 29696
 R_count_32k = 29716
 
+# >>>HCP MMP1.0
 mmp_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
            'MMP_mpmLR32k.dlabel.nii'
+
+
+def get_name_label_of_MMP():
+    """
+    获取HCP MMP1.0的ROI names和labels
+    """
+    info_file = '/nfs/p1/atlases/multimodal_glasser/roilbl_mmp.csv'
+    df = pd.read_csv(info_file, skiprows=1, header=None)
+    n_roi = df.shape[0] * 2
+    names = np.zeros(n_roi, dtype=np.object_)
+    labels = np.zeros(n_roi, dtype=np.uint16)
+    for idx in df.index:
+        names[idx] = df.loc[idx, 1][:-4]
+        names[idx+180] = df.loc[idx, 0][:-4]
+        labels[idx] = idx + 1
+        labels[idx+180] = idx + 181
+
+    return names, labels
+
+
+mmp_name2label = {}
+for name, lbl in zip(*get_name_label_of_MMP()):
+    mmp_name2label[name] = lbl
+# HCP MMP1.0<<<
 
 
 class Atlas:

@@ -42,5 +42,21 @@ def check_grayordinates():
         assert brain_models[1].index_count == R_count_32k
 
 
+def check_MMPname2label():
+    from cxy_visual_dev.lib.predefine import mmp_name2label
+    from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
+
+    cole_names = ['Primary Visual', 'Secondary Visual', 'Somatomotor',
+                  'Cingulo-Opercular', 'Dorsal-attention', 'Language',
+                  'Frontoparietal', 'Auditory', 'Default', 'Posterior Multimodal',
+                  'Ventral Multimodal', 'Orbito-Affective']
+    parcel2label = get_parcel2label_by_ColeName(cole_names)
+
+    assert sorted(mmp_name2label.keys()) == sorted(parcel2label.keys())
+    for k, v in mmp_name2label.items():
+        assert v == parcel2label[k]
+
+
 if __name__ == '__main__':
-    check_grayordinates()
+    # check_grayordinates()
+    check_MMPname2label()

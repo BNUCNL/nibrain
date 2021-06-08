@@ -62,8 +62,10 @@ def get_parcel2label_by_ColeName(net_names):
             break
         else:
             if work_flag:
-                parcel_lbl, parcel_name = line.split('-')
-                parcel2label[parcel_name] = int(parcel_lbl)
+                segments = line.split('-')
+                parcel_lbl = int(segments[0])
+                parcel_name = '-'.join(segments[1:])
+                parcel2label[parcel_name] = parcel_lbl
     if net_names:
         print('Find all ColeNames except for:', net_names)
     else:
