@@ -70,6 +70,7 @@ class Atlas:
                 'Cole_visual_LR': ColeNet的左右视觉相关区域分别作为两个大ROI
                 'Cole_visual_ROI': ColeNet和视觉相关的各个ROI
                 'HCP_MMP1': HCP MMP1.0的所有ROI
+                'FFA': MPMs of pFus- and mFus-face from my HCP-YA FFA project
         """
         self.atlas_name = atlas_name
 
