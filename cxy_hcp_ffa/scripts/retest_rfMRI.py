@@ -1,5 +1,4 @@
 from os.path import join as pjoin
-from re import sub
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
