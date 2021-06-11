@@ -5,7 +5,8 @@ import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k
+from magicbox.io.io import CiftiReader, save2cifti
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_file
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'analysis/outlier')
@@ -153,17 +154,72 @@ def plot_outlier_distribution(fpath, title):
     plt.show()
 
 
+def make_non_outlier_mask(fpath, thr, roi_name, out_file):
+    """
+    将同时在thr%以上的被试中被认定为outlier的顶点判定为跨被试的outlier
+    """
+    # outputs
+    out_fname = os.path.basename(out_file)
+    out_file_cii = pjoin(work_dir, f"{out_fname.rstrip('.npy')}.dlabel.nii")
+
+    # prepare
+    data = np.load(fpath)
+    n_subj, n_vtx = data.shape
+    data = np.sum(data, axis=0)
+    atlas1 = Atlas('Cole_visual_LR')
+    atlas2 = Atlas('Cole_visual_ROI')
+    assert atlas1.maps.shape == (1, LR_count_32k)
+    assert atlas2.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas1.maps[0] == atlas1.roi2label[roi_name]
+    mmp_reader = CiftiReader(mmp_file)
+    mmp_lbl_tab = mmp_reader.label_tables()[0]
+
+    # calculate
+    outlier_vec = data > thr/100*n_subj
+    print(f'#outliers: {np.sum(outlier_vec)}/{n_vtx}')
+    npy_data = np.zeros(LR_count_32k, bool)
+    npy_data[roi_idx_map] = ~outlier_vec
+    cii_data = atlas2.maps.copy()
+    cii_data[0, ~npy_data] = np.nan
+
+    # save
+    np.save(out_file, npy_data)
+
+    lbl_tab = nib.cifti2.cifti2.Cifti2LabelTable()
+    if roi_name == 'R_cole_visual':
+        prefix = 'R_'
+    elif roi_name == 'L_cole_visual':
+        prefix = 'L_'
+    else:
+        raise ValueError("error roi_name:", roi_name)
+    for roi, lbl in atlas2.roi2label.items():
+        if roi.startswith(prefix):
+            lbl_tab[lbl] = mmp_lbl_tab[lbl]
+    save2cifti(out_file_cii, cii_data, mmp_reader.brain_models(),
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # select_subject()
     # plot_box_violin(meas_name='thickness', roi_name='R_cole_visual')
     # plot_box_violin(meas_name='myelin', roi_name='R_cole_visual')
     # find_outlier_per_subject_IQR(meas_name='thickness', roi_name='R_cole_visual', iqr_coef=1.5)
     # find_outlier_per_subject_IQR(meas_name='myelin', roi_name='R_cole_visual', iqr_coef=1.5)
-    plot_outlier_distribution(
+    # plot_outlier_distribution(
+    #     fpath=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR.npy'),
+    #     title='thickness-R_cole_visual-1.5IQR'
+    # )
+    # plot_outlier_distribution(
+    #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR.npy'),
+    #     title='myelin-R_cole_visual-1.5IQR'
+    # )
+    make_non_outlier_mask(
         fpath=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR.npy'),
-        title='thickness-R_cole_visual-1.5IQR'
+        thr=10, roi_name='R_cole_visual',
+        out_file=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR_thr-10_mask.npy')
     )
-    plot_outlier_distribution(
+    make_non_outlier_mask(
         fpath=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR.npy'),
-        title='myelin-R_cole_visual-1.5IQR'
+        thr=10, roi_name='R_cole_visual',
+        out_file=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR_thr-10_mask.npy')
     )
