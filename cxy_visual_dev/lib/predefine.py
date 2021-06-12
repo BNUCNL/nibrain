@@ -38,6 +38,17 @@ for name, lbl in zip(*get_name_label_of_MMP()):
     mmp_name2label[name] = lbl
 # HCP MMP1.0<<<
 
+# >>>HCPD+HCPA
+dataset_name2dir = {
+    'HCPD': '/nfs/e1/HCPD',
+    'HCPA': '/nfs/e1/HCPA'
+}
+dataset_name2info = {
+    'HCPD': '/nfs/e1/HCPD/HCPD_SubjInfo.csv',
+    'HCPA': '/nfs/e1/HCPA/HCPA_SubjInfo.csv'
+}
+# HCPD+HCPA<<<
+
 
 class Atlas:
     """

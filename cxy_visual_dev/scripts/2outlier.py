@@ -6,7 +6,8 @@ import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_file
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
+    mmp_file, dataset_name2dir, dataset_name2info
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'analysis/outlier')
@@ -136,6 +137,85 @@ def plot_histgram(meas_name, roi_name):
     plt.show()
 
 
+def make_non_outlier_mask_by_fixed_value(dataset_name, meas_name, roi_name,
+                                         thr_low, thr_high):
+    """
+    将低于thr_low和高于thr_high的顶点都认为是outlier，
+    制定限制于roi_name指定区域内的非outlier mask
+
+    Args:
+        dataset_name (str): HCPD | HCPA
+        meas_name (str): thickness | myelin
+        roi_name (str): L_cole_visual | R_cole_visual
+        thr_low (float): lower threshold
+        thr_high (float): higher threshold
+    """
+    # outputs
+    out_fname = f'{dataset_name}_{meas_name}_{roi_name}_{thr_low}-{thr_high}'
+    out_file = pjoin(work_dir, f'{out_fname}.npy')
+    out_file_cii = pjoin(work_dir, f'{out_fname}.dlabel.nii')
+
+    # prepare
+    dataset_dir = dataset_name2dir[dataset_name]
+    meas2file = {
+        'myelin': pjoin(
+            dataset_dir,
+            'fmriresults01/{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
+            '{sid}_V1_MR.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
+        ),
+        'thickness': pjoin(
+            dataset_dir,
+            'fmriresults01/{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
+            '{sid}_V1_MR.thickness_MSMAll.32k_fs_LR.dscalar.nii'
+        )
+    }
+    df = pd.read_csv(dataset_name2info[dataset_name])
+    n_subj = df.shape[0]
+
+    atlas1 = Atlas('Cole_visual_LR')
+    atlas2 = Atlas('Cole_visual_ROI')
+    assert atlas1.maps.shape == (1, LR_count_32k)
+    assert atlas2.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas1.maps[0] == atlas1.roi2label[roi_name]
+    n_vtx = np.sum(roi_idx_map)
+
+    mmp_reader = CiftiReader(mmp_file)
+    mmp_lbl_tab = mmp_reader.label_tables()[0]
+
+    non_outlier_mask = roi_idx_map.copy()
+
+    # calculate
+    for subj_idx, subj_id in enumerate(df['subID']):
+        time1 = time.time()
+        meas_file = meas2file[meas_name].format(sid=subj_id)
+        meas_map = nib.load(meas_file).get_fdata()[0]
+        non_outlier_mask[meas_map < thr_low] = False
+        non_outlier_mask[meas_map > thr_high] = False
+        print(f'Finished: {subj_idx+1}/{n_subj},'
+              f'cost: {time.time() - time1} seconds.')
+    n_outlier = np.sum(~non_outlier_mask[roi_idx_map])
+    print(f'#outlier/total: {n_outlier}/{n_vtx}')
+    cii_data = atlas2.maps.copy()
+    cii_data[0, ~non_outlier_mask] = np.nan
+
+    # save
+    np.save(out_file, non_outlier_mask)
+
+    lbl_tab = nib.cifti2.cifti2.Cifti2LabelTable()
+    if roi_name == 'R_cole_visual':
+        prefix = 'R_'
+    elif roi_name == 'L_cole_visual':
+        prefix = 'L_'
+    else:
+        raise ValueError("error roi_name:", roi_name)
+    for roi, lbl in atlas2.roi2label.items():
+        if roi.startswith(prefix):
+            lbl_tab[lbl] = mmp_lbl_tab[lbl]
+    save2cifti(out_file_cii, cii_data, mmp_reader.brain_models(),
+               label_tables=[lbl_tab])
+
+
+# >>>find outliers by IQR and #subjects threshold (discarded)
 def find_outlier_per_subject_IQR(meas_name, roi_name, iqr_coef):
     """
     根据IQR，为所有被试找出左/右视觉系统的outliner
@@ -255,6 +335,7 @@ def make_non_outlier_mask(fpath, thr, roi_name, out_file):
             lbl_tab[lbl] = mmp_lbl_tab[lbl]
     save2cifti(out_file_cii, cii_data, mmp_reader.brain_models(),
                label_tables=[lbl_tab])
+# find outliers by IQR and #subjects threshold<<<
 
 
 if __name__ == '__main__':
@@ -263,6 +344,14 @@ if __name__ == '__main__':
     # plot_box_violin(meas_name='myelin', roi_name='R_cole_visual')
     # plot_histgram(meas_name='thickness', roi_name='R_cole_visual')
     # plot_histgram(meas_name='myelin', roi_name='R_cole_visual')
+    make_non_outlier_mask_by_fixed_value(
+        dataset_name='HCPD', meas_name='thickness',
+        roi_name='R_cole_visual', thr_low=1, thr_high=4.5
+    )
+    make_non_outlier_mask_by_fixed_value(
+        dataset_name='HCPD', meas_name='myelin',
+        roi_name='R_cole_visual', thr_low=0.1, thr_high=3
+    )
     # find_outlier_per_subject_IQR(meas_name='thickness', roi_name='R_cole_visual', iqr_coef=2)
     # find_outlier_per_subject_IQR(meas_name='myelin', roi_name='R_cole_visual', iqr_coef=2)
     # plot_outlier_distribution(
@@ -273,13 +362,13 @@ if __name__ == '__main__':
     #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
     #     title='myelin-R_cole_visual-2IQR'
     # )
-    make_non_outlier_mask(
-        fpath=pjoin(work_dir, 'thickness_R_cole_visual_2IQR.npy'),
-        thr=10, roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'thickness_R_cole_visual_2IQR_thr-10_mask.npy')
-    )
-    make_non_outlier_mask(
-        fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
-        thr=10, roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'myelin_R_cole_visual_2IQR_thr-10_mask.npy')
-    )
+    # make_non_outlier_mask(
+    #     fpath=pjoin(work_dir, 'thickness_R_cole_visual_2IQR.npy'),
+    #     thr=30, roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'thickness_R_cole_visual_2IQR_thr-30_mask.npy')
+    # )
+    # make_non_outlier_mask(
+    #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
+    #     thr=30, roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'myelin_R_cole_visual_2IQR_thr-30_mask.npy')
+    # )
