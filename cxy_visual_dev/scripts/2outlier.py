@@ -78,6 +78,64 @@ def plot_box_violin(meas_name, roi_name):
     plt.show()
 
 
+def plot_histgram(meas_name, roi_name):
+    """
+    观察上一步选中的被试，左/右视觉系统所有顶点的测量值分布。
+
+    Args:
+        meas_name (str): thickness | myelin
+        roi_name (str): L_cole_visual | R_cole_visual
+    """
+    # inputs
+    iqr_coefs = (1.5, 2, 3)
+    iqr_colors = ('r', 'g', 'b')
+    subj_file = pjoin(work_dir, 'age_subj.csv')
+    meas2file = {
+        'myelin': '/nfs/e1/HCPD/fmriresults01/{sid}_V1_MR/'
+                  'MNINonLinear/fsaverage_LR32k/'
+                  '{sid}_V1_MR.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
+        'thickness': '/nfs/e1/HCPD/fmriresults01/{sid}_V1_MR/'
+                     'MNINonLinear/fsaverage_LR32k/'
+                     '{sid}_V1_MR.thickness_MSMAll.32k_fs_LR.dscalar.nii'
+    }
+
+    # prepare
+    df = pd.read_csv(subj_file)
+    n_subj = df.shape[0]
+    atlas = Atlas('Cole_visual_LR')
+    assert atlas.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+
+    # plot
+    _, axes = plt.subplots(1, n_subj)
+    for subj_idx, subj_id in enumerate(df['subID']):
+        ax = axes[subj_idx]
+        meas_file = meas2file[meas_name].format(sid=subj_id)
+        meas_map = nib.load(meas_file).get_fdata()[0]
+        meas_vec = meas_map[roi_idx_map]
+        ax.hist(meas_vec, bins=100, orientation='horizontal')
+        xmin, xmax = ax.get_xlim()
+
+        Q1 = np.percentile(meas_vec, 25)
+        Q3 = np.percentile(meas_vec, 75)
+        IQR = Q3 - Q1
+        for i, iqr_coef in enumerate(iqr_coefs):
+            step = iqr_coef * IQR
+            whiskers = [Q1-step, Q3+step]
+            ax.hlines(whiskers, xmin, xmax, colors=iqr_colors[i])
+
+        if subj_idx == int(n_subj/2):
+            ax.set_title(f"{roi_name}\nage-{df['age'][subj_idx]}")
+        else:
+            if subj_idx == 0:
+                ax.set_ylabel(meas_name)
+            ax.set_title(f"age-{df['age'][subj_idx]}")
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+    plt.tight_layout()
+    plt.show()
+
+
 def find_outlier_per_subject_IQR(meas_name, roi_name, iqr_coef):
     """
     根据IQR，为所有被试找出左/右视觉系统的outliner
@@ -203,23 +261,25 @@ if __name__ == '__main__':
     # select_subject()
     # plot_box_violin(meas_name='thickness', roi_name='R_cole_visual')
     # plot_box_violin(meas_name='myelin', roi_name='R_cole_visual')
-    # find_outlier_per_subject_IQR(meas_name='thickness', roi_name='R_cole_visual', iqr_coef=1.5)
-    # find_outlier_per_subject_IQR(meas_name='myelin', roi_name='R_cole_visual', iqr_coef=1.5)
+    # plot_histgram(meas_name='thickness', roi_name='R_cole_visual')
+    # plot_histgram(meas_name='myelin', roi_name='R_cole_visual')
+    # find_outlier_per_subject_IQR(meas_name='thickness', roi_name='R_cole_visual', iqr_coef=2)
+    # find_outlier_per_subject_IQR(meas_name='myelin', roi_name='R_cole_visual', iqr_coef=2)
     # plot_outlier_distribution(
-    #     fpath=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR.npy'),
-    #     title='thickness-R_cole_visual-1.5IQR'
+    #     fpath=pjoin(work_dir, 'thickness_R_cole_visual_2IQR.npy'),
+    #     title='thickness-R_cole_visual-2IQR'
     # )
     # plot_outlier_distribution(
-    #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR.npy'),
-    #     title='myelin-R_cole_visual-1.5IQR'
+    #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
+    #     title='myelin-R_cole_visual-2IQR'
     # )
     make_non_outlier_mask(
-        fpath=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR.npy'),
+        fpath=pjoin(work_dir, 'thickness_R_cole_visual_2IQR.npy'),
         thr=10, roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'thickness_R_cole_visual_1.5IQR_thr-10_mask.npy')
+        out_file=pjoin(work_dir, 'thickness_R_cole_visual_2IQR_thr-10_mask.npy')
     )
     make_non_outlier_mask(
-        fpath=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR.npy'),
+        fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
         thr=10, roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'myelin_R_cole_visual_1.5IQR_thr-10_mask.npy')
+        out_file=pjoin(work_dir, 'myelin_R_cole_visual_2IQR_thr-10_mask.npy')
     )
