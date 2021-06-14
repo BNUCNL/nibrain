@@ -5,7 +5,8 @@ import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_file
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
+    mmp_map_file, dataset_name2info
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'analysis/outlier')
@@ -13,14 +14,13 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def select_subject():
+def select_subject(dataset_name):
     """
     从每个年龄随机选一个被试
     """
-    info_file = '/nfs/e1/HCPD/HCPD_SubjInfo.csv'
-    out_file = pjoin(work_dir, 'age_subj.csv')
+    out_file = pjoin(work_dir, f'{dataset_name}_age_subj.csv')
 
-    df = pd.read_csv(info_file)
+    df = pd.read_csv(dataset_name2info[dataset_name])
     age_name = 'age in years'
     age_uniq = np.unique(df[age_name])
 
@@ -34,16 +34,17 @@ def select_subject():
     out_df.to_csv(out_file, index=False)
 
 
-def plot_box_violin(meas_name, roi_name):
+def plot_box_violin(dataset_name, meas_name, roi_name):
     """
     观察上一步选中的被试，左/右视觉系统所有顶点的测量值分布。
 
     Args:
+        dataset_name (str): HCPD | HCPA
         meas_name (str): thickness | myelin
         roi_name (str): L_cole_visual | R_cole_visual
     """
     # inputs
-    subj_file = pjoin(work_dir, 'age_subj.csv')
+    subj_file = pjoin(work_dir, f'{dataset_name}_age_subj.csv')
     meas2file = {
         'myelin': '/nfs/e1/HCPD/fmriresults01/{sid}_V1_MR/'
                   'MNINonLinear/fsaverage_LR32k/'
@@ -77,18 +78,19 @@ def plot_box_violin(meas_name, roi_name):
     plt.show()
 
 
-def plot_histgram(meas_name, roi_name):
+def plot_histgram(dataset_name, meas_name, roi_name):
     """
     观察上一步选中的被试，左/右视觉系统所有顶点的测量值分布。
 
     Args:
+        dataset_name (str): HCPD | HCPA
         meas_name (str): thickness | myelin
         roi_name (str): L_cole_visual | R_cole_visual
     """
     # inputs
     iqr_coefs = (1.5, 2, 3)
     iqr_colors = ('r', 'g', 'b')
-    subj_file = pjoin(work_dir, 'age_subj.csv')
+    subj_file = pjoin(work_dir, f'{dataset_name}_age_subj.csv')
     meas2file = {
         'myelin': '/nfs/e1/HCPD/fmriresults01/{sid}_V1_MR/'
                   'MNINonLinear/fsaverage_LR32k/'
@@ -192,6 +194,31 @@ def find_outlier_per_subject(dataset_name, meas_name, roi_name, iqr_coef=None,
     np.save(out_file, data)
 
 
+def plot_outlier_distribution(fpath, title):
+    """
+    统计在所有N个被试中，同时在至少x个被试中成为outliner的顶点比例
+    x属于range(1, N+1)
+    """
+    data = np.load(fpath)
+    n_subj, n_vtx = data.shape
+    data = np.sum(data, axis=0)
+
+    x = np.arange(1, n_subj+1)
+    y = np.zeros(n_subj, np.float64)
+    for i, j in enumerate(x):
+        y[i] = np.sum(data >= j) / n_vtx
+    print('total vertices:', n_vtx)
+    plt.plot(x, y)
+    plt.title(title)
+    plt.xlabel('#subjects')
+    plt.ylabel('#vertices')
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tight_layout()
+    plt.show()
+
+
 def make_non_outlier_map(fpath, thr, roi_name,
                          out_file_mask=None, out_file_prob=None):
     """
@@ -215,7 +242,7 @@ def make_non_outlier_map(fpath, thr, roi_name,
         prefix = 'L_'
     else:
         raise ValueError("error roi_name:", roi_name)
-    mmp_reader = CiftiReader(mmp_file)
+    mmp_reader = CiftiReader(mmp_map_file)
     mmp_lbl_tab = mmp_reader.label_tables()[0]
 
     # calculate
@@ -247,64 +274,23 @@ def make_non_outlier_map(fpath, thr, roi_name,
         save2cifti(out_file_prob, prob_map, mmp_reader.brain_models())
 
 
-# >>>discarded
-def plot_outlier_distribution(fpath, title):
-    """
-    统计在所有N个被试中，同时在至少x个被试中成为outliner的顶点比例
-    x属于range(1, N+1)
-    """
-    data = np.load(fpath)
-    n_subj, n_vtx = data.shape
-    data = np.sum(data, axis=0)
-
-    x = np.arange(1, n_subj+1)
-    y = np.zeros(n_subj, np.float64)
-    for i, j in enumerate(x):
-        y[i] = np.sum(data >= j) / n_vtx
-    print('total vertices:', n_vtx)
-    plt.plot(x, y)
-    plt.title(title)
-    plt.xlabel('#subjects')
-    plt.ylabel('#vertices')
-    ax = plt.gca()
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.tight_layout()
-    plt.show()
-# discarded<<<
-
-
 if __name__ == '__main__':
-    # select_subject()
-    # plot_box_violin(meas_name='thickness', roi_name='R_cole_visual')
-    # plot_box_violin(meas_name='myelin', roi_name='R_cole_visual')
-    # plot_histgram(meas_name='thickness', roi_name='R_cole_visual')
-    # plot_histgram(meas_name='myelin', roi_name='R_cole_visual')
+    # select_subject(dataset_name='HCPD')
+    plot_box_violin(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
+    plot_box_violin(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
+    plot_histgram(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
+    plot_histgram(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
     find_outlier_per_subject(
-        dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual',
-        fixed_range=(1, 4.5)
+        dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual',
+        fixed_range=(0.1, 5)
+    )
+    plot_outlier_distribution(
+        fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
+        title='HCPD_myelin_R_cole_visual_outlier_0.1-5'
     )
     make_non_outlier_map(
-        fpath=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_outlier_1-4.5.npy'),
+        fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
         thr=0, roi_name='R_cole_visual',
-        out_file_mask=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_1-4.5_thr0_mask.npy'),
-        out_file_prob=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_1-4.5_thr0_prob.dscalar.nii')
+        out_file_mask=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_mask.npy'),
+        out_file_prob=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_prob.dscalar.nii')
     )
-    find_outlier_per_subject(
-        dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual',
-        iqr_coef=1.5
-    )
-    make_non_outlier_map(
-        fpath=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_outlier_1.5IQR.npy'),
-        thr=10, roi_name='R_cole_visual',
-        out_file_mask=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_1.5IQR_thr10_mask.npy'),
-        out_file_prob=pjoin(work_dir, 'HCPD_thickness_R_cole_visual_1.5IQR_thr10_prob.dscalar.nii')
-    )
-    # plot_outlier_distribution(
-    #     fpath=pjoin(work_dir, 'thickness_R_cole_visual_2IQR.npy'),
-    #     title='thickness-R_cole_visual-2IQR'
-    # )
-    # plot_outlier_distribution(
-    #     fpath=pjoin(work_dir, 'myelin_R_cole_visual_2IQR.npy'),
-    #     title='myelin-R_cole_visual-2IQR'
-    # )

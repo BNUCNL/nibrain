@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from cxy_visual_dev.lib.ColeNet import get_parcel2label_by_ColeName
+from scipy.io import loadmat
 
 
 LR_count_32k = 59412
@@ -11,16 +11,16 @@ R_offset_32k = 29696
 R_count_32k = 29716
 
 # >>>HCP MMP1.0
-mmp_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
-           'MMP_mpmLR32k.dlabel.nii'
+mmp_map_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
+               'MMP_mpmLR32k.dlabel.nii'
+mmp_roilbl_file = '/nfs/p1/atlases/multimodal_glasser/roilbl_mmp.csv'
 
 
 def get_name_label_of_MMP():
     """
     获取HCP MMP1.0的ROI names和labels
     """
-    info_file = '/nfs/p1/atlases/multimodal_glasser/roilbl_mmp.csv'
-    df = pd.read_csv(info_file, skiprows=1, header=None)
+    df = pd.read_csv(mmp_roilbl_file, skiprows=1, header=None)
     n_roi = df.shape[0] * 2
     names = np.zeros(n_roi, dtype=np.object_)
     labels = np.zeros(n_roi, dtype=np.uint16)
@@ -34,9 +34,64 @@ def get_name_label_of_MMP():
 
 
 mmp_name2label = {}
+mmp_label2name = {}
 for name, lbl in zip(*get_name_label_of_MMP()):
     mmp_name2label[name] = lbl
+    mmp_label2name[lbl] = name
 # HCP MMP1.0<<<
+
+# >>>ColeAnticevicNetPartition
+cole_net_assignment_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
+    'cortex_parcel_network_assignments.mat'
+
+cole_names = ['Primary Visual', 'Secondary Visual', 'Somatomotor',
+              'Cingulo-Opercular', 'Dorsal-attention', 'Language',
+              'Frontoparietal', 'Auditory', 'Default', 'Posterior Multimodal',
+              'Ventral Multimodal', 'Orbito-Affective']
+cole_labels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+cole_name2label = {}
+cole_label2name = {}
+for name, lbl in zip(cole_names, cole_labels):
+    cole_name2label[name] = lbl
+    cole_label2name[lbl] = name
+
+
+def get_parcel2label_by_ColeName(net_names):
+    """
+    根据Cole Network的名字提取所有包含的parcel及其label
+
+    Args:
+        net_names (str|list): ColeNet names
+            If is str, one ColeNet name.
+            If is list, a list of ColeNet names.
+            12 valid names: Primary Visual, Secondary Visual,
+            Somatomotor, Cingulo-Opercular, Dorsal-attention,
+            Language, Frontoparietal, Auditory, Default,
+            Posterior Multimodal, Ventral Multimodal, Orbito-Affective
+    """
+    if isinstance(net_names, str):
+        net_names = [net_names]
+    elif isinstance(net_names, list):
+        pass
+    else:
+        raise TypeError("Please input str or list!")
+    net_labels = [cole_name2label[name] for name in net_names]
+
+    net_lbl_vec = loadmat(cole_net_assignment_file)['netassignments'][:, 0]
+    net_lbl_vec = np.r_[net_lbl_vec[180:], net_lbl_vec[:180]]
+
+    idx_vec = np.zeros_like(net_lbl_vec, dtype=bool)
+    for lbl in net_labels:
+        idx_vec = np.logical_or(idx_vec, net_lbl_vec == lbl)
+    mmp_labels = np.where(idx_vec)[0] + 1
+
+    parcel2label = {}
+    for lbl in mmp_labels:
+        parcel2label[mmp_label2name[lbl]] = lbl
+
+    return parcel2label
+# ColeAnticevicNetPartition<<<
+
 
 # >>>HCPD+HCPA
 dataset_name2dir = {
@@ -86,20 +141,24 @@ class Atlas:
         self.atlas_name = atlas_name
 
         if atlas_name == 'Cole_visual_ROI':
-            self.maps = nib.load(mmp_file).get_fdata()
-            cole_names = ['Primary Visual', 'Secondary Visual',
-                          'Posterior Multimodal', 'Ventral Multimodal']
-            self.roi2label = get_parcel2label_by_ColeName(cole_names)
+            mmp_map = nib.load(mmp_map_file).get_fdata()
+            self.maps = np.zeros_like(mmp_map, dtype=np.uint16)
+            net_names = ['Primary Visual', 'Secondary Visual',
+                         'Posterior Multimodal', 'Ventral Multimodal']
+            parcel2label = get_parcel2label_by_ColeName(net_names)
+            for lbl in parcel2label.values():
+                self.maps[mmp_map == lbl] = lbl
+            self.roi2label = parcel2label
         elif atlas_name == 'LR':
             self.maps = np.ones((1, LR_count_32k), dtype=np.uint8)
             self.maps[0, R_offset_32k:(R_offset_32k+R_count_32k)] = 2
             self.roi2label = {'L_cortex': 1, 'R_cortex': 2}
         elif atlas_name == 'Cole_visual_LR':
-            mmp_map = nib.load(mmp_file).get_fdata()
+            mmp_map = nib.load(mmp_map_file).get_fdata()
             self.maps = np.zeros_like(mmp_map, dtype=np.uint8)
-            cole_names = ['Primary Visual', 'Secondary Visual',
-                          'Posterior Multimodal', 'Ventral Multimodal']
-            parcel2label = get_parcel2label_by_ColeName(cole_names)
+            net_names = ['Primary Visual', 'Secondary Visual',
+                         'Posterior Multimodal', 'Ventral Multimodal']
+            parcel2label = get_parcel2label_by_ColeName(net_names)
             for roi, lbl in parcel2label.items():
                 if roi.startswith('L_'):
                     self.maps[mmp_map == lbl] = 1
@@ -109,7 +168,7 @@ class Atlas:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_cole_visual': 1, 'R_cole_visual': 2}
         elif atlas_name == 'HCP_MMP1':
-            self.maps = nib.load(mmp_file).get_fdata()
+            self.maps = nib.load(mmp_map_file).get_fdata()
             self.roi2label = mmp_name2label
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')

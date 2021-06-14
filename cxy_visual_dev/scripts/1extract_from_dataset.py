@@ -6,7 +6,7 @@ import nibabel as nib
 from os.path import join as pjoin
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import LR_count_32k,\
-    mmp_file, dataset_name2dir, dataset_name2info
+    mmp_map_file, dataset_name2dir, dataset_name2info
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -54,7 +54,7 @@ def merge_data(dataset_name, meas_name):
               f'cost: {time.time() - time1} seconds.')
 
     # save
-    mmp_reader = CiftiReader(mmp_file)
+    mmp_reader = CiftiReader(mmp_map_file)
     save2cifti(out_file, data, mmp_reader.brain_models(), df['subID'])
 
 

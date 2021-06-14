@@ -1,7 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
+import pymannkendall as mk
 from os.path import join as pjoin
+from magicbox.io.io import CiftiReader, save2cifti
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
+    mmp_map_file, mmp_name2label, get_parcel2label_by_ColeName,\
+    dataset_name2info
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'analysis/dev_trend')
@@ -13,8 +18,6 @@ def calc_mann_kendall(data_file, info_file, out_file):
     """
     用 kendall tau刻画每个ROI的发育趋势
     """
-    import pymannkendall as mk
-
     # load
     df = pd.read_csv(data_file)
     info_df = pd.read_csv(info_file)
@@ -40,10 +43,6 @@ def kendall2cifti(data_file, rois, atlas_name, out_file):
     """
     把指定ROI的Tau值和p值存成cifti格式 方便可视化在大脑上
     """
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k
-    from cxy_visual_dev.lib.predefine import mmp_file
-
     # prepare
     df = pd.read_csv(data_file, index_col=0)
     atlas = Atlas(atlas_name)
@@ -57,50 +56,47 @@ def kendall2cifti(data_file, rois, atlas_name, out_file):
         out_data[1, mask] = -np.log10(df.loc[roi, 'p'])
 
     # save
-    save2cifti(out_file, out_data, CiftiReader(mmp_file).brain_models(),
+    save2cifti(out_file, out_data, CiftiReader(mmp_map_file).brain_models(),
                ['tau', '-lg(p)'])
 
 
 if __name__ == '__main__':
-
     # calculate HCP_MMP1's kendall
-    # calc_mann_kendall(
-    #     data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_HCP_MMP1.csv'),
-    #     info_file='/nfs/e1/HCPD/HCPD_SubjInfo.csv',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv')
-    # )
-    # calc_mann_kendall(
-    #     data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_HCP_MMP1.csv'),
-    #     info_file='/nfs/e1/HCPD/HCPD_SubjInfo.csv',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv')
-    # )
+    calc_mann_kendall(
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_HCP_MMP1.csv'),
+        info_file=dataset_name2info['HCPD'],
+        out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv')
+    )
+    calc_mann_kendall(
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_HCP_MMP1.csv'),
+        info_file=dataset_name2info['HCPD'],
+        out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv')
+    )
 
     # map HCP_MMP1's kendall to cifti
-    from cxy_visual_dev.lib.predefine import mmp_name2label
-    rois = list(mmp_name2label.keys())
-    kendall2cifti(
-        data_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv'),
-        rois=rois, atlas_name='HCP_MMP1',
-        out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.dscalar.nii')
-    )
-    kendall2cifti(
-        data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv'),
-        rois=rois, atlas_name='HCP_MMP1',
-        out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.dscalar.nii')
-    )
+    # rois = list(mmp_name2label.keys())
+    # kendall2cifti(
+    #     data_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv'),
+    #     rois=rois, atlas_name='HCP_MMP1',
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.dscalar.nii')
+    # )
+    # kendall2cifti(
+    #     data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv'),
+    #     rois=rois, atlas_name='HCP_MMP1',
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.dscalar.nii')
+    # )
 
     # map Cole_visual_ROI's kendall to cifti
-    from cxy_visual_dev.lib.predefine import get_parcel2label_by_ColeName
     net_names = ['Primary Visual', 'Secondary Visual',
                  'Posterior Multimodal', 'Ventral Multimodal']
     rois = list(get_parcel2label_by_ColeName(net_names).keys())
     kendall2cifti(
         data_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv'),
-        rois=rois, atlas_name='HCP_MMP1',
+        rois=rois, atlas_name='Cole_visual_ROI',
         out_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_ROI_kendall.dscalar.nii')
     )
     kendall2cifti(
         data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv'),
-        rois=rois, atlas_name='HCP_MMP1',
+        rois=rois, atlas_name='Cole_visual_ROI',
         out_file=pjoin(work_dir, 'HCPD_thickness_Cole_visual_ROI_kendall.dscalar.nii')
     )
