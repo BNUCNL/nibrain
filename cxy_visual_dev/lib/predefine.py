@@ -2,13 +2,18 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from scipy.io import loadmat
+from os.path import join as pjoin
 
 
+proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
+
+# >>>32k_fs_LR CIFTI
 LR_count_32k = 59412
 L_offset_32k = 0
 L_count_32k = 29696
 R_offset_32k = 29696
 R_count_32k = 29716
+# 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
 mmp_map_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
@@ -93,6 +98,16 @@ def get_parcel2label_by_ColeName(net_names):
 # ColeAnticevicNetPartition<<<
 
 
+# >>>FFA MPM from my HCP-YA project
+ffa_names = ['R_pFus-face', 'R_mFus-face', 'L_pFus-face', 'L_mFus-face']
+ffa_labels = [2, 3, 5, 6]
+ffa_name2label = {}
+ffa_label2name = {}
+for name, lbl in zip(ffa_names, ffa_labels):
+    ffa_name2label[name] = lbl
+    ffa_label2name[lbl] = name
+# FFA MPM from my HCP-YA project<<<
+
 # >>>HCPD+HCPA
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',
@@ -149,10 +164,12 @@ class Atlas:
             for lbl in parcel2label.values():
                 self.maps[mmp_map == lbl] = lbl
             self.roi2label = parcel2label
+
         elif atlas_name == 'LR':
             self.maps = np.ones((1, LR_count_32k), dtype=np.uint8)
             self.maps[0, R_offset_32k:(R_offset_32k+R_count_32k)] = 2
             self.roi2label = {'L_cortex': 1, 'R_cortex': 2}
+
         elif atlas_name == 'Cole_visual_LR':
             mmp_map = nib.load(mmp_map_file).get_fdata()
             self.maps = np.zeros_like(mmp_map, dtype=np.uint8)
@@ -167,9 +184,19 @@ class Atlas:
                 else:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_cole_visual': 1, 'R_cole_visual': 2}
+
         elif atlas_name == 'HCP_MMP1':
             self.maps = nib.load(mmp_map_file).get_fdata()
             self.roi2label = mmp_name2label
+
+        elif atlas_name == 'FFA':
+            fsr_map = nib.load(
+                pjoin(proj_dir, 'data/FFA_mpmLR32k.dlabel.nii')).get_fdata()
+            self.maps = np.zeros_like(fsr_map, dtype=np.uint8)
+            for lbl in ffa_name2label.values():
+                self.maps[fsr_map == lbl] = lbl
+            self.roi2label = ffa_name2label
+
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')
         self.n_roi = len(self.roi2label)
