@@ -62,25 +62,35 @@ def kendall2cifti(data_file, rois, atlas_name, out_file):
 if __name__ == '__main__':
     # calculate HCP_MMP1's kendall
     calc_mann_kendall(
-        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_HCP_MMP1.csv'),
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_4mm_HCP_MMP1.csv'),
         info_file=dataset_name2info['HCPD'],
-        out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_kendall.csv')
+        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1_kendall.csv')
     )
     calc_mann_kendall(
-        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_HCP_MMP1.csv'),
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_4mm_HCP_MMP1.csv'),
         info_file=dataset_name2info['HCPD'],
-        out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_kendall.csv')
+        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1_kendall.csv')
     )
     calc_mann_kendall(
-        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_4mm_R_cole_visual_ROI-PC1.csv'),
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_4mm_FFA.csv'),
         info_file=dataset_name2info['HCPD'],
-        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_ROI-PC1_kendall.csv')
+        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_FFA_kendall.csv')
     )
     calc_mann_kendall(
-        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_4mm_R_cole_visual_ROI-PC1.csv'),
+        data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_4mm_FFA.csv'),
         info_file=dataset_name2info['HCPD'],
-        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_ROI-PC1_kendall.csv')
+        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_FFA_kendall.csv')
     )
+    # calc_mann_kendall(
+    #     data_file=pjoin(proj_dir, 'analysis/structure/HCPD_myelin_4mm_R_cole_visual_ROI-PC1.csv'),
+    #     info_file=dataset_name2info['HCPD'],
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_ROI-PC1_kendall.csv')
+    # )
+    # calc_mann_kendall(
+    #     data_file=pjoin(proj_dir, 'analysis/structure/HCPD_thickness_4mm_R_cole_visual_ROI-PC1.csv'),
+    #     info_file=dataset_name2info['HCPD'],
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_ROI-PC1_kendall.csv')
+    # )
 
     # map HCP_MMP1's kendall to cifti
     # rois = list(mmp_name2label.keys())
