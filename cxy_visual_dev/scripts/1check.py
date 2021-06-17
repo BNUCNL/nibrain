@@ -5,7 +5,7 @@ def check_grayordinates():
     检查所用的CIFTI数据的顶点排布
     """
     import nibabel as nib
-    from cxy_visual_dev.lib.predefine import mmp_file, LR_count_32k
+    from cxy_visual_dev.lib.predefine import mmp_map_file, LR_count_32k
     from cxy_visual_dev.lib.predefine import L_offset_32k, L_count_32k
     from cxy_visual_dev.lib.predefine import R_offset_32k, R_count_32k
 
@@ -14,7 +14,7 @@ def check_grayordinates():
     # HCPD individual surface thickness data
     # HCPA individual surface myelin data
     # HCPA individual surface thickness data
-    fpaths = (mmp_file,
+    fpaths = (mmp_map_file,
               '/nfs/e1/HCPD/fmriresults01/'
               'HCD2133433_V1_MR/MNINonLinear/fsaverage_LR32k/'
               'HCD2133433_V1_MR.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
