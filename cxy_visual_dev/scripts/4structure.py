@@ -1,8 +1,9 @@
 import os
 from os.path import join as pjoin
-from cxy_visual_dev.lib.predefine import proj_dir
+from cxy_visual_dev.lib.predefine import proj_dir,\
+    dataset_name2info, s1200_1096_thickness, s1200_1096_myelin
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
-    ROI_analysis_on_PC
+    ROI_analysis_on_PC, make_age_maps
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -84,7 +85,6 @@ if __name__ == '__main__':
     #     n_component=20, axis='vertex',
     #     out_name=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_PCA-vtx')
     # )
-
     # ROI_analysis_on_PC(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
     #     pca_file=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-vtx.pkl'),
@@ -100,15 +100,46 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_PCA-vtx-PC1.csv')
     # )
 
-    pca(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
+    # pca(
+    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     n_component=20, axis='subject',
+    #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
+    # )
+    # pca(
+    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     n_component=20, axis='subject',
+    #     out_name=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_PCA-subj')
+    # )
+
+    make_age_maps(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        info_file=dataset_name2info['HCPD'],
+        out_name=pjoin(work_dir, 'HCPD_thickness_age-map')
     )
-    pca(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD_myelin_4mm_R_cole_visual_PCA-subj')
+    make_age_maps(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+        info_file=dataset_name2info['HCPD'],
+        out_name=pjoin(work_dir, 'HCPD_myelin_age-map')
+    )
+    make_age_maps(
+        data_file=s1200_1096_thickness,
+        info_file=dataset_name2info['HCPY'],
+        out_name=pjoin(work_dir, 'HCPY_thickness_age-map')
+    )
+    make_age_maps(
+        data_file=s1200_1096_myelin,
+        info_file=dataset_name2info['HCPY'],
+        out_name=pjoin(work_dir, 'HCPY_myelin_age-map')
+    )
+    make_age_maps(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
+        info_file=dataset_name2info['HCPA'],
+        out_name=pjoin(work_dir, 'HCPA_thickness_age-map')
+    )
+    make_age_maps(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPA_myelin.dscalar.nii'),
+        info_file=dataset_name2info['HCPA'],
+        out_name=pjoin(work_dir, 'HCPA_myelin_age-map')
     )

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
-from scipy.stats import zscore
+from scipy.stats import zscore, sem
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
@@ -152,3 +152,50 @@ def ROI_analysis_on_PC(data_file, pca_file, pc_num,
 
     # save
     out_df.to_csv(out_file, index=False)
+
+
+def make_age_maps(data_file, info_file, out_name):
+    """
+    对每个顶点，计算跨同一年龄被试的平均和sem，分别保存在
+    out_name-mean.dscalar.nii, out_name-sem.dscalar.nii中
+
+    Args:
+        data_file (str): end with .dscalar.nii
+            shape=(n_subj, LR_count_32k)
+        info_file (str): subject info file
+        out_name (str): filename to save
+    """
+    # prepare
+    data_maps = nib.load(data_file).get_fdata()
+    info_df = pd.read_csv(info_file)
+    ages = np.array(info_df['age in years'])
+    ages_uniq = np.unique(ages)
+    n_age = len(ages_uniq)
+
+    # calculate
+    mean_maps = np.ones((n_age, LR_count_32k)) * np.nan
+    sem_maps = np.ones((n_age, LR_count_32k)) * np.nan
+    for age_idx, age in enumerate(ages_uniq):
+        data = data_maps[ages == age]
+        mean_maps[age_idx] = np.mean(data, 0)
+        sem_maps[age_idx] = sem(data, 0)
+
+    # save
+    map_names = [str(i) for i in ages_uniq]
+    reader = CiftiReader(mmp_map_file)
+    save2cifti(f'{out_name}-mean.dscalar.nii', mean_maps,
+               reader.brain_models(), map_names)
+    save2cifti(f'{out_name}-sem.dscalar.nii', sem_maps,
+               reader.brain_models(), map_names)
+
+
+def calc_map_corr(data_file, ref_file, atlas_name, out_file):
+    """[summary]
+
+    Args:
+        data_file ([type]): [description]
+        ref_file ([type]): [description]
+        atlas_name ([type]): [description]
+        out_file ([type]): [description]
+    """
+    pass
