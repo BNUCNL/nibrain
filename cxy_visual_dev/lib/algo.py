@@ -3,6 +3,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from scipy.stats import zscore, sem
+from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
@@ -189,13 +190,51 @@ def make_age_maps(data_file, info_file, out_name):
                reader.brain_models(), map_names)
 
 
-def calc_map_corr(data_file, ref_file, atlas_name, out_file):
-    """[summary]
+def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
+                  map_names1=None, map_names2=None, index=False):
+    """
+    计算指定atlas的ROI内的data1 maps和data2 maps的相关
+    存出的CSV文件的index是map_names1, column是map_names2
 
     Args:
-        data_file ([type]): [description]
-        ref_file ([type]): [description]
-        atlas_name ([type]): [description]
-        out_file ([type]): [description]
+        data_file1 (str): end with .dscalar.nii
+            shape=(n_map1, LR_count_32k)
+        data_file2 (str): end with .dscalar.nii
+            shape=(n_map2, LR_count_32k)
+        atlas_name (str):
+        roi_name (str):
+        out_file (str):
+        map_names1 (list, optional): Defaults to None.
+            If is None, use map names in data1_file.
+        map_names2 (list, optional): Defaults to None.
+            If is None, use map names in data2_file.
+        index (bool, optional): Defaults to False.
+            Save index of DataFrame or not
     """
-    pass
+    # prepare
+    reader1 = CiftiReader(data_file1)
+    reader2 = CiftiReader(data_file2)
+    data_maps1 = reader1.get_data()
+    data_maps2 = reader2.get_data()
+    atlas = Atlas(atlas_name)
+    assert atlas.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+    data_maps1 = data_maps1[:, roi_idx_map]
+    data_maps2 = data_maps2[:, roi_idx_map]
+
+    if map_names1 is None:
+        map_names1 = reader1.map_names()
+    else:
+        assert len(map_names1) == data_maps1.shape[0]
+
+    if map_names2 is None:
+        map_names2 = reader2.map_names()
+    else:
+        assert len(map_names2) == data_maps2.shape[0]
+
+    # calculate
+    corrs = 1 - cdist(data_maps1, data_maps2, 'correlation')
+
+    # save
+    df = pd.DataFrame(corrs, map_names1, map_names2)
+    df.to_csv(out_file, index=index)
