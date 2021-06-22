@@ -75,6 +75,27 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_FFA.csv')
     # )
 
+    ROI_analysis(
+        data_file=s1200_1096_thickness,
+        atlas_name='Cole_visual_LR',
+        out_file=pjoin(work_dir, 'HCPY_thickness_Cole_visual_LR.csv')
+    )
+    ROI_analysis(
+        data_file=s1200_1096_myelin,
+        atlas_name='Cole_visual_LR',
+        out_file=pjoin(work_dir, 'HCPY_myelin_Cole_visual_LR.csv')
+    )
+    ROI_analysis(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
+        atlas_name='Cole_visual_LR',
+        out_file=pjoin(work_dir, 'HCPA_thickness_Cole_visual_LR.csv')
+    )
+    ROI_analysis(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPA_myelin.dscalar.nii'),
+        atlas_name='Cole_visual_LR',
+        out_file=pjoin(work_dir, 'HCPA_myelin_Cole_visual_LR.csv')
+    )
+
     # pca(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
     #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
@@ -146,46 +167,46 @@ if __name__ == '__main__':
     #     out_name=pjoin(work_dir, 'HCPA_myelin_age-map')
     # )
 
-    mask_maps(
-        data_file=s1200_avg_thickness,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 's1200_avg_thickness_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=s1200_avg_myelin,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 's1200_avg_myelin_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
-    )
+    # mask_maps(
+    #     data_file=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 's1200_avg_thickness_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 's1200_avg_myelin_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    # )
 
     # calc_map_corr(
     #     data_file1=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
