@@ -4,7 +4,8 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     dataset_name2info, s1200_1096_thickness, s1200_1096_myelin,\
     s1200_avg_thickness, s1200_avg_myelin
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
-    ROI_analysis_on_PC, make_age_maps, calc_map_corr
+    ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
+    mask_maps
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -145,88 +146,129 @@ if __name__ == '__main__':
     #     out_name=pjoin(work_dir, 'HCPA_myelin_age-map')
     # )
 
-    calc_map_corr(
-        data_file1=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-        data_file2=s1200_avg_thickness,
+    mask_maps(
+        data_file=s1200_avg_thickness,
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 's1200_avg_thickness_mask-R_cole_visual.dscalar.nii')
     )
-    calc_map_corr(
-        data_file1=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        data_file2=s1200_avg_myelin,
+    mask_maps(
+        data_file=s1200_avg_myelin,
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 's1200_avg_myelin_mask-R_cole_visual.dscalar.nii')
     )
-    calc_map_corr(
-        data_file1=s1200_1096_thickness,
-        data_file2=s1200_avg_thickness,
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 'HCPD_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
     )
-    calc_map_corr(
-        data_file1=s1200_1096_myelin,
-        data_file2=s1200_avg_myelin,
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 'HCPY_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
     )
-    calc_map_corr(
-        data_file1=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
-        data_file2=s1200_avg_thickness,
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 'HCPA_thickness_age-map-mean_mask-R_cole_visual.dscalar.nii')
     )
-    calc_map_corr(
-        data_file1=pjoin(proj_dir, 'data/HCP/HCPA_myelin.dscalar.nii'),
-        data_file2=s1200_avg_myelin,
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=False
+        out_file=pjoin(work_dir, 'HCPD_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean.dscalar.nii'),
+        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+        out_file=pjoin(work_dir, 'HCPY_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean.dscalar.nii'),
+        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+        out_file=pjoin(work_dir, 'HCPA_myelin_age-map-mean_mask-R_cole_visual.dscalar.nii')
     )
 
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_thickness,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPD_myelin_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_myelin,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPY_thickness_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_thickness,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPY_myelin_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_myelin,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPY_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPA_thickness_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_thickness,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
-    calc_map_corr(
-        data_file1=pjoin(work_dir, 'HCPA_myelin_age-map-mean.dscalar.nii'),
-        data_file2=s1200_avg_myelin,
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPA_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
-        map_names2=['s1200_avg'], index=True
-    )
+    # calc_map_corr(
+    #     data_file1=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+    # calc_map_corr(
+    #     data_file1=s1200_1096_thickness,
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+    # calc_map_corr(
+    #     data_file1=s1200_1096_myelin,
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_thickness_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(proj_dir, 'data/HCP/HCPA_myelin.dscalar.nii'),
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=False
+    # )
+
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPD_myelin_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPY_thickness_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPY_myelin_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPY_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPA_thickness_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_thickness,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )
+    # calc_map_corr(
+    #     data_file1=pjoin(work_dir, 'HCPA_myelin_age-map-mean.dscalar.nii'),
+    #     data_file2=s1200_avg_myelin,
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPA_myelin_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
+    #     map_names2=['s1200_avg'], index=True
+    # )

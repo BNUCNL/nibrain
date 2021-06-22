@@ -238,3 +238,28 @@ def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
     # save
     df = pd.DataFrame(corrs, map_names1, map_names2)
     df.to_csv(out_file, index=index)
+
+
+def mask_maps(data_file, atlas_name, roi_name, out_file):
+    """
+    把data map在指定atlas的ROI以外的部分全赋值为nan
+
+    Args:
+        data_file (str): end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+        atlas_name (str):
+        roi_name (str):
+        out_file (str):
+    """
+    # prepare
+    reader = CiftiReader(data_file)
+    data = reader.get_data()
+    atlas = Atlas(atlas_name)
+    assert atlas.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+
+    # calculate
+    data[:, ~roi_idx_map] = np.nan
+
+    # save
+    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
