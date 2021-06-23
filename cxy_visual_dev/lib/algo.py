@@ -190,6 +190,41 @@ def make_age_maps(data_file, info_file, out_name):
                reader.brain_models(), map_names)
 
 
+def merge_by_age(data_file, info_file, out_name):
+    """
+    对每个column，计算跨同一年龄被试的平均和sem，分别保存在
+    out_name-mean.csv, out_name-sem.csv中
+
+    Args:
+        data_file (str): end with .csv
+            shape=(n_subj, n_col)
+        info_file (str): subject info file
+        out_name (str): filename to save
+    """
+    # prepare
+    df = pd.read_csv(data_file)
+    n_col = df.shape[1]
+
+    info_df = pd.read_csv(info_file)
+    ages = np.array(info_df['age in years'])
+    ages_uniq = np.unique(ages)
+    n_age = len(ages_uniq)
+
+    # calculate
+    means = np.zeros((n_age, n_col), np.float64)
+    sems = np.zeros((n_age, n_col), np.float64)
+    for age_idx, age in enumerate(ages_uniq):
+        data = np.array(df.loc[ages == age])
+        means[age_idx] = np.mean(data, 0)
+        sems[age_idx] = sem(data, 0)
+
+    # save
+    mean_df = pd.DataFrame(means, ages_uniq, df.columns)
+    mean_df.to_csv(f'{out_name}-mean.csv')
+    sem_df = pd.DataFrame(sems, ages_uniq, df.columns)
+    sem_df.to_csv(f'{out_name}-sem.csv')
+
+
 def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
                   map_names1=None, map_names2=None, index=False):
     """
@@ -240,6 +275,42 @@ def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
     df.to_csv(out_file, index=index)
 
 
+def vtx_corr_col(data_file1, atlas_name, roi_name,
+                 data_file2, column, idx_col, out_file):
+    """
+    计算data_file1中指定atlas ROI内的所有顶点序列和data_file2中指定column序列的相关
+
+    Args:
+        data_file1 (str): end with .dscalar.nii
+            shape=(N, LR_count_32k)
+        atlas_name (str):
+        roi_name (str):
+        data_file2 (str): end with .csv
+            shape=(N, n_col)
+        column (str):
+        idx_col (int): specify index column of csv file
+            If None, means no index column.
+    """
+    # prepare
+    reader = CiftiReader(data_file1)
+    maps = reader.get_data()
+    atlas = Atlas(atlas_name)
+    assert atlas.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+    maps = maps[:, roi_idx_map]
+
+    df = pd.read_csv(data_file2, index_col=idx_col)
+    col_vec = np.array(df[column])
+    col_vec = np.expand_dims(col_vec, 0)
+
+    # calculate
+    data = np.ones((1, LR_count_32k)) * np.nan
+    data[0, roi_idx_map] = 1 - cdist(col_vec, maps.T, 'correlation')[0]
+
+    # save
+    save2cifti(out_file, data, reader.brain_models())
+
+
 def mask_maps(data_file, atlas_name, roi_name, out_file):
     """
     把data map在指定atlas的ROI以外的部分全赋值为nan
@@ -263,3 +334,47 @@ def mask_maps(data_file, atlas_name, roi_name, out_file):
 
     # save
     save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+
+
+def polyfit(data_file, info_file, deg, out_file):
+    """
+    对时间序列进行多项式拟合
+
+    Args:
+        data_file (str): .csv | .dscalar.nii
+            If is .csv, fit each column with ages.
+            If is .dscalar.nii, fit each vertex with ages.
+        info_file (str): .csv
+        deg (int): degree of polynomial
+        out_file (str): file to output
+            same postfix with data_file
+    """
+    # prepare
+    if data_file.endswith('.csv'):
+        assert out_file.endswith('.csv')
+        reader = pd.read_csv(data_file)
+        data = np.array(reader)
+    elif data_file.endswith('.dscalar.nii'):
+        assert out_file.endswith('.dscalar.nii')
+        reader = CiftiReader(data_file)
+        data = reader.get_data()
+    else:
+        raise ValueError(1)
+
+    # calculate
+    ages = np.array(pd.read_csv(info_file)['age in years'])
+    coefs = np.polyfit(ages, data, deg)
+    n_row = coefs.shape[0]
+    if deg == 1:
+        assert n_row == 2
+        row_names = ['coef', 'intercept']
+    else:
+        row_names = [''] * n_row
+        raise Warning("Can't provide row names for degree:", deg)
+
+    # save
+    if out_file.endswith('.csv'):
+        df = pd.DataFrame(coefs, row_names, reader.columns)
+        df.to_csv(out_file)
+    else:
+        save2cifti(out_file, coefs, reader.brain_models(), row_names)
