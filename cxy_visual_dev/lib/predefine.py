@@ -108,16 +108,33 @@ for name, lbl in zip(ffa_names, ffa_labels):
     ffa_label2name[lbl] = name
 # FFA MPM from my HCP-YA project<<<
 
-# >>>HCPD+HCPA
+# >>>dataset
+s1200_avg_dir = '/nfs/p1/public_dataset/datasets/hcp/DATA/'\
+    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1'
+s1200_avg_thickness = pjoin(
+    s1200_avg_dir, 'S1200.thickness_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_avg_myelin = pjoin(
+    s1200_avg_dir, 'S1200.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_1096_thickness = pjoin(
+    s1200_avg_dir, 'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_1096_myelin = pjoin(
+    s1200_avg_dir, 'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
+)
+
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',
+    'HCPY': '/nfs/m1/hcp',
     'HCPA': '/nfs/e1/HCPA'
 }
 dataset_name2info = {
-    'HCPD': '/nfs/e1/HCPD/HCPD_SubjInfo.csv',
-    'HCPA': '/nfs/e1/HCPA/HCPA_SubjInfo.csv'
+    'HCPD': pjoin(dataset_name2dir['HCPD'], 'HCPD_SubjInfo.csv'),
+    'HCPY': pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv'),
+    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv')
 }
-# HCPD+HCPA<<<
+# datatset<<<
 
 
 class Atlas:

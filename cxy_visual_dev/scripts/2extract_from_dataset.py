@@ -157,7 +157,9 @@ def merge_smoothed_data(dataset_name, meas_name, sigma):
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
+    merge_data(dataset_name='HCPA', meas_name='thickness')
+    merge_data(dataset_name='HCPA', meas_name='myelin')
     # smooth_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # smooth_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
-    merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
-    merge_smoothed_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
+    # merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
+    # merge_smoothed_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
