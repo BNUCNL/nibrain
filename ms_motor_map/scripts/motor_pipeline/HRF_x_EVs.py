@@ -92,9 +92,6 @@ def convolve_hrf(X, onsets, durations, n_vol, tr, ops=100):
 
     return X_hrfed
 
-if __name__ == '__main__':
-    ev_file = 'sub-01_ses-1_task-motor_run-01_events.tsv'
-    ev, onset, duration = read_ev(ev_file)
 
 
 
