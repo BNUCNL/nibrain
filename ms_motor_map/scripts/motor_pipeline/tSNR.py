@@ -29,21 +29,21 @@ vertex_number = 163842
 def tSNR(data):
     """alculate the temporal signal-to-noise ratio (tSNR) for each vertex
     Parameters
-    ----------          
- 
-        data: used to calculate tSNR, 
+    ----------
+
+        data: used to calculate tSNR,
             shape = [n_vertice, m_timepoints].
-    
+
     Returns
     -------
         data_tSNR: the tSNR of data, shape = [n_vertice, ].
-   
+
     Notes
     -----
-		The tSNR was defined as the ratio between the mean of a timeseries 
+		The tSNR was defined as the ratio between the mean of a timeseries
 		and its SD for each vertex
     """
-    
+
     data_mean = np.mean(data,axis=-1)
     data_std = np.std(data, axis=-1)
     data_tSNR = np.nan_to_num(data_mean / data_std)
@@ -51,19 +51,19 @@ def tSNR(data):
 
 
 # calculate tSNR
-for subid in sessidlist:  
-    
+for subid in sessidlist:
+
     after_tSNR = np.zeros([np.size(vertex_number)])
     before_tSNR = np.zeros([np.size(vertex_number)])
     count = 0
-	
+
     for runid in runidlist:
-		
+
         before_path = '/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/before_data/sub-01_ses-1_task-motor_run-2_space-T1w_desc-preproc_bold_surface_lh.nii.gz'
         before_info = nib.load(before_path)
         before = before_info.get_fdata()[:,0,0,:]
-        before_tSNR = before_tSNR + tSNR(before)   
-		
+        before_tSNR = before_tSNR + tSNR(before)
+
         after_path = '/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/after_data/sub-01_ses-1_task-motor_run-2_space-T1w_desc-preproc_bold_denoised_surface_lh.nii.gz'
         after_info = nib.load(after_path)
         after = after_info.get_fdata()[:,0,0,:]
@@ -137,5 +137,5 @@ for subid in sessidlist:
             return "!"
 
     draw_from_dict(before_counter, 1000000)
-  
+
 print('======{0} done======='.format(subid))
