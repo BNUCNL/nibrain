@@ -14,25 +14,28 @@ def plot():
     import pickle as pkl
     from scipy.stats import sem
     from nibrain.util.plotfig import auto_bar_width
+    from cxy_hcp_ffa.lib.predefine import roi2color
 
     gids = [-1, 1, 2]
     files1 = [
-        pjoin(work_dir, 'structure/individual_thickness_{hemi}.pkl'),
-        pjoin(work_dir, 'structure/individual_myelin_{hemi}.pkl'),
-        pjoin(work_dir, 'split/tfMRI/activ_{hemi}.pkl')]
+        pjoin(work_dir, 'structure/rois_v3_{hemi}_thickness.pkl'),
+        pjoin(work_dir, 'structure/rois_v3_{hemi}_myelin.pkl'),
+        pjoin(work_dir, 'split/tfMRI/activ_{hemi}.pkl'),
+        pjoin(work_dir, 'structure/rois_v3_{hemi}_va.pkl')]
     files2 = [
         pjoin(work_dir,
               'grouping/structure/individual_G{gid}_thickness_{hemi}.pkl'),
         pjoin(work_dir,
               'grouping/structure/individual_G{gid}_myelin_{hemi}.pkl'),
-        pjoin(work_dir, 'grouping/split/tfMRI/G{gid}_activ_{hemi}.pkl')]
-    trg_file = pjoin(trg_dir, 'TMA_diff.svg')
-    ylims = [2.7, 1.3, 2]
-    ylabels = ['thickness', 'myelination', 'face selectivity']
+        pjoin(work_dir, 'grouping/split/tfMRI/G{gid}_activ_{hemi}.pkl'),
+        pjoin(work_dir,
+              'grouping/structure/individual_G{gid}_va_{hemi}.pkl')]
+    trg_file = pjoin(trg_dir, 'TMAV_diff.svg')
+    ylims = [2.7, 1.3, 2, 200]
+    ylabels = ['thickness', 'myelination', 'face selectivity', 'surface area']
     hemis = ['lh', 'rh']
     n_hemi = len(hemis)
     rois = ['pFus-face', 'mFus-face']
-    roi2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
     n_roi = len(rois)
     x = np.arange(n_hemi)
     _, axes = plt.subplots(len(gids), len(ylabels))

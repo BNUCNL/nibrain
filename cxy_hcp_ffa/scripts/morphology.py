@@ -105,6 +105,47 @@ def calc_meas_group(hemi='lh', meas='thickness'):
     pkl.dump(roi_meas, open(trg_file, 'wb'))
 
 
+def calc_mean_meas_map(meas='thickness'):
+    """
+    得到1080个被试的平均map
+    """
+    import numpy as np
+    from magicbox.io.io import CiftiReader, save2nifti
+    from cxy_hcp_ffa.lib.predefine import hemi2stru
+
+    # inputs
+    hemis = ('lh', 'rh')
+    subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+    meas2file = {
+        'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                     'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                     'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii',
+        'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                  'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
+        'va': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+              'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+              'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
+    }
+
+    # outputs
+    out_file = pjoin(work_dir, '{meas}_mean-1080_{hemi}.nii.gz')
+
+    # prepare
+    subj_ids = open(subj_file).read().splitlines()
+    meas_reader = CiftiReader(meas2file[meas])
+    meas_ids = open(meas_id_file).read().splitlines()
+    meas_indices = [meas_ids.index(i) for i in subj_ids]
+
+    # calculate
+    for hemi in hemis:
+        meas_maps = meas_reader.get_data(hemi2stru[hemi], True)[meas_indices]
+        meas_mean = np.mean(meas_maps, 0)
+        meas_mean = np.expand_dims(meas_mean, (1, 2))
+        save2nifti(out_file.format(meas=meas, hemi=hemi), meas_mean)
+
+
 def pre_ANOVA_individual(meas='thickness'):
     """
     准备好二因素被试间设计方差分析需要的数据。
@@ -240,7 +281,9 @@ if __name__ == '__main__':
     # pre_ANOVA_rm_individual(meas='myelin')
     # pre_ANOVA_rm_individual(meas='va')
     # plot_bar(meas='va')
-    calc_meas_group(hemi='lh', meas='thickness')
-    calc_meas_group(hemi='lh', meas='myelin')
-    calc_meas_group(hemi='rh', meas='thickness')
-    calc_meas_group(hemi='rh', meas='myelin')
+    # calc_meas_group(hemi='lh', meas='thickness')
+    # calc_meas_group(hemi='lh', meas='myelin')
+    # calc_meas_group(hemi='rh', meas='thickness')
+    # calc_meas_group(hemi='rh', meas='myelin')
+    calc_mean_meas_map(meas='thickness')
+    calc_mean_meas_map(meas='myelin')

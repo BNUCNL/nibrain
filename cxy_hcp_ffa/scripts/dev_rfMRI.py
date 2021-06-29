@@ -310,6 +310,46 @@ def rsfc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def calc_pattern_corr():
+    """
+    Calculate connectivity pattern correlation
+    with adult reference for each ROI
+    """
+    import pandas as pd
+    import pickle as pkl
+    from scipy.spatial.distance import cdist
+
+    # inputs
+    hemis = ('lh', 'rh')
+    rois = ('IOG-face', 'pFus-face', 'mFus-face')
+    rsfc_file = pjoin(work_dir, 'rsfc_MPM2Cole_{hemi}.pkl')
+    ref_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               'rfMRI/plot_rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'rsfc-corr_MPM.csv')
+
+    # calculate
+    data = {}
+    for hemi in hemis:
+        rsfc = pkl.load(open(rsfc_file.format(hemi=hemi), 'rb'))
+        if 'subID' in data.keys():
+            assert data['subID'] == rsfc['subject']
+        else:
+            data['subID'] = rsfc['subject']
+        ref_data = pkl.load(open(ref_file.format(hemi=hemi), 'rb'))
+        for roi in rois:
+            k = f"{roi.split('-')[0]}_{hemi}"
+            rsfc_arr = rsfc[roi]
+            roi_idx = ref_data['seed'].index(roi)
+            ref_vec = ref_data['mean'][[roi_idx]]
+            data[k] = 1 - cdist(ref_vec, rsfc_arr, metric='correlation')[0]
+
+    # save
+    df = pd.DataFrame(data)
+    df.to_csv(out_file, index=False)
+
+
 def plot_rsfc_line(hemi='lh'):
     """
     对于每个ROI，在每个年龄，求出ROI和targets连接的均值的
@@ -376,5 +416,6 @@ if __name__ == '__main__':
     # rsfc_mean_among_run(hemi='rh')
     # rsfc_merge_MMP(hemi='lh')
     # rsfc_merge_MMP(hemi='rh')
-    plot_rsfc_line(hemi='lh')
-    plot_rsfc_line(hemi='rh')
+    calc_pattern_corr()
+    # plot_rsfc_line(hemi='lh')
+    # plot_rsfc_line(hemi='rh')

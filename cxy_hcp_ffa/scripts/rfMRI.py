@@ -32,7 +32,7 @@ def get_name_label_of_ColeNetwork():
 def get_valid_id(sess=1, run='LR'):
     import os
     import time
-    from commontool.io.io import CiftiReader
+    from magicbox.io.io import CiftiReader
 
     # parameters
     subj_id_file = pjoin(proj_dir, 'analysis/s2/subject_id')
@@ -94,13 +94,92 @@ def get_common_id():
         wf.write(ids)
 
 
-def fc_individual(hemi='lh', sess=1, run='LR'):
+def prepare_series_ind(sess=1, run='LR'):
+    import numpy as np
+    import nibabel as nib
+    import pickle as pkl
+    from cxy_hcp_ffa.lib.predefine import hemi2stru, roi2label
+    from magicbox.io.io import CiftiReader
+
+    # prepare subjects info
+    subj_id_file = pjoin(work_dir, 'rfMRI_REST_id')
+    subj_file_1080 = pjoin(proj_dir, 'analysis/s2/subject_id')
+    subj_ids = open(subj_id_file).read().splitlines()
+    subj_ids_1080 = open(subj_file_1080).read().splitlines()
+    subj_idx_in_1080 = [subj_ids_1080.index(i) for i in subj_ids]
+    n_subj = len(subj_ids)
+
+    # prepare seeds
+    seeds = ('IOG-face', 'pFus-face', 'mFus-face')
+    n_seed = len(seeds)
+    seed_mask_lh_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                              'refined_with_Kevin/rois_v3_lh.nii.gz')
+    seed_mask_rh_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                              'refined_with_Kevin/rois_v3_rh.nii.gz')
+    hemi2seed_mask = {
+        'lh': nib.load(seed_mask_lh_file).get_fdata().squeeze().T[subj_idx_in_1080],
+        'rh': nib.load(seed_mask_rh_file).get_fdata().squeeze().T[subj_idx_in_1080]}
+
+    # prepare series dictionary
+    n_tp = 1200  # the number of time points
+    seed_lh_dict = {
+        'shape': 'n_subject x n_seed x n_time_point',
+        'subject': subj_ids,
+        'seed': seeds,
+        'rfMRI': np.ones((n_subj, n_seed, n_tp)) * np.nan
+    }
+    seed_rh_dict = {
+        'shape': 'n_subject x n_seed x n_time_point',
+        'subject': subj_ids,
+        'seed': seeds,
+        'rfMRI': np.ones((n_subj, n_seed, n_tp)) * np.nan
+    }
+    hemi2seed_dict = {
+        'lh': seed_lh_dict,
+        'rh': seed_rh_dict
+    }
+
+    # prepare outputs
+    out_seed_lh = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_lh.pkl')
+    out_seed_rh = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_rh.pkl')
+
+    # start
+    maps_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/rfMRI_REST{1}_{2}/'\
+                 'rfMRI_REST{1}_{2}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    for subj_idx, subj_id in enumerate(subj_ids):
+        print('Progress: {}/{}'.format(subj_idx+1, n_subj))
+
+        # prepare maps
+        maps_file = maps_files.format(subj_id, sess, run)
+        maps_reader = CiftiReader(maps_file)
+        hemi2maps = {
+            'lh': maps_reader.get_data(hemi2stru['lh'], True),
+            'rh': maps_reader.get_data(hemi2stru['rh'], True)}
+
+        for hemi in ['lh', 'rh']:
+
+            maps = hemi2maps[hemi]
+
+            # seed dict
+            seed_mask = hemi2seed_mask[hemi]
+            for seed_idx, seed in enumerate(seeds):
+                idx_vec = seed_mask[subj_idx] == roi2label[seed]
+                if np.any(idx_vec):
+                    hemi2seed_dict[hemi]['rfMRI'][subj_idx, seed_idx] =\
+                        np.mean(maps[:, idx_vec], 1)
+
+    # save
+    pkl.dump(hemi2seed_dict['lh'], open(out_seed_lh, 'wb'))
+    pkl.dump(hemi2seed_dict['rh'], open(out_seed_rh, 'wb'))
+
+
+def rsfc(hemi='lh', sess=1, run='LR'):
     import numpy as np
     import pickle as pkl
     from scipy.spatial.distance import cdist
 
     # parameters
-    seed_file = pjoin(work_dir, f'rfMRI_seed_{hemi}_{sess}_{run}.pkl')
+    seed_file = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_{hemi}.pkl')
     trg_file = pjoin(work_dir, f'rfMRI_trg_{sess}_{run}.pkl')
     subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
 
@@ -132,7 +211,8 @@ def fc_individual(hemi='lh', sess=1, run='LR'):
         for seed_idx, seed in enumerate(seed_dict['seed']):
             seed_series = seed_dict['rfMRI'][valid_idx, [seed_idx]]
             if not np.isnan(seed_series[0, 0]):
-                fc = 1 - cdist(seed_series, trg_dict['rfMRI'][valid_idx], metric='correlation')[0]
+                fc = 1 - cdist(seed_series, trg_dict['rfMRI'][valid_idx],
+                               metric='correlation')[0]
                 fc_dict[seed][subj_idx] = fc
 
     pkl.dump(fc_dict, open(out_file, 'wb'))
@@ -222,10 +302,10 @@ def pre_ANOVA_rm():
     # inputs
     hemis = ('lh', 'rh')
     rois = ('pFus-face', 'mFus-face')
-    src_file = pjoin(work_dir, 'rsfc_mpm2Cole_{}.pkl')
+    src_file = pjoin(work_dir, 'rsfc_individual2Cole_{}.pkl')
 
     # outputs
-    trg_file = pjoin(work_dir, 'rsfc_mpm2Cole_preANOVA-rm.csv')
+    trg_file = pjoin(work_dir, 'rsfc_individual2Cole_preANOVA-rm.csv')
 
     out_dict = {}
     nan_idx_vec = np.zeros(1080, dtype=bool)
@@ -253,7 +333,7 @@ def roi_ttest():
     import pandas as pd
     from scipy.stats.stats import ttest_ind
     from cxy_hcp_ffa.lib.predefine import net2label_cole
-    from commontool.stats import EffectSize
+    from magicbox.stats import EffectSize
 
     # parameters
     hemis = ('lh', 'rh')
@@ -308,7 +388,7 @@ def roi_pair_ttest():
     import pandas as pd
     from scipy.stats.stats import ttest_rel
     from cxy_hcp_ffa.lib.predefine import net2label_cole
-    from commontool.stats import EffectSize
+    from magicbox.stats import EffectSize
 
     # inputs
     hemis = ('lh', 'rh')
@@ -353,19 +433,17 @@ def roi_pair_ttest():
     out_data.to_csv(out_file, index=False)
 
 
-def multitest_correct_ttest():
+def multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv'):
     import numpy as np
     import pandas as pd
     from statsmodels.stats.multitest import multipletests
 
     # inputs
     hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir,
-                      'rsfc_individual2Cole_pFus_vs_mFus_ttest_paired.csv')
+    data_file = pjoin(work_dir, fname)
 
     # outputs
-    out_file = pjoin(work_dir,
-                     'rsfc_individual2Cole_pFus_vs_mFus_ttest_paired_mtc.csv')
+    out_file = pjoin(work_dir, f"{fname.rstrip('.csv')}_mtc.csv")
 
     # start
     data = pd.read_csv(data_file)
@@ -394,11 +472,14 @@ def plot_bar():
     seed2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
     rsfc_file = pjoin(work_dir, 'rsfc_mpm2Cole_{hemi}.pkl')
 
+    # outputs
+    out_file = pjoin(work_dir, 'bar_mpm.jpg')
+
     n_hemi = len(hemis)
     n_seed = len(seeds)
     x = np.arange(n_hemi)
     width = auto_bar_width(x, n_seed)
-    plt.figure()
+    plt.figure(figsize=(6, 3))
     ax = plt.gca()
     hemi2meas = {
         'lh': pkl.load(open(rsfc_file.format(hemi='lh'), 'rb')),
@@ -414,7 +495,7 @@ def plot_bar():
             y[hemi_idx] = np.mean(meas)
             y_err[hemi_idx] = sem(meas)
         ax.bar(x+width*offset, y, width, yerr=y_err,
-            label=seed.split('-')[0], color=seed2color[seed])
+               label=seed.split('-')[0], color=seed2color[seed])
         offset += 1
     ax.set_xticks(x)
     ax.set_xticklabels(hemis)
@@ -422,9 +503,10 @@ def plot_bar():
     ax.set_ylim(0.1)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.legend()
+    # ax.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_file)
+    # plt.show()
 
 
 def prepare_plot(hemi='lh'):
@@ -474,29 +556,93 @@ def prepare_plot(hemi='lh'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def plot_radar():
+    """
+    https://www.pythoncharts.com/2019/04/16/radar-charts/
+    """
+    import numpy as np
+    import pickle as pkl
+    from matplotlib import pyplot as plt
+
+    # inputs
+    hemis = ('lh', 'rh')
+    n_hemi = len(hemis)
+    seed_names = ['pFus-face', 'mFus-face']
+    seed2color = {'pFus-face': 'limegreen', 'mFus-face': 'cornflowerblue'}
+    data_file = pjoin(work_dir, 'plot_rsfc_mpm2Cole_{hemi}.pkl')
+
+    # outputs
+    out_file = pjoin(work_dir, 'radar_mpm.jpg')
+
+    trg_names = None
+    trg_labels = None
+    _, axes = plt.subplots(1, n_hemi, subplot_kw=dict(polar=True),
+                           figsize=(6.4, 4.8))
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx]
+        data = pkl.load(open(data_file.format(hemi=hemi), 'rb'))
+
+        if trg_names is None:
+            trg_names = data['target']
+            trg_labels = data['trg_label']
+
+        indices = [data['target'].index(n) for n in trg_names]
+        n_trg = len(trg_names)
+        print(n_trg)
+        means = data['mean'][:, indices]
+        errs = data['sem'][:, indices] * 2
+
+        angles = np.linspace(0, 2 * np.pi, n_trg, endpoint=False)
+        angles = np.concatenate((angles, [angles[0]]))
+        means = np.c_[means, means[:, [0]]]
+        errs = np.c_[errs, errs[:, [0]]]
+        for seed_name in seed_names:
+            seed_idx = data['seed'].index(seed_name)
+            ax.plot(angles, means[seed_idx], linewidth=1,
+                    linestyle='solid', label=seed_name.split('-')[0],
+                    color=seed2color[seed_name])
+            ax.fill_between(angles, means[seed_idx]-errs[seed_idx],
+                            means[seed_idx]+errs[seed_idx],
+                            color=seed2color[seed_name], alpha=0.25)
+        # ax.legend(loc='upper center')
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(trg_labels)
+        ax.grid(axis='y')
+    plt.tight_layout()
+    plt.savefig(out_file)
+
+    for lbl, name in zip(trg_labels, trg_names):
+        print(lbl, name)
+
+
 if __name__ == '__main__':
     # get_valid_id(1, 'LR')
     # get_valid_id(1, 'RL')
     # get_valid_id(2, 'LR')
     # get_valid_id(2, 'RL')
     # get_common_id()
-    # fc_individual(hemi='lh', sess=1, run='LR')
-    # fc_individual(hemi='lh', sess=1, run='RL')
-    # fc_individual(hemi='lh', sess=2, run='LR')
-    # fc_individual(hemi='lh', sess=2, run='RL')
-    # fc_individual(hemi='rh', sess=1, run='LR')
-    # fc_individual(hemi='rh', sess=1, run='RL')
-    # fc_individual(hemi='rh', sess=2, run='LR')
-    # fc_individual(hemi='rh', sess=2, run='RL')
+    # prepare_series_ind(sess=1, run='LR')
+    # prepare_series_ind(sess=1, run='RL')
+    # prepare_series_ind(sess=2, run='LR')
+    # prepare_series_ind(sess=2, run='RL')
+    # rsfc(hemi='lh', sess=1, run='LR')
+    # rsfc(hemi='lh', sess=1, run='RL')
+    # rsfc(hemi='lh', sess=2, run='LR')
+    # rsfc(hemi='lh', sess=2, run='RL')
+    # rsfc(hemi='rh', sess=1, run='LR')
+    # rsfc(hemi='rh', sess=1, run='RL')
+    # rsfc(hemi='rh', sess=2, run='LR')
+    # rsfc(hemi='rh', sess=2, run='RL')
     # fc_mean_among_run(hemi='lh')
     # fc_mean_among_run(hemi='rh')
     # fc_merge_MMP(hemi='lh')
     # fc_merge_MMP(hemi='rh')
+    # pre_ANOVA_rm()
     # roi_ttest()
-    # multitest_correct_ttest()
+    # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
+    # roi_pair_ttest()
+    # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest_paired.csv')
     # prepare_plot(hemi='lh')
     # prepare_plot(hemi='rh')
-    # roi_pair_ttest()
-    # multitest_correct_ttest()
-    # pre_ANOVA_rm()
     plot_bar()
+    # plot_radar()

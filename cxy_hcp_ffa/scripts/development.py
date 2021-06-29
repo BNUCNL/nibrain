@@ -175,6 +175,91 @@ def calc_TM(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1'):
     df.to_csv(out_file, index=False)
 
 
+def calc_TM_corr(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1'):
+    """
+    Calculate spatial pattern correlation with adult reference for
+    each ROI's thickness or myelination
+    """
+    import time
+    import pandas as pd
+    import nibabel as nib
+    from scipy.stats.stats import pearsonr
+    from cxy_hcp_ffa.lib.predefine import roi2label, hemi2stru
+    from magicbox.io.io import CiftiReader
+
+    # inputs
+    hemis = ('lh', 'rh')
+    info_file = pjoin(work_dir, f'{proj_name}_SubjInfo.csv')
+
+    atlas2file = {
+        'MPM1': pjoin(proj_dir,
+                      'analysis/s2/1080_fROI/refined_with_Kevin/'
+                      'MPM_v3_{hemi}_0.25.nii.gz')}
+    atlas_file = atlas2file[atlas_name]
+
+    proj2par = {
+        'HCPD': '/nfs/e1/HCPD/fmriresults01',
+        'HCPA': '/nfs/e1/HCPA/fmriresults01'}
+    proj_par = proj2par[proj_name]
+
+    meas2file = {
+        'myelin': pjoin(proj_par,
+                        '{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
+                        '{sid}_V1_MR.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'),
+        'thickness': pjoin(proj_par,
+                           '{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
+                           '{sid}_V1_MR.thickness_MSMAll.32k_fs_LR.dscalar.nii')}
+    meas_file = meas2file[meas_name]
+
+    ref_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                               'structure/{meas}_mean-1080_{hemi}.nii.gz')
+
+    # outputs
+    out_file = pjoin(work_dir, f'{proj_name}_{meas_name}-corr_{atlas_name}.csv')
+
+    # prepare
+    df = pd.read_csv(info_file)
+    n_subj = df.shape[0]
+
+    label2roi = {}
+    for k, v in roi2label.items():
+        label2roi[v] = k
+
+    hemi2atlas = {}
+    hemi2atlas_labels = {}
+    for hemi in hemis:
+        atlas_map = nib.load(atlas_file.format(hemi=hemi)).get_fdata().squeeze()
+        hemi2atlas[hemi] = atlas_map
+        atlas_labels = np.unique(atlas_map)
+        hemi2atlas_labels[hemi] = atlas_labels[atlas_labels != 0]
+
+    hemi2ref = {}
+    for hemi in hemis:
+        hemi2ref[hemi] = nib.load(ref_file.format(meas=meas_name,
+                                  hemi=hemi)).get_fdata().squeeze()
+
+    # calculate
+    for i, idx in enumerate(df.index, 1):
+        time1 = time.time()
+        sid = df.loc[idx, 'subID']
+        reader = CiftiReader(meas_file.format(sid=sid))
+        for hemi in hemis:
+            meas_map = reader.get_data(hemi2stru[hemi], True)[0]
+            ref_map = hemi2ref[hemi]
+            atlas_map = hemi2atlas[hemi]
+            atlas_labels = hemi2atlas_labels[hemi]
+            for lbl in atlas_labels:
+                roi = label2roi[lbl]
+                col = f"{roi.split('-')[0]}_{hemi}"
+                atlas_idx_map = atlas_map == lbl
+                df.loc[idx, col] = pearsonr(meas_map[atlas_idx_map],
+                                            ref_map[atlas_idx_map])[0]
+        print(f'Finished {i}/{n_subj}: cost {time.time() - time1}')
+
+    # save
+    df.to_csv(out_file, index=False)
+
+
 def prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
                  n_samples=np.inf, save_out=True):
     import pandas as pd
@@ -229,6 +314,51 @@ def prepare_plot(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1',
         data.to_csv(out_file, index=False)
 
     return data
+
+
+def plot_line(meas_name='thickness'):
+    """
+    对于每个ROI，在每个年龄，求出measurement的
+    被试间均值和SEM并画折线图
+    """
+    import pandas as pd
+    from scipy.stats.stats import sem
+    from matplotlib import pyplot as plt
+
+    # inputs
+    figsize = (9, 4)
+    cols = ['pFus_{hemi}', 'mFus_{hemi}']
+    colors = ('limegreen', 'cornflowerblue')
+    hemis = ('lh', 'rh')
+    fpath = pjoin(work_dir, f'HCPD_{meas_name}_MPM1_prep_inf.csv')
+
+    # prepare
+    data = pd.read_csv(fpath)
+    age_name = 'age in years'
+    ages = np.array(data[age_name])
+    age_uniq = np.unique(ages)
+
+    # plot
+    _, axes = plt.subplots(1, len(hemis), figsize=figsize)
+    for hemi_idx, hemi in enumerate(hemis):
+        ax = axes[hemi_idx]
+        for col_idx, col in enumerate(cols):
+            col = col.format(hemi=hemi)
+            meas_vec = np.array(data[col])
+            ys = np.zeros_like(age_uniq, np.float64)
+            yerrs = np.zeros_like(age_uniq, np.float64)
+            for age_idx, age in enumerate(age_uniq):
+                sample = meas_vec[ages == age]
+                ys[age_idx] = np.mean(sample)
+                yerrs[age_idx] = sem(sample)
+            ax.errorbar(age_uniq, ys, yerrs, label=col,
+                        color=colors[col_idx])
+        ax.legend()
+        ax.set_xlabel(age_name)
+        if hemi_idx == 0:
+            ax.set_ylabel(meas_name)
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_polyfit(meas_name='thickness'):
@@ -313,5 +443,9 @@ if __name__ == '__main__':
     #              n_samples=np.inf, save_out=True)
     # plot_polyfit(meas_name='thickness')
     # plot_polyfit(meas_name='myelin')
-    plot_polyfit_box(meas_name='thickness')
-    plot_polyfit_box(meas_name='myelin')
+    # plot_polyfit_box(meas_name='thickness')
+    # plot_polyfit_box(meas_name='myelin')
+    # plot_line(meas_name='thickness')
+    # plot_line(meas_name='myelin')
+    calc_TM_corr(proj_name='HCPD', meas_name='thickness', atlas_name='MPM1')
+    calc_TM_corr(proj_name='HCPD', meas_name='myelin', atlas_name='MPM1')

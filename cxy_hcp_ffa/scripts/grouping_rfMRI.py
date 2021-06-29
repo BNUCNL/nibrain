@@ -82,7 +82,7 @@ def roi_ttest(gid=1):
     import pandas as pd
     from scipy.stats.stats import ttest_ind
     from cxy_hcp_ffa.lib.predefine import net2label_cole
-    from commontool.stats import EffectSize
+    from magicbox.stats import EffectSize
 
     # parameters
     hemis = ('lh', 'rh')
@@ -136,7 +136,7 @@ def roi_pair_ttest(gid=1):
     import pandas as pd
     from scipy.stats.stats import ttest_rel
     from cxy_hcp_ffa.lib.predefine import net2label_cole
-    from commontool.stats import EffectSize
+    from magicbox.stats import EffectSize
 
     # inputs
     hemis = ('lh', 'rh')
@@ -188,11 +188,11 @@ def multitest_correct_ttest(gid=1):
     # inputs
     hemis = ('lh', 'rh')
     data_file = pjoin(work_dir, f'rsfc_individual2Cole_G{gid}'
-                                '_pFus_vs_mFus_ttest_paired.csv')
+                                '_pFus_vs_mFus_ttest.csv')
 
     # outputs
     out_file = pjoin(work_dir, f'rsfc_individual2Cole_G{gid}'
-                               '_pFus_vs_mFus_ttest_paired_mtc.csv')
+                               '_pFus_vs_mFus_ttest_mtc.csv')
 
     # start
     data = pd.read_csv(data_file)
@@ -258,16 +258,16 @@ def prepare_plot(gid=1, hemi='lh'):
 if __name__ == '__main__':
     # split_rsfc_to_G1G2(hemi='lh')
     # split_rsfc_to_G1G2(hemi='rh')
-    # roi_ttest(gid=1)
-    # roi_ttest(gid=2)
+    # pre_ANOVA_3factors()
+    # roi_pair_ttest(gid=1)
+    # roi_pair_ttest(gid=2)
     # multitest_correct_ttest(gid=1)
     # multitest_correct_ttest(gid=2)
     # prepare_plot(gid=1, hemi='lh')
     # prepare_plot(gid=1, hemi='rh')
     # prepare_plot(gid=2, hemi='lh')
     # prepare_plot(gid=2, hemi='rh')
-    # roi_pair_ttest(gid=1)
-    # roi_pair_ttest(gid=2)
-    # multitest_correct_ttest(gid=1)
-    # multitest_correct_ttest(gid=2)
-    pre_ANOVA_3factors()
+    roi_ttest(gid=1)
+    roi_ttest(gid=2)
+    multitest_correct_ttest(gid=1)
+    multitest_correct_ttest(gid=2)
