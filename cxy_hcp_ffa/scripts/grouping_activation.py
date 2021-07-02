@@ -6,7 +6,7 @@ split_dir = pjoin(proj_dir,
 work_dir = pjoin(split_dir, 'tfMRI')
 
 
-def split_half():
+def split_half12():
     """
     分别将左右脑，组1组2的被试随机分成两半
     组1的half1和half2分别编号为11, 12
@@ -16,7 +16,7 @@ def split_half():
 
     gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                      'grouping/group_id_{}.npy')
-    trg_file = pjoin(split_dir, 'half_id_{}.npy')
+    trg_file = pjoin(split_dir, 'half12_id_{}.npy')
 
     for hemi in ('lh', 'rh'):
         gids = np.load(gid_file.format(hemi))
@@ -36,6 +36,80 @@ def split_half():
         print(f'The size of group2-half1-{hemi}:', np.sum(gids == 21))
         print(f'The size of group2-half2-{hemi}:', np.sum(gids == 22))
         np.save(trg_file.format(hemi), gids)
+
+
+def split_half0():
+    """
+    将组0的半脑随机分成两半
+    同时保证pFus或mFus也是对半分的
+    half1和half2分别编号为01, 02
+    """
+    import numpy as np
+    import pandas as pd
+
+    gh1_id = 1
+    gh2_id = 2
+    gid_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                     'grouping/group_id_{}.npy')
+    roi_idx_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                         'rois_v3_idx_vec.csv')
+    trg_file = pjoin(split_dir, 'half0_id_{}.npy')
+
+    df = pd.read_csv(roi_idx_file)
+
+    for hemi in ('lh', 'rh'):
+        gids = np.load(gid_file.format(hemi))
+        gids_new = np.ones_like(gids) * np.nan
+        p_idx_vec = np.array(df[f'{hemi}_pFus-face'])
+        m_idx_vec = np.array(df[f'{hemi}_mFus-face'])
+        gid_idx_vec = gids == 0
+
+        gid_p_idx_vec = np.logical_and(p_idx_vec, gid_idx_vec)
+        gid_p_indices = np.where(gid_p_idx_vec)[0]
+        n_gid_p = len(gid_p_indices)
+        gid_m_idx_vec = np.logical_and(m_idx_vec, gid_idx_vec)
+        gid_m_indices = np.where(gid_m_idx_vec)[0]
+        n_gid_m = len(gid_m_indices)
+
+        gids_new[gid_idx_vec] = gh1_id
+        half2_indices_p = np.random.choice(
+            gid_p_indices, int(n_gid_p/2), replace=False
+        )
+        half2_indices_m = np.random.choice(
+            gid_m_indices, int(n_gid_m/2), replace=False
+        )
+        gids_new[half2_indices_p] = gh2_id
+        gids_new[half2_indices_m] = gh2_id
+
+        print(f'The size of G0_pFus_{hemi}:', n_gid_p)
+        print(f'The size of G0_pFus-half2_{hemi}:', len(half2_indices_p))
+        print(f'The size of G0_mFus_{hemi}:', n_gid_m)
+        print(f'The size of G0_mFus-half2_{hemi}:', len(half2_indices_m))
+        print(f'The size of G0-half1-{hemi}:', np.sum(gids_new == 1))
+        print(f'The size of G0-half2-{hemi}:', np.sum(gids_new == 2))
+        np.save(trg_file.format(hemi), gids_new)
+
+
+def merge_gh_id():
+    import numpy as np
+
+    hemis = ('lh', 'rh')
+    g0h_id_file = pjoin(split_dir, 'half0_id_{}.npy')
+    g12h_id_file = pjoin(split_dir, 'half12_id_{}.npy')
+    out_file = pjoin(split_dir, 'half_id_{}.npy')
+
+    for hemi in hemis:
+        g0h_ids = np.load(g0h_id_file.format(hemi))
+        g12h_ids = np.load(g12h_id_file.format(hemi))
+        gh_ids = np.zeros_like(g0h_ids, int)
+
+        non_nan_vec = ~np.isnan(g0h_ids)
+        non_0_vec = g12h_ids != 0
+        assert np.all(non_0_vec == ~non_nan_vec)
+        gh_ids[non_nan_vec] = g0h_ids[non_nan_vec]
+        gh_ids[non_0_vec] = g12h_ids[non_0_vec]
+
+        np.save(out_file.format(hemi), gh_ids)
 
 
 def roi_stats(gh_id=11, hemi='lh'):
@@ -259,7 +333,9 @@ def pre_ANOVA_3factors():
 
 
 if __name__ == '__main__':
-    # split_half()
+    # split_half12()
+    # split_half0()
+    merge_gh_id()
     # roi_stats(gh_id=11, hemi='lh')
     # roi_stats(gh_id=11, hemi='rh')
     # roi_stats(gh_id=21, hemi='lh')
@@ -284,4 +360,4 @@ if __name__ == '__main__':
     # pre_ANOVA(gid=2)
     # pre_ANOVA_rm(gid=1)
     # pre_ANOVA_rm(gid=2)
-    pre_ANOVA_3factors()
+    # pre_ANOVA_3factors()
