@@ -1,13 +1,16 @@
 import os
 import time
 import subprocess
+from nibabel.nifti2 import save
 import numpy as np
 import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.stats import zscore
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import LR_count_32k,\
-    mmp_map_file, dataset_name2dir, dataset_name2info
+    mmp_map_file, dataset_name2dir, dataset_name2info,\
+    s1200_1096_thickness, s1200_1096_myelin
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -154,12 +157,50 @@ def merge_smoothed_data(dataset_name, meas_name, sigma):
     save2cifti(out_file, data, mmp_reader.brain_models(), df['subID'])
 
 
+def zscore_data(data_file, out_file):
+    """
+    对每个被试做全脑zscore
+
+    Args:
+        data_file (str): .dscalar.nii
+        out_file (str): .dscalar.nii
+    """
+    reader = CiftiReader(data_file)
+    data = reader.get_data()
+    data = zscore(data, 1)
+    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
-    merge_data(dataset_name='HCPA', meas_name='thickness')
-    merge_data(dataset_name='HCPA', meas_name='myelin')
+    # merge_data(dataset_name='HCPA', meas_name='thickness')
+    # merge_data(dataset_name='HCPA', meas_name='myelin')
     # smooth_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # smooth_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
+    zscore_data(
+        data_file=pjoin(work_dir, 'HCPD_thickness.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD_thickness_zscore.dscalar.nii')
+    )
+    zscore_data(
+        data_file=s1200_1096_thickness,
+        out_file=pjoin(work_dir, 'HCPY_thickness_zscore.dscalar.nii')
+    )
+    zscore_data(
+        data_file=pjoin(work_dir, 'HCPA_thickness.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPA_thickness_zscore.dscalar.nii')
+    )
+    zscore_data(
+        data_file=pjoin(work_dir, 'HCPD_myelin.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD_myelin_zscore.dscalar.nii')
+    )
+    zscore_data(
+        data_file=s1200_1096_myelin,
+        out_file=pjoin(work_dir, 'HCPY_myelin_zscore.dscalar.nii')
+    )
+    zscore_data(
+        data_file=pjoin(work_dir, 'HCPA_myelin.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPA_myelin_zscore.dscalar.nii')
+    )
