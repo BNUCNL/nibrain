@@ -112,49 +112,100 @@ def merge_gh_id():
         np.save(out_file.format(hemi), gh_ids)
 
 
-def roi_stats(gh_id=11, hemi='lh'):
+def count_roi():
+    """
+    可视化左右脑各组分半后的ROI数量
+    """
+    import numpy as np
+    import pandas as pd
+    from matplotlib import pyplot as plt
+    from magicbox.algorithm.plot import show_bar_value
+    from nibrain.util.plotfig import auto_bar_width
+
+    hemis = ('lh', 'rh')
+    n_hemi = len(hemis)
+    gids = (0, 1, 2)
+    n_gid = len(gids)
+    rois = ('pFus-face', 'mFus-face')
+    xticklabels = [roi.split('-')[0] for roi in rois]
+    gh_id_file = pjoin(split_dir, 'half_id_{}.npy')
+    roi_idx_vec_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
+                             'rois_v3_idx_vec.csv')
+
+    df = pd.read_csv(roi_idx_vec_file)
+
+    x = np.arange(len(rois))
+    width = auto_bar_width(x, 2)
+    _, axes = plt.subplots(n_gid, n_hemi)
+    for hemi_idx, hemi in enumerate(hemis):
+        gh_ids = np.load(gh_id_file.format(hemi))
+        for gid_idx, gid in enumerate(gids):
+            ax = axes[gid_idx, hemi_idx]
+            gh1_id = gid * 10 + 1
+            gh2_id = gid * 10 + 2
+            y1 = []
+            y2 = []
+            for roi in rois:
+                col = f'{hemi}_{roi}'
+                y1.append(np.sum(df[col][gh_ids == gh1_id]))
+                y2.append(np.sum(df[col][gh_ids == gh2_id]))
+            rects1 = ax.bar(x-width/2, y1, width, label='half1')
+            rects2 = ax.bar(x+width/2, y2, width, label='half2')
+            show_bar_value(rects1, ax=ax)
+            show_bar_value(rects2, ax=ax)
+
+            # if hemi_idx == 0 and gid_idx == 0:
+            #     ax.legend()
+            ax.set_xticks(x)
+            ax.set_xticklabels(xticklabels)
+            if hemi_idx == 0:
+                ax.set_ylabel('#subject')
+            if gid_idx == 0:
+                ax.set_title(hemi)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def calc_prob_map():
     import numpy as np
     import nibabel as nib
-    import pickle as pkl
     from cxy_hcp_ffa.lib.predefine import roi2label
-    from commontool.io.io import save2nifti
+    from magicbox.io.io import save2nifti
 
-    gh_id_file = pjoin(split_dir, f'half_id_{hemi}.npy')
+    hemis = ('lh', 'rh')
+    rois = ('IOG-face', 'pFus-face', 'mFus-face')
+    n_roi = len(rois)
+    gh_ids = (1, 2, 11, 12, 21, 22)
+    gh_id_file = pjoin(split_dir, 'half_id_{}.npy')
     roi_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                     f'rois_v3_{hemi}.nii.gz')
-    info_trg_file = pjoin(split_dir, f'rois_info_GH{gh_id}_{hemi}.pkl')
-    prob_trg_file = pjoin(split_dir, f'prob_maps_GH{gh_id}_{hemi}.nii.gz')
+                     'rois_v3_{}.nii.gz')
+    out_file = pjoin(split_dir, 'prob_maps_GH{}_{}.nii.gz')
 
-    gh_id_idx_vec = np.load(gh_id_file) == gh_id
-    rois = nib.load(roi_file).get_data().squeeze().T[gh_id_idx_vec]
+    for hemi in hemis:
+        gh_id_vec = np.load(gh_id_file.format(hemi))
+        roi_maps = nib.load(roi_file.format(hemi)).get_data().squeeze().T
+        for gh_id in gh_ids:
+            gh_id_idx_vec = gh_id_vec == gh_id
+            roi_maps_tmp = roi_maps[gh_id_idx_vec]
 
-    # prepare rois information dict
-    rois_info = dict()
-    for roi in roi2label.keys():
-        rois_info[roi] = dict()
+            prob_maps = np.zeros((n_roi, roi_maps.shape[1]))
+            for idx, roi in enumerate(rois):
+                label = roi2label[roi]
 
-    prob_maps = []
-    for roi, label in roi2label.items():
-        # get indices of subjects which contain the roi
-        indices = rois == label
-        subj_indices = np.any(indices, 1)
+                # get indices of subjects which contain the roi
+                indices = roi_maps_tmp == label
+                subj_indices = np.any(indices, 1)
 
-        # calculate the number of the valid subjects
-        n_subject = np.sum(subj_indices)
-        rois_info[roi]['n_subject'] = n_subject
+                # calculate roi probability map among valid subjects
+                prob_map = np.mean(indices[subj_indices], 0)
+                prob_maps[idx] = prob_map
 
-        # calculate roi sizes for each valid subject
-        sizes = np.sum(indices[subj_indices], 1)
-        rois_info[roi]['sizes'] = sizes
-
-        # calculate roi probability map among valid subjects
-        prob_map = np.mean(indices[subj_indices], 0)
-        prob_maps.append(prob_map)
-    prob_maps = np.array(prob_maps)
-
-    # save out
-    pkl.dump(rois_info, open(info_trg_file, 'wb'))
-    save2nifti(prob_trg_file, prob_maps.T[:, None, None, :])
+            # save out
+            save2nifti(out_file.format(gh_id, hemi),
+                       prob_maps.T[:, None, None, :])
 
 
 def get_mpm(gh_id=11, hemi='lh'):
@@ -335,15 +386,9 @@ def pre_ANOVA_3factors():
 if __name__ == '__main__':
     # split_half12()
     # split_half0()
-    merge_gh_id()
-    # roi_stats(gh_id=11, hemi='lh')
-    # roi_stats(gh_id=11, hemi='rh')
-    # roi_stats(gh_id=21, hemi='lh')
-    # roi_stats(gh_id=21, hemi='rh')
-    # roi_stats(gh_id=12, hemi='lh')
-    # roi_stats(gh_id=12, hemi='rh')
-    # roi_stats(gh_id=22, hemi='lh')
-    # roi_stats(gh_id=22, hemi='rh')
+    # merge_gh_id()
+    # count_roi()
+    calc_prob_map()
     # get_mpm(gh_id=11, hemi='lh')
     # get_mpm(gh_id=11, hemi='rh')
     # get_mpm(gh_id=21, hemi='lh')
