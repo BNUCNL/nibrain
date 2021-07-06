@@ -10,7 +10,7 @@ def calc_meas_individual(hemi='lh'):
     import nibabel as nib
     import numpy as np
     import pickle as pkl
-    from commontool.io.io import CiftiReader
+    from magicbox.io.io import CiftiReader
     from cxy_hcp_ffa.lib.predefine import hemi2stru, roi2label
 
     # inputs
@@ -38,6 +38,57 @@ def calc_meas_individual(hemi='lh'):
             if np.any(lbl_idx_vec):
                 roi_meas['meas'][roi_idx, subj_idx] = np.mean(
                     meas[subj_idx][lbl_idx_vec])
+    pkl.dump(roi_meas, open(out_file, 'wb'))
+
+
+def calc_meas_emotion(hemi='lh'):
+    """
+    用个体ROI去提取emotion任务中 faces-shapes的信号
+    """
+    import nibabel as nib
+    import numpy as np
+    import pickle as pkl
+    from cxy_hcp_ffa.lib.predefine import roi2label
+
+    # inputs
+    work_dir = pjoin(proj_dir,
+                     'analysis/s2/1080_fROI/refined_with_Kevin/tfMRI')
+    rois_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/'
+                      f'refined_with_Kevin/rois_v3_{hemi}.nii.gz')
+    subj_file_wm = pjoin(proj_dir, 'analysis/s2/subject_id')
+    meas_file = pjoin(proj_dir, 'data/HCP/emotion/analysis_s2/'
+                                f'cope3_face-shape_zstat_{hemi}.nii.gz')
+    subj_file_emo = pjoin(proj_dir, 'data/HCP/emotion/analysis_s2/subject_id')
+
+    # outputs
+    out_file = pjoin(work_dir, f'individual_activ_{hemi}_emo.pkl')
+
+    # prepare
+    rois = nib.load(rois_file).get_fdata().squeeze().T
+    n_roi = len(roi2label)
+    subj_ids_wm = open(subj_file_wm).read().splitlines()
+    meas = nib.load(meas_file).get_fdata().squeeze().T
+    subj_ids_emo = open(subj_file_emo).read().splitlines()
+
+    # find index in EMOTION subject IDs for WM subject IDs
+    subj_indices = []
+    for subj_id in subj_ids_wm:
+        if subj_id in subj_ids_emo:
+            subj_indices.append(subj_ids_emo.index(subj_id))
+        else:
+            subj_indices.append(None)
+    n_subj = len(subj_indices)
+
+    roi_meas = {'shape': 'n_roi x n_subj', 'roi': list(roi2label.keys()),
+                'meas': np.ones((n_roi, n_subj)) * np.nan}
+    for roi_idx, roi in enumerate(roi_meas['roi']):
+        lbl_idx_arr = rois == roi2label[roi]
+        for subj_idx in range(n_subj):
+            lbl_idx_vec = lbl_idx_arr[subj_idx]
+            subj_idx_emo = subj_indices[subj_idx]
+            if np.any(lbl_idx_vec) and subj_idx_emo is not None:
+                roi_meas['meas'][roi_idx, subj_idx] = np.mean(
+                    meas[subj_idx_emo][lbl_idx_vec])
     pkl.dump(roi_meas, open(out_file, 'wb'))
 
 
@@ -105,7 +156,7 @@ def roi_stats(hid=1, hemi='lh'):
     save2nifti(prob_trg_file, prob_maps.T[:, None, None, :])
 
 
-def get_mpm(hid=1, hemi='lh'):
+def get_mpm_old(hid=1, hemi='lh'):
     """maximal probability map"""
     import numpy as np
     import nibabel as nib
@@ -125,6 +176,54 @@ def get_mpm(hid=1, hemi='lh'):
     save2nifti(trg_file, mpm)
 
 
+def get_mpm(hid=1, hemi='lh'):
+    """maximal probability map"""
+    import numpy as np
+    import nibabel as nib
+    from cxy_hcp_ffa.lib.predefine import roi2label
+    from magicbox.io.io import save2nifti
+
+    # inputs
+    thr = 0.25
+    map_indices = [1, 2]
+    idx2roi = {
+        0: 'IOG-face',
+        1: 'pFus-face',
+        2: 'mFus-face'}
+    prob_file = pjoin(split_dir, f'prob_maps_half{hid}_{hemi}.nii.gz')
+
+    # outputs
+    out_file = pjoin(split_dir, f'MPM_half{hid}_{hemi}_FFA.nii.gz')
+
+    # prepare
+    prob_maps = nib.load(prob_file).get_fdata()[..., map_indices]
+    mpm_map = np.zeros(prob_maps.shape[:3])
+
+    # calculate
+    supra_thr_idx_arr = prob_maps > thr
+    valid_idx_arr = np.any(supra_thr_idx_arr, 3)
+    valid_arr = prob_maps[valid_idx_arr, :]
+    mpm_tmp = np.argmax(valid_arr, -1)
+    for i, idx in enumerate(map_indices):
+        roi = idx2roi[idx]
+        idx_arr = np.zeros_like(mpm_map, dtype=np.bool8)
+        idx_arr[valid_idx_arr] = mpm_tmp == i
+        mpm_map[idx_arr] = roi2label[roi]
+
+    # verification
+    valid_supra_thr_idx_arr = supra_thr_idx_arr[valid_idx_arr, :]
+    valid_count_vec = np.sum(valid_supra_thr_idx_arr, -1)
+    valid_count_vec_uniq = np.zeros_like(valid_count_vec)
+    for i in range(len(valid_count_vec)):
+        valid_supra_thr_idx_vec = valid_supra_thr_idx_arr[i]
+        valid_count_vec_uniq[i] = \
+            len(set(valid_arr[i, valid_supra_thr_idx_vec]))
+    assert np.all(valid_count_vec == valid_count_vec_uniq)
+
+    # save
+    save2nifti(out_file, mpm_map)
+
+
 def calc_meas_MPM(hemi='lh'):
     """
     用一半被试的MPM去提取另一半被试的激活值
@@ -137,7 +236,7 @@ def calc_meas_MPM(hemi='lh'):
     import pickle as pkl
     import nibabel as nib
     from cxy_hcp_ffa.lib.predefine import hemi2stru, roi2label
-    from commontool.io.io import CiftiReader
+    from magicbox.io.io import CiftiReader
 
     hids = (1, 2)
     hid_file = pjoin(split_dir, 'half_id.npy')
@@ -245,13 +344,19 @@ if __name__ == '__main__':
     # roi_stats(hid=1, hemi='rh')
     # roi_stats(hid=2, hemi='lh')
     # roi_stats(hid=2, hemi='rh')
-    # get_mpm(hid=1, hemi='lh')
-    # get_mpm(hid=1, hemi='rh')
-    # get_mpm(hid=2, hemi='lh')
-    # get_mpm(hid=2, hemi='rh')
+    # get_mpm_old(hid=1, hemi='lh')
+    # get_mpm_old(hid=1, hemi='rh')
+    # get_mpm_old(hid=2, hemi='lh')
+    # get_mpm_old(hid=2, hemi='rh')
     # calc_meas_MPM(hemi='lh')
     # calc_meas_MPM(hemi='rh')
     # pre_ANOVA()
     # calc_meas_individual(hemi='lh')
     # calc_meas_individual(hemi='rh')
-    pre_ANOVA_rm()
+    # pre_ANOVA_rm()
+    # get_mpm(hid=1, hemi='lh')
+    # get_mpm(hid=1, hemi='rh')
+    # get_mpm(hid=2, hemi='lh')
+    # get_mpm(hid=2, hemi='rh')
+    calc_meas_emotion(hemi='lh')
+    calc_meas_emotion(hemi='rh')
