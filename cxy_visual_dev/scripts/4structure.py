@@ -27,76 +27,15 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_zscore.csv')
     # )
     # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-    #     atlas_name='LR',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_Cole_visual_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #     atlas_name='HCP_MMP1', zscore_flag=True,
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1_zscore.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #     atlas_name='LR',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_Cole_visual_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-    #     atlas_name='FFA',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_FFA.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
-    #     atlas_name='FFA',
-    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_FFA.csv')
-    # )
-
-    # ROI_analysis(
     #     data_file=s1200_1096_thickness,
     #     atlas_name='Cole_visual_LR',
     #     out_file=pjoin(work_dir, 'HCPY_thickness_Cole_visual_LR.csv')
     # )
-    # ROI_analysis(
-    #     data_file=s1200_1096_myelin,
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPY_myelin_Cole_visual_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPA_thickness_Cole_visual_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPA_myelin.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPA_myelin_Cole_visual_LR.csv')
-    # )
+    ROI_analysis(
+        data_file=s1200_avg_myelin,
+        atlas_name='HCP_MMP1',
+        out_file=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv')
+    )
 
     # merge_by_age(
     #     data_file=pjoin(work_dir, 'HCPD_thickness_Cole_visual_LR.csv'),
@@ -274,7 +213,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPA_myelin_map-corr_s1200-avg_R_cole_visual.csv'),
     #     map_names2=['s1200_avg'], index=False
     # )
-
     # calc_map_corr(
     #     data_file1=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
     #     data_file2=s1200_avg_thickness,
@@ -333,34 +271,34 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_merge-age_vtx-corr-col.dscalar.nii')
     # )
 
-    polyfit(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-        info_file=dataset_name2info['HCPD'], deg=1,
-        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age.dscalar.nii')
-    )
-    polyfit(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
-        info_file=dataset_name2info['HCPD'], deg=1,
-        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age.dscalar.nii')
-    )
-    polyfit(
-        data_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1.csv'),
-        info_file=dataset_name2info['HCPD'], deg=1,
-        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1_linear-fit-age.csv')
-    )
-    polyfit(
-        data_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1.csv'),
-        info_file=dataset_name2info['HCPD'], deg=1,
-        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1_linear-fit-age.csv')
-    )
+    # polyfit(
+    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
+    #     info_file=dataset_name2info['HCPD'], deg=1,
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age.dscalar.nii')
+    # )
+    # polyfit(
+    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin_4mm.dscalar.nii'),
+    #     info_file=dataset_name2info['HCPD'], deg=1,
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age.dscalar.nii')
+    # )
+    # polyfit(
+    #     data_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1.csv'),
+    #     info_file=dataset_name2info['HCPD'], deg=1,
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1_linear-fit-age.csv')
+    # )
+    # polyfit(
+    #     data_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1.csv'),
+    #     info_file=dataset_name2info['HCPD'], deg=1,
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_HCP_MMP1_linear-fit-age.csv')
+    # )
 
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age_mask-R_cole_visual.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-        out_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age_mask-R_cole_visual.dscalar.nii')
-    )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_linear-fit-age_mask-R_cole_visual.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age.dscalar.nii'),
+    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+    #     out_file=pjoin(work_dir, 'HCPD_myelin_4mm_linear-fit-age_mask-R_cole_visual.dscalar.nii')
+    # )
