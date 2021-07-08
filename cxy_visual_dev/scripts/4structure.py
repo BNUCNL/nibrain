@@ -16,11 +16,11 @@ if not os.path.isdir(work_dir):
 
 if __name__ == '__main__':
     # HCP_MMP1 atlas 包含 Cole_visual_ROI
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv')
-    # )
+    ROI_analysis(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
+        atlas_name='HCP_MMP1',
+        out_file=pjoin(work_dir, 'HCPA_thickness_HCP_MMP1.csv')
+    )
     # ROI_analysis(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
     #     atlas_name='HCP_MMP1', zscore_flag=True,
@@ -31,11 +31,11 @@ if __name__ == '__main__':
     #     atlas_name='Cole_visual_LR',
     #     out_file=pjoin(work_dir, 'HCPY_thickness_Cole_visual_LR.csv')
     # )
-    ROI_analysis(
-        data_file=s1200_avg_myelin,
-        atlas_name='HCP_MMP1',
-        out_file=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv')
-    )
+    # ROI_analysis(
+    #     data_file=s1200_avg_myelin,
+    #     atlas_name='FFA',
+    #     out_file=pjoin(work_dir, 'HCPY_myelin-avg_FFA.csv')
+    # )
 
     # merge_by_age(
     #     data_file=pjoin(work_dir, 'HCPD_thickness_Cole_visual_LR.csv'),
