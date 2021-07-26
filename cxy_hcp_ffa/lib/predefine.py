@@ -1,3 +1,5 @@
+proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
+
 # map the name of a hemisphere to CIFTI brain structure
 hemi2stru = {
     'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
