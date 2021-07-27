@@ -311,6 +311,50 @@ def vtx_corr_col(data_file1, atlas_name, roi_name,
     save2cifti(out_file, data, reader.brain_models())
 
 
+def row_corr_row(data_file1, cols1, idx_col1,
+                 data_file2, cols2, idx_col2,
+                 out_file, index=False, columns=None):
+    """
+    Calculate the correlation between each row in data_file1 and data_file2
+    存出的CSV文件的index是index of data_file1, column是index of data_file2
+
+    Args:
+        data_file1 (str): end with .csv
+            shape=(N, n_col)
+        cols1 (sequence): columns of data_file1
+            If None, use all columns.
+        idx_col1 (int, None): specify index column of csv file
+            If None, means no index column.
+        data_file2 (str): end with .csv
+            shape=(N, n_col)
+        cols2 (sequence): columns of data_file2
+            If None, use all columns.
+        idx_col2 (int, None): specify index column of csv file
+            If None, means no index column.
+        out_file (str): end with .csv
+        index (bool, optional): Defaults to False.
+            Save index of DataFrame or not
+        columns (sequence, optional): Defaults to None.
+            If None, use index of data_file2 as columns to save out.
+    """
+    # prepare
+    df1 = pd.read_csv(data_file1, index_col=idx_col1)
+    data1 = np.array(df1[cols1])
+    df2 = pd.read_csv(data_file2, index_col=idx_col2)
+    data2 = np.array(df2[cols2])
+
+    # calculate
+    data = 1 - cdist(data1, data2, 'correlation')
+    if columns is None:
+        columns = df2.index
+    else:
+        assert len(columns) == len(df2.index)
+    df = pd.DataFrame(data, index=df1.index, columns=columns)
+
+    # save
+    df.to_csv(out_file, index=index)
+
+
 def mask_maps(data_file, atlas_name, roi_name, out_file):
     """
     把data map在指定atlas的ROI以外的部分全赋值为nan
