@@ -140,6 +140,10 @@ dataset_name2info = {
 rPath1 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_FFC', 'R_TF', 'R_PeEc']
 rPath2 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V8', 'R_VVC', 'R_TF', 'R_PeEc']
 rPath3 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_pFus-face', 'R_mFus-face', 'R_TF', 'R_PeEc']
+rPath4 = ['R_V1', 'R_V2', 'R_MT', 'R_STV', 'R_VIP']
+rPath5 = ['R_V1', 'R_V2', 'R_V3', 'R_STV', 'R_VIP']
+rPath6 = ['R_V1', 'R_MT', 'R_STV', 'R_VIP']
+rPath7 = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
 # visual path way<<<
 
 

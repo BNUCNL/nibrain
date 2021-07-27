@@ -2,7 +2,7 @@ import os
 from os.path import join as pjoin
 from cxy_visual_dev.lib.predefine import proj_dir,\
     dataset_name2info, s1200_1096_thickness, s1200_1096_myelin,\
-    s1200_avg_thickness, s1200_avg_myelin, rPath1
+    s1200_avg_thickness, s1200_avg_myelin, rPath1, rPath4
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
     mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row
@@ -35,11 +35,11 @@ if __name__ == '__main__':
     #     atlas_name='FFA',
     #     out_file=pjoin(work_dir, 'HCPY_myelin-avg_FFA.csv')
     # )
-    ROI_analysis(
-        data_file=s1200_avg_thickness,
-        atlas_name='HCP_MMP1',
-        out_file=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv')
-    )
+    # ROI_analysis(
+    #     data_file=s1200_avg_thickness,
+    #     atlas_name='HCP_MMP1',
+    #     out_file=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv')
+    # )
 
     # merge_by_age(
     #     data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
@@ -127,34 +127,34 @@ if __name__ == '__main__':
 
     row_corr_row(
         data_file1=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1.csv'),
-        cols1=rPath1, idx_col1=None,
+        cols1=rPath4, idx_col1=None,
         data_file2=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv'),
-        cols2=rPath1, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPD-myelin_corr_HCPY-myelin-avg_rPath1.csv'),
+        cols2=rPath4, idx_col2=None,
+        out_file=pjoin(work_dir, 'HCPD-myelin_corr_HCPY-myelin-avg_rPath4.csv'),
         index=False, columns=['s1200_avg']
     )
     row_corr_row(
         data_file1=pjoin(work_dir, 'HCPA_myelin_HCP_MMP1.csv'),
-        cols1=rPath1, idx_col1=None,
+        cols1=rPath4, idx_col1=None,
         data_file2=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv'),
-        cols2=rPath1, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPA-myelin_corr_HCPY-myelin-avg_rPath1.csv'),
+        cols2=rPath4, idx_col2=None,
+        out_file=pjoin(work_dir, 'HCPA-myelin_corr_HCPY-myelin-avg_rPath4.csv'),
         index=False, columns=['s1200_avg']
     )
     row_corr_row(
         data_file1=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
-        cols1=rPath1, idx_col1=None,
+        cols1=rPath4, idx_col1=None,
         data_file2=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv'),
-        cols2=rPath1, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPD-thickness_corr_HCPY-thickness-avg_rPath1.csv'),
+        cols2=rPath4, idx_col2=None,
+        out_file=pjoin(work_dir, 'HCPD-thickness_corr_HCPY-thickness-avg_rPath4.csv'),
         index=False, columns=['s1200_avg']
     )
     row_corr_row(
         data_file1=pjoin(work_dir, 'HCPA_thickness_HCP_MMP1.csv'),
-        cols1=rPath1, idx_col1=None,
+        cols1=rPath4, idx_col1=None,
         data_file2=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv'),
-        cols2=rPath1, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPA-thickness_corr_HCPY-thickness-avg_rPath1.csv'),
+        cols2=rPath4, idx_col2=None,
+        out_file=pjoin(work_dir, 'HCPA-thickness_corr_HCPY-thickness-avg_rPath4.csv'),
         index=False, columns=['s1200_avg']
     )
 
