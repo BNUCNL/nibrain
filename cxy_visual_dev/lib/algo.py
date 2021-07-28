@@ -20,7 +20,7 @@ def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
         atlas_name (str): include ROIs' labels and mask map
         out_file (str): output path
         zscore_flag (bool, optional): Defaults to False.
-            If True, do zscore across each hemisphere.
+            If True, do zscore within each hemisphere.
     """
     # prepare
     meas_maps = nib.load(data_file).get_fdata()

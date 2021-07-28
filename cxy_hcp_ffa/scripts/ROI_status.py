@@ -47,11 +47,15 @@ def calc_gdist(method='peak'):
     """Calculate geodesic distance between each two ROIs.
 
     Args:
-        method (str, optional): 'peak' or 'min'
+        method (str, optional): 'peak', 'min', 'AP_gap-y', and 'AP_gap-geo'
             If 'peak', use the distance between two vertices
             with peak activation values in two ROIs respectively.
             If 'min', use the minimum distance of pair-wise
             vertices between the two ROIs.
+            If 'AP_gap-y', assume the most posterior vertex of mFus-face is P
+            and the most anterior vertex of pFus-face is A.
+            This distance is calculated as: y coordinate of P - y coordinate of A.
+            If AP_gap-geo, use the geodesic distance between P and A.
             Defaults to 'peak'.
     """
     import os
@@ -64,13 +68,16 @@ def calc_gdist(method='peak'):
     from magicbox.io.io import CiftiReader
 
     # inputs
-    rois = ('IOG-face', 'pFus-face', 'mFus-face')
+    # rois = ('IOG-face', 'pFus-face', 'mFus-face')
+    rois = ('pFus-face', 'mFus-face')
     hemis = ('lh', 'rh')
     hemi2Hemi = {'lh': 'L', 'rh': 'R'}
     subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
     roi_file = pjoin(work_dir, 'rois_v3_{}.nii.gz')
     geo_file = '/nfs/m1/hcp/{sid}/T1w/fsaverage_LR32k/' \
                '{sid}.{Hemi}.midthickness_MSMAll.32k_fs_LR.surf.gii'
+    geo_file_AP = '/nfs/m1/hcp/{sid}/T1w/fsaverage_LR32k/' \
+                  '{sid}.{Hemi}.very_inflated_MSMAll.32k_fs_LR.surf.gii'
     activ_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
 
     # outputs
@@ -107,6 +114,13 @@ def calc_gdist(method='peak'):
             coords = coords.data.astype(np.float64)
             faces = geo.get_arrays_from_intent('NIFTI_INTENT_TRIANGLE')[0]
             faces = faces.data.astype(np.int32)
+
+            g_file_AP = geo_file_AP.format(sid=subj_id, Hemi=hemi2Hemi[hemi])
+            if not os.path.exists(g_file_AP):
+                log_lines.append(f'{g_file_AP} does not exist.')
+                continue
+            geo_AP = nib.load(g_file_AP)
+            coords_AP = geo_AP.get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0].data
             for roi1_idx, roi1 in enumerate(rois[:-1]):
                 roi1_idx_map = roi_map == roi2label[roi1]
                 if np.any(roi1_idx_map):
@@ -160,6 +174,46 @@ def calc_gdist(method='peak'):
                                                          roi1_vertices,
                                                          roi2_vertices)
                                 out_dict[k][subj_idx] = np.min(ds)
+                            elif method == 'AP_gap-y':
+                                ys1 = coords_AP[roi1_idx_map, 1]
+                                ys2 = coords_AP[roi2_idx_map, 1]
+                                y1 = np.max(ys1)
+                                y2 = np.min(ys2)
+                                out_dict[k][subj_idx] = y2 - y1
+                            elif method == 'AP_gap-geo':
+                                ys1 = coords_AP[:, 1].copy()
+                                ys2 = coords_AP[:, 1].copy()
+                                ys1[~roi1_idx_map] = np.nan
+                                ys2[~roi2_idx_map] = np.nan
+                                max1 = np.nanmax(ys1)
+                                min2 = np.nanmin(ys2)
+                                roi1_vertices = np.where(ys1 == max1)[0]
+                                roi1_vertices = roi1_vertices.astype(np.int32)
+                                n_vtx1 = len(roi1_vertices)
+                                roi2_vertices = np.where(ys2 == min2)[0]
+                                roi2_vertices = roi2_vertices.astype(np.int32)
+                                n_vtx2 = len(roi2_vertices)
+                                if n_vtx1 > 1 or n_vtx2 > 1:
+                                    msg = f'{subj_id}: {roi1} vs {roi2} ' \
+                                          f'has multiple vertices.'
+                                    log_lines.append(msg)
+                                    ds = []
+                                    for src_vtx in roi1_vertices:
+                                        src_vtx = np.array([src_vtx], np.int32)
+                                        ds_tmp = \
+                                            gdist.compute_gdist(coords, faces,
+                                                                src_vtx,
+                                                                roi2_vertices)
+                                        ds.extend(ds_tmp)
+                                    out_dict[k][subj_idx] = np.mean(ds)
+                                elif n_vtx1 == 1 and n_vtx2 == 1:
+                                    ds = gdist.compute_gdist(coords, faces,
+                                                             roi1_vertices,
+                                                             roi2_vertices)
+                                    assert len(ds) == 1
+                                    out_dict[k][subj_idx] = ds[0]
+                                else:
+                                    raise RuntimeError("Impossible!")
                             else:
                                 raise ValueError(f'Not supported method: '
                                                  f'{method}')
@@ -326,9 +380,11 @@ if __name__ == '__main__':
     # count_roi()
     # calc_gdist(method='min')
     # calc_gdist(method='peak')
+    calc_gdist(method='AP_gap-y')
+    calc_gdist(method='AP_gap-geo')
     # plot_gdist()
     # compare_gdist()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
-    get_mpm(hemi='lh')
-    get_mpm(hemi='rh')
+    # get_mpm(hemi='lh')
+    # get_mpm(hemi='rh')
