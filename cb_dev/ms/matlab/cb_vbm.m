@@ -27,10 +27,10 @@ for id=1:length(subject_id)
     mkdir(fullfile(work_dir,subject_id{id}));
     mkdir(fullfile(work_dir,subject_id{id},'anat'));
     mkdir(fullfile(work_dir,subject_id{id},'func'));
-    % copy native T1w & T2w images
-    copyfile(fullfile(hcpd_path,subject_id{id},'T1w','T1w_acpc_dc.nii.gz'),fullfile(work_dir,subject_id{id},'anat','T1w.nii.gz'))
-    copyfile(fullfile(hcpd_path,subject_id{id},'T1w','T2w_acpc_dc.nii.gz'),fullfile(work_dir,subject_id{id},'anat','T2w.nii.gz'))
-    % unzip nifti files
+    % copy native images
+    copyfile(fullfile(hcpd_path,subject_id{id},'T1w','T1w_acpc_dc_restore.nii.gz'),fullfile(work_dir,subject_id{id},'anat','T1w.nii.gz'))
+    copyfile(fullfile(hcpd_path,subject_id{id},'T1w','T2w_acpc_dc_restore.nii.gz'),fullfile(work_dir,subject_id{id},'anat','T2w.nii.gz'))
+    % unzip native images
     gunzip(fullfile(work_dir,subject_id{id},'anat','T1w.nii.gz'))
     gunzip(fullfile(work_dir,subject_id{id},'anat','T2w.nii.gz'))
     % isolate cerebellum from native brain

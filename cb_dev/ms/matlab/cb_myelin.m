@@ -1,4 +1,4 @@
-% The workflow of caculating VBM
+% The workflow of resample alff & falff
 % Created on Mon Jul 5 15:48:49 2021
 % @author: Sai Ma
 
@@ -32,4 +32,13 @@ for id=1:length(subject_id)
     job_myelin.subj.resample={fullfile(work_dir,subject_id{id},'anat','myelin.nii')};
     job_myelin.subj.mask={fullfile(work_dir,subject_id{id},'anat','c_T1w_pcereb.nii')};
     suit_reslice_dartel(job_myelin)
+    % delete native myelin image
+    delete(fullfile(work_dir,subject_id{id},'anat','myelin.nii.gz'))
+    delete(fullfile(work_dir,subject_id{id},'anat','myelin.nii'))
+end
+
+%% 
+for id=1:length(subject_id)
+    delete(fullfile(work_dir,subject_id{id},'anat','myelin.nii.gz'))
+    delete(fullfile(work_dir,subject_id{id},'anat','myelin.nii'))
 end

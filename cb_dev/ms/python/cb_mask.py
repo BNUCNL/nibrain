@@ -1,5 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-    remove brainstem from SUIT template using fslmaths command
+Created on Wed Jul  7 22:52:48 2021
+
+@author: masai
+
+remove brainstem from SUIT template using fslmaths command
 """
 
 import os, subprocess
