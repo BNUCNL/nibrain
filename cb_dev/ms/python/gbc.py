@@ -21,90 +21,119 @@ class CapAtlas(object):
         '''
         self.map = nib.load(atlas_file).get_fdata()
         self.annot = pd.read_csv(annot_file, sep='\t', usecols=['KEYVALUE', 'LABEL', 'NETWORKKEY'])
-        self.annot = self.annot[~self.annot['LABEL'].str.endswith('Brainstem')]
         self.hemi = list(hemi)
 
-    def get_parcel(self):
+    def get_parcel(self, roi_list=None):
         '''
+
+        Args:
+            roi: List of selected ROI range from 1-718
 
         Returns:
-            parcel_mask: Logical array of 671 CAP parcels (no brainstem)
+            parcel_mask: Logical array of 718 CAP parcels
 
         '''
 
-        parcel_mask = np.zeros((len(self.annot), self.map.shape[1]))
-        for hemi in self.hemi:
-            annot_hemi = self.annot[self.annot['LABEL'].str.contains(hemi + '-')]
-            for roi_index, roi_id in enumerate(annot_hemi['KEYVALUE'].tolist()):
-                roi_keyvalue = annot_hemi[annot_hemi['NETWORKKEY'] == roi_id]['KEYVALUE']
-                parcel_mask[roi_index, :] = (annot_hemi[0, :] == np.array(roi_keyvalue)[:, None]).any(axis=0)
-        parcel_mask = parcel_mask[~(parcel_mask == 0).all(axis=1)].astype(bool)
+        if roi_list == None:
+            roi_list = self.map['KEYVALUE'].tolist()
+
+        parcel_mask = np.zeros((len(roi_list), self.map.shape[1]))
+        for roi_index, roi_id in enumerate(roi_list):
+            roi_keyvalue = self.annot[self.annot['NETWORKKEY'] == roi_id]['KEYVALUE']
+            parcel_mask[roi_index,:] = (self.map[0,:] == np.array(roi_keyvalue)[:,None]).any(axis=0).astype(bool)
 
         return parcel_mask
 
-    def get_network(self):
+    def get_network(self, hemisphere):
         '''
 
+        Args:
+            hemisphere: String of selected hemisphere, only L, R and LR
+
         Returns:
-            network_mask: Logical array of 12 CAP networks (no brainstem)
+            network_mask: Logical array of 12 CAP networks
 
         '''
 
         network_mask = np.zeros((self.annot['NETWORKKEY'].max()*len(self.hemi), self.map.shape[1]))
-        for hemi in self.hemi:
+        for hemi in hemisphere:
             annot_hemi = self.annot[self.annot['LABEL'].str.contains(hemi + '-')]
             for network_id in np.arange(1, annot_hemi['NETWORKKEY'].max() + 1):
                 network_keyvalue = annot_hemi[annot_hemi['NETWORKKEY'] == network_id]['KEYVALUE']
-                network_mask[network_id-1, :] = (self.map[0, :] == np.array(network_keyvalue)[:, None]).any(axis=0).astype(bool)
+                network_mask[network_id-1,:] = (self.map[0,:] == np.array(network_keyvalue)[:,None]).any(axis=0).astype(bool)
 
         return network_mask
 
-    def get_cortex(self):
+    def get_cortex(self, hemisphere):
         '''
+
+        Args:
+            hemisphere: String of selected hemisphere, only L, R and LR
 
         Returns: cortex_mask: Logical array of cortex
 
         '''
 
-        cortex_mask = np.zeros((len(self.hemi), self.map.shape[1]))
-        for index, hemi in enumerate(self.hemi):
+        cortex_mask = np.zeros((len(list(hemisphere)), self.map.shape[1]))
+        for index, hemi in enumerate(list(hemisphere)):
             annot_hemi = self.annot[self.annot['LABEL'].str.contains(hemi + '-')]
             cortex_keyvalue = annot_hemi[annot_hemi['LABEL'].str.endswith('Ctx')]['KEYVALUE']
-            cortex_mask[index, :] = (self.map[0, :] == np.array(cortex_keyvalue)[:, None]).any(axis=0).astype(bool)
+            cortex_mask[index,:] = (self.map[0,:] == np.array(cortex_keyvalue)[:,None]).any(axis=0).astype(bool)
 
         return cortex_mask
 
-    def get_subcortex(self):
+    def get_subcortex(self, hemisphere):
         '''
+
+        Args:
+            hemisphere: String of selected hemisphere, only L, R and LR
 
         Returns: subcortex_mask: Logical array of subcortex
 
         '''
 
-        subcortex_mask = np.zeros((len(self.hemi), self.map.shape[1]))
-        for index, hemi in enumerate(self.hemi):
+        subcortex_mask = np.zeros((list(hemisphere), self.map.shape[1]))
+        for index, hemi in enumerate(list(hemisphere)):
             annot_hemi = self.annot[self.annot['LABEL'].str.contains(hemi + '-')]
-            subcortex_keyvalue = annot_hemi[(~annot_hemi['LABEL'].str.endswith('Ctx'))&(~annot_hemi['LABEL'].str.endswith('Cerebellum'))]['KEYVALUE']
-            subcortex_mask[index, :] = (self.map[0, :] == np.array(subcortex_keyvalue)[:, None]).any(axis=0).astype(bool)
+            subcortex_keyvalue = annot_hemi[(~annot_hemi['LABEL'].str.endswith('Ctx'))&(~annot_hemi['LABEL'].str.endswith('Cerebellum'))&(~annot_hemi['LABEL'].str.endswith('Brainstem'))]['KEYVALUE']
+            subcortex_mask[index,:] = (self.map[0,:] == np.array(subcortex_keyvalue)[:,None]).any(axis=0).astype(bool)
 
         return subcortex_mask
 
-    def get_cerebellum(self):
+    def get_cerebellum(self, hemisphere):
         '''
+
+        Args:
+            hemisphere: String of selected hemisphere, only L, R and LR
 
         Returns: cerebellum_mask: Logical array of cerebellum
 
         '''
 
         cerebellum_mask = np.zeros((len(self.hemi), self.map.shape[1]))
-        for index, hemi in enumerate(self.hemi):
+        for index, hemi in enumerate(list(hemisphere)):
             annot_hemi = self.annot[self.annot['LABEL'].str.contains(hemi + '-')]
             cerebellum_keyvalue = annot_hemi[annot_hemi['LABEL'].str.endswith('Cerebellum')]['KEYVALUE']
-            cerebellum_mask[index, :] = (self.map[0, :] == np.array(cerebellum_keyvalue)[:, None]).any(axis=0).astype(bool)
+            cerebellum_mask[index,:] = (self.map[0,:] == np.array(cerebellum_keyvalue)[:,None]).any(axis=0).astype(bool)
 
         return cerebellum_mask
 
-def gbc_to_cap(cifti_ts, cap_atlas, src_index):
+    def get_brainstem(self):
+        '''
+
+        Returns: brainstem_mask: Logical array of brainstem
+
+        '''
+
+        brainstem_mask = np.zeros((1, self.map.shape[1]))
+        brainstem_keyvalue = self.annot[self.annot['LABEL'].str.endswith('Brainstem')]['KEYVALUE']
+        brainstem_mask[0,:] = (self.map[0, :] == np.array(brainstem_keyvalue)[:, None]).any(axis=0).astype(bool)
+
+        return brainstem_mask
+
+
+
+def global_brain_conn(cifti_ts, src_roi, targ_roi):
     '''
 
     Args:
@@ -117,39 +146,16 @@ def gbc_to_cap(cifti_ts, cap_atlas, src_index):
 
     '''
 
-    cifti_matrix = cifti_ts.get_data(structure=None)
-    source_matrix = cifti_matrix[:, src_index]
+    cifti_matrix = cifti_ts.get_fdata(structure=None)
+    src_matrix = cifti_matrix[:, src_roi]
+    targ_matrix = cifti_matrix[:, targ_roi]
 
-    source_brain_conn = 1 - cdist(source_matrix.T, cifti_matrix.T, metric='correlation')
-
-    cap_atlas.hemi = 'L'
-    target_mask_L = {
-        'Parcel-L' : cap_atlas.get_parcel(),
-        'Network-L' : cap_atlas.get_network(),
-        'CortexSubcortexCerebellum-L' : np.concatenate((cap_atlas.get_cortex(), cap_atlas.get_subcortex(), cap_atlas.get_cerebellum())).reshape(3,-1)
-    }
-    cap_atlas.hemi = 'R'
-    target_mask_R = {
-        'Parcel-R': cap_atlas.get_parcel(),
-        'Network-R': cap_atlas.get_network(),
-        'CortexSubcortexCerebellum-R': np.concatenate((cap_atlas.get_cortex(), cap_atlas.get_subcortex(), cap_atlas.get_cerebellum())).reshape(3, -1)
-    }
-    target_mask = dict(target_mask_L, **target_mask_R)
-
-    conn_mean = dict()
-    for target, mask in target_mask.items():
-        conn_mean_matrix = np.zeros((source_brain_conn.shape[0], mask.shape[0]))
-        for roi in np.arange(mask.shape[0]):
-            current_target = mask[roi, :]
-            _mask = current_target.astype(int)[1,:] - src_index
-            current_target = np.where(_mask < 0, 0, _mask).astype(bool)
-            roi_mean = np.mean(source_brain_conn[:, current_target], axis=1)
-            conn_mean_matrix[:, roi] = roi_mean
-        conn_mean[target] = conn_mean_matrix
+    source_brain_conn = 1 - cdist(src_matrix.T, targ_matrix.T, metric='correlation')
+    conn_mean = np.mean(source_brain_conn, axis=1)
 
     return conn_mean
 
-def Ciftiwrite(dir_path, gbc, cifti_ts):
+def Ciftiwrite(dir_path, gbc, cifti_ts, src_roi):
     '''
 
     Args:
@@ -159,7 +165,8 @@ def Ciftiwrite(dir_path, gbc, cifti_ts):
 
     '''
 
-    for name, data in gbc.items():
-        img = nib.Cifti2Image(dataobj=data, header=cifti_ts.header)
-        nib.cifti2.save(img, os.path.join(dir_path, 'source_'+name+'_connectivity.dscalar.nii'))
+    data = np.zeros(1, src_roi.shape[0])
+    data[0,src_roi] = gbc
+    img = nib.Cifti2Image(dataobj=data, header=cifti_ts.header)
+    nib.cifti2.save(img, os.path.join(dir_path, 'gbc.dscalar.nii'))
 
