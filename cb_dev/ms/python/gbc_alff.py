@@ -208,7 +208,7 @@ def global_brain_conn(cifti_ts, src_roi, targ_roi):
     return conn_mean
 
 
-def alff(cifti_ts, src_roi, tr, low_freq_scale, detrend=False, falff=False):
+def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1), type=None):
     '''
     Calculate Amplitude of low-frequency fluctuation (ALFF) or Fractional amplitude of low-frequency fluctuation (fALFF) of source ROI
 
@@ -219,12 +219,11 @@ def alff(cifti_ts, src_roi, tr, low_freq_scale, detrend=False, falff=False):
             Logical mask of source ROI
         tr: int
             Repetation time (second)
-        low_freq_scale: tuple
+        low_freq_band: tuple
             (m, n) low freqency scale is from m to n (Hz)
-        detrend: bool
-            if True, remove linear trends from raw data
-        falff: bool
-            if True, return fALFF; if False, return ALFF
+        return_type: str
+            None: return a tuple of alff and falff
+            ALFF/fALFF: return ALFF/fALFF
 
     Returns:
         alff: numpy array
@@ -237,12 +236,8 @@ def alff(cifti_ts, src_roi, tr, low_freq_scale, detrend=False, falff=False):
     cifti_matrix = cifti_ts.get_fdata(structure=None)
     src_matrix = cifti_matrix[:, src_roi]
 
-    # remove linear trends from raw data
-    if detrend:
-        src_matrix = signal.detrend(src_matrix, axis=0, type='linear')
-
     # fast fourier transform
-    fft_array = fft(src_matrix, axis=0)
+    fft_array = fft(signal.detrend(src_matrix, axis=0, type='linear'), axis=0)
     # get fourier transform sample frequencies
     freq_scale = np.fft.fftfreq(src_matrix.shape[0], tr)
     # calculate total power of all freqency bands
@@ -251,17 +246,15 @@ def alff(cifti_ts, src_roi, tr, low_freq_scale, detrend=False, falff=False):
     # ALFF: sum of low band power
     # fALFF: ratio of Alff to total power
     time_half = cifti_matrix.shape[0] / 2
-    if falff:
-        alff = np.sum(
-            total_power[(low_freq_scale[0] <= freq_scale)[0:time_half] & (freq_scale <= low_freq_scale[1])[0:time_half],
-            :], axis=0)
+    alff = np.sum(total_power[(low_freq_band[0] <= freq_scale)[0:time_half] & (freq_scale <= low_freq_band[1])[0:time_half],:], axis=0)
+    if type == 'ALFF':
+        return alff
+    if type == 'fALFF':
         falff = alff / np.sum(total_power, axis=0)
         return falff
-    else:
-        alff = np.sum(
-            total_power[(low_freq_scale[0] <= freq_scale)[0:time_half] & (freq_scale <= low_freq_scale[1])[0:time_half],
-            :], axis=0)
-        return alff
+    if type == None:
+        falff = alff / np.sum(total_power, axis=0)
+        return tuple(alff, falff)
 
 
 def Ciftiwrite(file_path, data, cifti_ts, src_roi):
@@ -276,7 +269,7 @@ def Ciftiwrite(file_path, data, cifti_ts, src_roi):
         cifti_ts: nibabel cifti2Image
             time series object read by nibabel.load()
     '''
-
+    
     # get an empty array to store the restored source data
     save_data = np.zeros(1, src_roi.shape[0])
     # restore source data to standard cifti space
@@ -284,4 +277,3 @@ def Ciftiwrite(file_path, data, cifti_ts, src_roi):
     # save as cifti file
     img = nib.Cifti2Image(dataobj=save_data, header=cifti_ts.header)
     nib.cifti2.save(img, file_path)
-
