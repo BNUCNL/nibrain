@@ -222,7 +222,7 @@ def global_brain_conn(cifti_ts, src_roi, targ_roi):
     source_brain_conn = 1 - cdist(src_matrix.T, targ_matrix.T, metric='correlation')
     conn_mean = np.mean(source_brain_conn, axis=1)
 
-    return conn_mean
+    return conn_mean.reshape(-1, 1)
 
 
 def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
@@ -265,6 +265,7 @@ def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
 
     return np.concatenate((alff.reshape(-1, 1), falff.reshape(-1, 1)), axis=1)
 
+
 def Ciftiwrite(file_path, data, cifti_ts, src_roi):
     '''
     Restore and save as cifti
@@ -279,9 +280,9 @@ def Ciftiwrite(file_path, data, cifti_ts, src_roi):
     '''
 
     # get an empty array to store the restored source data
-    save_data = np.zeros(data.shape[1], src_roi.shape[0])
+    save_data = np.zeros((data.shape[1], src_roi.shape[0]))
     # restore source data to standard cifti space
-    save_data[:, src_roi] = data
+    save_data[:, src_roi] = data.T
     # save as cifti file
     img = nib.Cifti2Image(dataobj=save_data, header=cifti_ts.header)
     nib.cifti2.save(img, file_path)
