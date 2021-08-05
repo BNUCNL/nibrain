@@ -7,11 +7,11 @@ Created on Wed Aug  4 11:00:43 2021
 """
 
 import os
-from gbc_alff import CapAtlas, global_brain_conn, alff, Ciftiwrite
-from scipy.spatial.distance import cdist
 import numpy as np
 import pandas as pd
 import nibabel as nib
+from scipy.spatial.distance import cdist
+from gbc_alff import CapAtlas, global_brain_conn, alff, Ciftiwrite
 
 data_dir = '/nfs/e1/HCPD/fmriresults01/'
 work_dir = '/nfs/e1/HCPD_CB/mri/'
@@ -25,11 +25,11 @@ for subject in subject_list:
     for run in ['1_AP', '1_PA', '2_AP', '2_PA']:
         resting_ts = nib.load(os.path.join(data_dir, subject, 'MNINonLinear', 'Results', 'rfMRI_REST'+run, 'rfMRI_REST'+run+'_Atlas_MSMAll_hp0_clean.dtseries.nii'))
         cerebellum_LR = cap.get_cerebellum(hemisphere='LR').any(axis=0)
-    
+
         # ALFF & fALFF
         alff_falff_cb = alff(cifti_ts=resting_ts, src_roi=cerebellum_LR, tr=0.8, low_freq_band=(0.008, 0.1))
         alff_save_dir = os.path.join(work_dir, 'func', 'rest', 'ALFF', 'rfMRI_REST'+run)
-        if not os.path.exist(alff_save_dir):
+        if not os.path.exists(alff_save_dir):
             os.makedirs(alff_save_dir)
         Ciftiwrite(file_path=os.path.join(alff_save_dir, 'rfMRI_REST'+run+'_alff_falff.dtseries.nii'), data=alff_falff_cb, cifti_ts=resting_ts, src_roi=cerebellum_LR)
 
@@ -61,7 +61,7 @@ for subject in subject_list:
 
         # save gbc
         gbc_save_dir = os.path.join(work_dir, 'func', 'rest', 'GBC', 'rfMRI_REST'+run)
-        if not os.path.exist(gbc_save_dir):
+        if not os.path.exists(gbc_save_dir):
             os.makedirs(gbc_save_dir)
         # left hemisphere
         cerebellum_cortex_subcortex_network_L_conn = np.concatenate((cerebellum_cortex_L_conn, cerebellum_subcortex_L_conn, cerebellum_network_L_conn), axis=1)
