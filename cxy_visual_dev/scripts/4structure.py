@@ -5,7 +5,8 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     s1200_avg_thickness, s1200_avg_myelin, rPath1, rPath4
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
-    mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row
+    mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row,\
+    col_operate_col
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -125,37 +126,26 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_thickness_4mm_HCP_MMP1_linear-fit-age.csv')
     # )
 
-    row_corr_row(
-        data_file1=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1.csv'),
-        cols1=rPath4, idx_col1=None,
-        data_file2=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv'),
-        cols2=rPath4, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPD-myelin_corr_HCPY-myelin-avg_rPath4.csv'),
-        index=False, columns=['s1200_avg']
+    # row_corr_row(
+    #     data_file1=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1.csv'),
+    #     cols1=rPath4, idx_col1=None,
+    #     data_file2=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv'),
+    #     cols2=rPath4, idx_col2=None,
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_corr_HCPY-myelin-avg_rPath4.csv'),
+    #     index=False, columns=['s1200_avg']
+    # )
+
+    col_operate_col(
+        data_file=pjoin(work_dir, 'HCPD_myelin_HCP_MMP1.csv'),
+        cols=rPath1, idx_col=None, operation_type='adjacent_pair',
+        operation_method='-', index=False,
+        out_file=pjoin(work_dir, 'HCPD-myelin_rPath1-adjacent-minus.csv')
     )
-    row_corr_row(
-        data_file1=pjoin(work_dir, 'HCPA_myelin_HCP_MMP1.csv'),
-        cols1=rPath4, idx_col1=None,
-        data_file2=pjoin(work_dir, 'HCPY_myelin-avg_HCP_MMP1.csv'),
-        cols2=rPath4, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPA-myelin_corr_HCPY-myelin-avg_rPath4.csv'),
-        index=False, columns=['s1200_avg']
-    )
-    row_corr_row(
-        data_file1=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
-        cols1=rPath4, idx_col1=None,
-        data_file2=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv'),
-        cols2=rPath4, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPD-thickness_corr_HCPY-thickness-avg_rPath4.csv'),
-        index=False, columns=['s1200_avg']
-    )
-    row_corr_row(
-        data_file1=pjoin(work_dir, 'HCPA_thickness_HCP_MMP1.csv'),
-        cols1=rPath4, idx_col1=None,
-        data_file2=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv'),
-        cols2=rPath4, idx_col2=None,
-        out_file=pjoin(work_dir, 'HCPA-thickness_corr_HCPY-thickness-avg_rPath4.csv'),
-        index=False, columns=['s1200_avg']
+    col_operate_col(
+        data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
+        cols=rPath1, idx_col=None, operation_type='adjacent_pair',
+        operation_method='-', index=False,
+        out_file=pjoin(work_dir, 'HCPD-thickness_rPath1-adjacent-minus.csv')
     )
 
     # mask_maps(

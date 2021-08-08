@@ -355,6 +355,76 @@ def row_corr_row(data_file1, cols1, idx_col1,
     df.to_csv(out_file, index=index)
 
 
+def col_operate_col(data_file, cols, idx_col,
+                    operation_type, operation_method,
+                    out_file, index=False):
+    """
+    Do operation between each two columns. For example, col2-col1.
+
+    Args:
+        data_file (str): end with .csv
+            shape=(N, n_col)
+        cols (sequence): columns of data_file
+            If None, use all columns.
+        idx_col (int, None): specify index column of csv file
+            If None, means no index column.
+        operation_type (str): adjacent_pair, all_pair
+            The latter (+, -, *, /) the former
+        operation_method (str): +, -, *, /
+        out_file (str): end with .csv
+        index (bool, optional): Defaults to False.
+            Save index of DataFrame or not
+    """
+    # prepare
+    df = pd.read_csv(data_file, index_col=idx_col)
+    if cols is None:
+        cols = df.columns.to_list()
+
+    # calculate
+    out_df = pd.DataFrame(index=df.index)
+    if operation_type == 'adjacent_pair':
+        for i, col1 in enumerate(cols[:-1]):
+            col2 = cols[i+1]
+            if operation_method == '+':
+                col = f'{col2}+{col1}'
+                out_df[col] = df[col2] + df[col1]
+            elif operation_method == '-':
+                col = f'{col2}-{col1}'
+                out_df[col] = df[col2] - df[col1]
+            elif operation_method == '*':
+                col = f'{col2}*{col1}'
+                out_df[col] = df[col2] * df[col1]
+            elif operation_method == '/':
+                col = f'{col2}/{col1}'
+                out_df[col] = df[col2] / df[col1]
+            else:
+                raise ValueError('Not supported operation_method:',
+                                 operation_method)
+    elif operation_type == 'all_pair':
+        for i, col1 in enumerate(cols[:-1]):
+            for col2 in cols[i + 1:]:
+                if operation_method == '+':
+                    col = f'{col2}+{col1}'
+                    out_df[col] = df[col2] + df[col1]
+                elif operation_method == '-':
+                    col = f'{col2}-{col1}'
+                    out_df[col] = df[col2] - df[col1]
+                elif operation_method == '*':
+                    col = f'{col2}*{col1}'
+                    out_df[col] = df[col2] * df[col1]
+                elif operation_method == '/':
+                    col = f'{col2}/{col1}'
+                    out_df[col] = df[col2] / df[col1]
+                else:
+                    raise ValueError('Not supported operation_method:',
+                                     operation_method)
+    else:
+        raise ValueError('Not supported operation_type:', operation_type)
+
+    # save
+    out_df.to_csv(out_file, index=index)
+
+
 def mask_maps(data_file, atlas_name, roi_name, out_file):
     """
     把data map在指定atlas的ROI以外的部分全赋值为nan
