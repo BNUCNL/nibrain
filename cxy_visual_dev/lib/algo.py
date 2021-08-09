@@ -339,9 +339,15 @@ def row_corr_row(data_file1, cols1, idx_col1,
     """
     # prepare
     df1 = pd.read_csv(data_file1, index_col=idx_col1)
-    data1 = np.array(df1[cols1])
+    if cols1 is None:
+        data1 = np.array(df1)
+    else:
+        data1 = np.array(df1[cols1])
     df2 = pd.read_csv(data_file2, index_col=idx_col2)
-    data2 = np.array(df2[cols2])
+    if cols2 is None:
+        data2 = np.array(df2)
+    else:
+        data2 = np.array(df2[cols2])
 
     # calculate
     data = 1 - cdist(data1, data2, 'correlation')
