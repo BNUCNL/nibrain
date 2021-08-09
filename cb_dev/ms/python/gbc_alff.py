@@ -14,7 +14,6 @@ from scipy import signal
 from scipy.fftpack import fft
 from scipy.spatial.distance import cdist
 
-
 class CapAtlas(object):
 
     def __init__(self, atlas_dir):
@@ -195,23 +194,12 @@ class CapAtlas(object):
 
         return brainstem_mask.astype(bool)
 
+def compute_fconn(cifti_ts, src_roi, targ_roi=None):
+    ''''''
 
-def global_brain_conn(cifti_ts, src_roi, targ_roi):
-    '''
-    Calculate global brain connectivity between source ROI and target ROI
-
-    Args:
-        cifti_ts: nibabel cifti2Image
-            Time series object read by nibabel.load()
-        src_roi: numpy array
-            Logical mask of source ROI
-        targ_roi: numpy array
-            Logical mask of target ROI
-
-    Returns:
-        conn_mean: numpy array
-            mean of connectivity between source and target
-    '''
+    #
+    if targ_roi == None:
+        targ_roi = np.array([True] * src_roi.shape[0])
 
     # prepare source and target data index with src_roi & targ_roi
     cifti_matrix = cifti_ts.get_fdata()
@@ -219,11 +207,19 @@ def global_brain_conn(cifti_ts, src_roi, targ_roi):
     targ_matrix = cifti_matrix[:, targ_roi]
 
     # calculate mean of connectivity between source and target
-    source_brain_conn = 1 - cdist(src_matrix.T, targ_matrix.T, metric='correlation')
-    conn_mean = np.mean(source_brain_conn, axis=1)
+    conn = 1 - cdist(src_matrix.T, targ_matrix.T, metric='correlation')
 
-    return conn_mean.reshape(-1, 1)
+    return conn
 
+def compute_gbc(conn, targ_group):
+    ''''''
+
+    #
+    gbc = np.zeros((conn.shape[0], targ_group.shape[0]))
+    for targ in np.arange(targ_group.shape[0]):
+        gbc[:, targ] = np.mean(conn[:, targ_group[targ, :]], axis=1)
+
+    return gbc
 
 def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
     '''
@@ -265,7 +261,6 @@ def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
 
     return np.concatenate((alff.reshape(-1, 1), falff.reshape(-1, 1)), axis=1)
 
-
 def Ciftiwrite(file_path, data, cifti_ts, src_roi):
     '''
     Restore and save as cifti
@@ -285,4 +280,5 @@ def Ciftiwrite(file_path, data, cifti_ts, src_roi):
     save_data[:, src_roi] = data.T
     # save as cifti file
     img = nib.Cifti2Image(dataobj=save_data, header=cifti_ts.header)
+    img.header.matrix._mims[0].number_of_series_points = save_data.shape[0]
     nib.cifti2.save(img, file_path)
