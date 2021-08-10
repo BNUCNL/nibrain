@@ -195,7 +195,20 @@ class CapAtlas(object):
         return brainstem_mask.astype(bool)
 
 def compute_fconn(cifti_ts, src_roi, targ_roi=None):
-    ''''''
+    '''
+    Compute functional connectivity matrix
+    Args:
+        cifti_ts: nibabel cifti2Image
+            time series object read by nibabel.load()
+        src_roi: numpy array
+            Logical mask of source ROI
+        targ_roi: numpy array
+            Logical mask of target ROI, if None, target will be whole brain
+
+    Returns:
+        conn: numpy array
+            functional connectivity matrix
+    '''
 
     #
     if targ_roi == None:
@@ -212,9 +225,19 @@ def compute_fconn(cifti_ts, src_roi, targ_roi=None):
     return conn
 
 def compute_gbc(conn, targ_group):
-    ''''''
+    '''
+    Compute mean of connectivity
+    Args:
+        conn: numpy array
+            functional connectivity matrix
+        targ_group: numpy array
+            each row is a target mask
 
-    #
+    Returns:
+        gbc: numpy array
+            global brain connectivity between source and every target ROI
+    '''
+
     gbc = np.zeros((conn.shape[0], targ_group.shape[0]))
     for targ in np.arange(targ_group.shape[0]):
         gbc[:, targ] = np.mean(conn[:, targ_group[targ, :]], axis=1)
