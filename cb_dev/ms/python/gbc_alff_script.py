@@ -77,9 +77,9 @@ for subject in subject_list:
             os.makedirs(gbc_save_dir)
         # save left hemisphere
         Ciftiwrite(file_path=os.path.join(gbc_save_dir,
-                                          'rfMRI_REST' + run + '_cerebellum_cortex_subcortex_network_L_conn.dtseries.nii'),
+                                          'rfMRI_REST' + run + '_cerebellum_conn_L.dtseries.nii'),
                    data=gbc_L, cifti_ts=resting_ts, src_roi=cerebellum_LR)
         # save right hemisphere
         Ciftiwrite(file_path=os.path.join(gbc_save_dir,
-                                          'rfMRI_REST' + run + '_cerebellum_cortex_subcortex_network_R_conn.dtseries.nii'),
+                                          'rfMRI_REST' + run + '_cerebellum_conn_R.dtseries.nii'),
                    data=gbc_R, cifti_ts=resting_ts, src_roi=cerebellum_LR)
