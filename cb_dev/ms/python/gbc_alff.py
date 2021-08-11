@@ -284,7 +284,7 @@ def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
 
     return np.concatenate((alff.reshape(-1, 1), falff.reshape(-1, 1)), axis=1)
 
-def Ciftiwrite(file_path, data, cifti_ts, src_roi):
+def Ciftiwrite(file_path, data, cifti_ts, src_roi, save_volume=False):
     '''
     Restore and save as cifti
 
