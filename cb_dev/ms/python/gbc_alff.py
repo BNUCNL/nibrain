@@ -271,16 +271,17 @@ def alff(cifti_ts, src_roi, tr, low_freq_band=(0.01, 0.1)):
     fft_array = fft(signal.detrend(src_matrix, axis=0, type='linear'), axis=0)
     # get fourier transform sample frequencies
     freq_scale = np.fft.fftfreq(src_matrix.shape[0], tr)
-    # calculate total power of all freqency bands
-    total_power = np.sqrt(np.absolute(fft_array[(0.0 <= freq_scale) & (freq_scale <= (1 / tr) / 2), :]))
+    # calculate power of whole freqency bands
+    whole_band_idx = (0.0 <= freq_scale) & (freq_scale <= (1 / tr) / 2)
+    whole_band_array = fft_array[whole_band_idx, :]
+    whole_band_power = np.sqrt(np.absolute(whole_band_array))
     # calculate ALFF or fALFF
     # ALFF: sum of low band power
     # fALFF: ratio of Alff to total power
-    time_half = int(cifti_matrix.shape[0] / 2)
-    alff = np.sum(
-        total_power[(low_freq_band[0] <= freq_scale)[0:time_half] & (freq_scale <= low_freq_band[1])[0:time_half], :],
-        axis=0)
-    falff = alff / np.sum(total_power, axis=0)
+    whole_band_scale = freq_scale[whole_band_idx]
+    low_freq_band_idx = (low_freq_band[0] <= whole_band_scale) & (whole_band_scale <= low_freq_band[1])
+    alff = np.sum(whole_band_power[low_freq_band_idx, :], axis=0)
+    falff = alff / np.sum(whole_band_power, axis=0)
 
     return np.concatenate((alff.reshape(-1, 1), falff.reshape(-1, 1)), axis=1)
 
