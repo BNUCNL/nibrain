@@ -38,6 +38,25 @@ def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
     save2cifti(out_file, data, reader.brain_models(), reader.map_names())
 
 
+def concate_map(data_files, out_file):
+    """
+    Args:
+        data_files (strings): Each string is end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+        out_file (str): end with .dscalar.nii
+            shape=(n_map_total, LR_count_32k)
+    """
+    reader = CiftiReader(data_files[0])
+    maps = reader.get_data()
+    map_names = reader.map_names()
+    for data_file in data_files[1:]:
+        reader_tmp = CiftiReader(data_file)
+        maps_tmp = reader_tmp.get_data()
+        maps = np.r_[maps, maps_tmp]
+        map_names.extend(reader_tmp.map_names())
+    save2cifti(out_file, maps, reader.brain_models(), map_names)
+
+
 def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
     """
     为每个被试每个ROI求均值
