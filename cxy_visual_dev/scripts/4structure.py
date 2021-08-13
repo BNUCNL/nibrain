@@ -6,7 +6,7 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
     mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row,\
-    col_operate_col, map_operate_map
+    col_operate_col, map_operate_map, zscore_map
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -15,6 +15,17 @@ if not os.path.isdir(work_dir):
 
 if __name__ == '__main__':
     # HCP_MMP1 atlas 包含 Cole_visual_ROI
+
+    zscore_map(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
+        atlas_name='Cole_visual_LR', roi_name='R_cole_visual'
+    )
+    zscore_map(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
+        atlas_name='Cole_visual_LR', roi_name='R_cole_visual'
+    )
 
     # ROI_analysis(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
@@ -61,16 +72,16 @@ if __name__ == '__main__':
     #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
     # )
     pca(
-        data_file=pjoin(work_dir, 'HCPD-myelin_minus_HCPY-avg.dscalar.nii'),
+        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-myelin_minus_HCPY-avg_R_cole_visual_PCA-subj')
+        out_name=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual_PCA-subj-R_cole_visual')
     )
     pca(
-        data_file=pjoin(work_dir, 'HCPD-thickness_minus_HCPY-avg.dscalar.nii'),
+        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-thickness_minus_HCPY-avg_R_cole_visual_PCA-subj')
+        out_name=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual_PCA-subj-R_cole_visual')
     )
 
     # ROI_analysis_on_PC(

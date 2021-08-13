@@ -10,6 +10,34 @@ from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
     R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
 
 
+def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
+    """
+    zscore data in the ROI for each map
+
+    Args:
+        data_file (str): end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+        out_file (str): end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+        atlas_name (str): include ROIs' labels and mask map
+        roi_name (str): 决定选用哪个区域内的顶点来参与zscore
+    """
+    reader = CiftiReader(data_file)
+    maps = reader.get_data()
+    n_map = maps.shape[0]
+    atlas = Atlas(atlas_name)
+    assert atlas.maps.shape == (1, LR_count_32k)
+    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+    maps = maps[:, roi_idx_map]
+
+    # calculate
+    data = np.ones((n_map, LR_count_32k), np.float64) * np.nan
+    maps = zscore(maps, 1)
+    data[:, roi_idx_map] = maps
+
+    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+
+
 def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
     """
     为每个被试每个ROI求均值
@@ -62,7 +90,6 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
             subject: 对被试数量进行降维，得到几个主成分map，
             观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
         out_name (str): output name
-            If axis=vertex, output
             1. n_subj x n_component out_name.csv
             2. n_component x LR_count_32k out_name.dscalar.nii
             3. out_name.pkl with fitted PCA model
