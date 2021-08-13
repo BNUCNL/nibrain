@@ -431,6 +431,45 @@ def col_operate_col(data_file, cols, idx_col,
     out_df.to_csv(out_file, index=index)
 
 
+def map_operate_map(data_file1, data_file2, operation_method, out_file):
+    """
+    Do operation between two CIFTI data.
+
+    Args:
+        data_file1 (str): end with .dscalar.nii
+            shape=(n_map1, LR_count_32k)
+        data_file2 (str): end with .dscalar.nii
+            shape=(n_map2, LR_count_32k)
+            If n_map2 == n_map1, do operation between
+            one-to-one corresponding maps.
+            If n_map2 == 1, do operation between each map1 and the map2.
+            else, error.
+        operation_method (str): +, -, *, /
+        out_file (str): end with .dscalar.nii
+            shape=(n_map1, LR_count_32k)
+    """
+    # prepare
+    reader1 = CiftiReader(data_file1)
+    reader2 = CiftiReader(data_file2)
+    data_maps1 = reader1.get_data()
+    data_maps2 = reader2.get_data()
+
+    # calculate
+    if operation_method == '+':
+        data = data_maps1 + data_maps2
+    elif operation_method == '-':
+        data = data_maps1 - data_maps2
+    elif operation_method == '*':
+        data = data_maps1 * data_maps2
+    elif operation_method == '/':
+        data = data_maps1 / data_maps2
+    else:
+        raise ValueError('not supported operation_method:', operation_method)
+
+    # save
+    save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
+
+
 def mask_maps(data_file, atlas_name, roi_name, out_file):
     """
     把data map在指定atlas的ROI以外的部分全赋值为nan
