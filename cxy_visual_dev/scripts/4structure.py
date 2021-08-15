@@ -32,12 +32,12 @@ if __name__ == '__main__':
     # )
 
     zscore_map_subj(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPD-thickness_zscore-subj.dscalar.nii')
+        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj.dscalar.nii')
     )
     zscore_map_subj(
-        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPD-myelin_zscore-subj.dscalar.nii')
+        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual-subj.dscalar.nii')
     )
 
     # ROI_analysis(
@@ -85,16 +85,16 @@ if __name__ == '__main__':
     #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
     # )
     pca(
-        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-subj.dscalar.nii'),
+        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-thickness_zscore-subj_PCA-subj-R_cole_visual')
+        out_name=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj_PCA-subj-R_cole_visual')
     )
     pca(
-        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-subj.dscalar.nii'),
+        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual-subj.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-myelin_zscore-subj_PCA-subj-R_cole_visual')
+        out_name=pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual-subj_PCA-subj-R_cole_visual')
     )
 
     # ROI_analysis_on_PC(
