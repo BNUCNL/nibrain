@@ -6,7 +6,8 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
     mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row,\
-    col_operate_col, map_operate_map, zscore_map, concate_map
+    col_operate_col, map_operate_map, zscore_map, concate_map,\
+    zscore_map_subj
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -22,12 +23,21 @@ if __name__ == '__main__':
     #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual'
     # )
 
-    concate_map(
-        data_files=[
-            pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
-            pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii')
-        ],
-        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_zscore-R_cole_visual.dscalar.nii')
+    # concate_map(
+    #     data_files=[
+    #         pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
+    #         pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii')
+    #     ],
+    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_zscore-R_cole_visual.dscalar.nii')
+    # )
+
+    zscore_map_subj(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-thickness_zscore-subj.dscalar.nii')
+    )
+    zscore_map_subj(
+        data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPD-myelin_zscore-subj.dscalar.nii')
     )
 
     # ROI_analysis(
@@ -75,10 +85,16 @@ if __name__ == '__main__':
     #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
     # )
     pca(
-        data_file=pjoin(work_dir, 'HCPD-myelin+thickness_zscore-R_cole_visual.dscalar.nii'),
+        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-subj.dscalar.nii'),
         atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-myelin+thickness_zscore-R_cole_visual_PCA-subj-R_cole_visual')
+        out_name=pjoin(work_dir, 'HCPD-thickness_zscore-subj_PCA-subj-R_cole_visual')
+    )
+    pca(
+        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-subj.dscalar.nii'),
+        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+        n_component=20, axis='subject',
+        out_name=pjoin(work_dir, 'HCPD-myelin_zscore-subj_PCA-subj-R_cole_visual')
     )
 
     # ROI_analysis_on_PC(

@@ -38,6 +38,22 @@ def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
     save2cifti(out_file, data, reader.brain_models(), reader.map_names())
 
 
+def zscore_map_subj(data_file, out_file):
+    """
+    zscore data along subjects
+
+    Args:
+        data_file (str): end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+        out_file (str): end with .dscalar.nii
+            shape=(n_map, LR_count_32k)
+    """
+    reader = CiftiReader(data_file)
+    maps = reader.get_data()
+    maps = zscore(maps, 0)
+    save2cifti(out_file, maps, reader.brain_models(), reader.map_names())
+
+
 def concate_map(data_files, out_file):
     """
     Args:
