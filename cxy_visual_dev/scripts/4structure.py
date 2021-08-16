@@ -80,18 +80,6 @@ if __name__ == '__main__':
     #     n_component=20, axis='subject',
     #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
     # )
-    pca(
-        data_file=pjoin(work_dir, 'HCPD-thickness_zscore-subj.dscalar.nii'),
-        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
-        n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-thickness_zscore-subj_PCA-subj-L_cole_visual1')
-    )
-    pca(
-        data_file=pjoin(work_dir, 'HCPD-myelin_zscore-subj.dscalar.nii'),
-        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
-        n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-myelin_zscore-subj_PCA-subj-L_cole_visual1')
-    )
 
     # ROI_analysis_on_PC(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
@@ -148,6 +136,20 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD_thickness_age-map_map-corr_s1200-avg_R_cole_visual.csv'),
     #     map_names2=['s1200_avg'], index=True
     # )
+    calc_map_corr(
+        data_file1=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        data_file2=s1200_avg_thickness,
+        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
+        out_file=pjoin(work_dir, 'HCPD-thickness_map-corr_s1200-avg_L_cole_visual1.csv'),
+        map_names2=['s1200_avg'], index=False
+    )
+    calc_map_corr(
+        data_file1=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+        data_file2=s1200_avg_myelin,
+        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
+        out_file=pjoin(work_dir, 'HCPD-myelin_map-corr_s1200-avg_L_cole_visual1.csv'),
+        map_names2=['s1200_avg'], index=False
+    )
 
     # vtx_corr_col(
     #     data_file1=pjoin(work_dir, 'HCPD_thickness_age-map-mean.dscalar.nii'),
