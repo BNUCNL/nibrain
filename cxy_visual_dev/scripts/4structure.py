@@ -82,15 +82,15 @@ if __name__ == '__main__':
     # )
     pca(
         data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-thickness_PCA-subj-R_cole_visual')
+        out_name=pjoin(work_dir, 'HCPD-thickness_PCA-subj-L_cole_visual1')
     )
     pca(
         data_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
+        atlas_name='Cole_visual_L1', roi_name='L_cole_visual1',
         n_component=20, axis='subject',
-        out_name=pjoin(work_dir, 'HCPD-myelin_PCA-subj-R_cole_visual')
+        out_name=pjoin(work_dir, 'HCPD-myelin_PCA-subj-L_cole_visual1')
     )
 
     # ROI_analysis_on_PC(

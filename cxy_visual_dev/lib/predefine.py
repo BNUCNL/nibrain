@@ -132,7 +132,8 @@ dataset_name2dir = {
 dataset_name2info = {
     'HCPD': pjoin(dataset_name2dir['HCPD'], 'HCPD_SubjInfo.csv'),
     'HCPY': pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv'),
-    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv')
+    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv'),
+    'HCPD_merge-6-7': pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo_merge-6-7.csv')
 }
 # datatset<<<
 
@@ -211,6 +212,22 @@ class Atlas:
                 else:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_cole_visual': 1, 'R_cole_visual': 2}
+
+        elif atlas_name == 'Cole_visual_L1':
+            mmp_map = nib.load(mmp_map_file).get_fdata()
+            self.maps = np.zeros_like(mmp_map, dtype=np.uint8)
+            net_names = ['Primary Visual', 'Secondary Visual',
+                         'Posterior Multimodal', 'Ventral Multimodal']
+            parcel2label = get_parcel2label_by_ColeName(net_names)
+            for roi, lbl in parcel2label.items():
+                if roi.startswith('L_'):
+                    self.maps[mmp_map == lbl] = 1
+                elif roi.startswith('R_'):
+                    pass
+                else:
+                    raise ValueError('parcel name must start with L_ or R_!')
+            self.maps[mmp_map == mmp_name2label['L_STV']] = 1
+            self.roi2label = {'L_cole_visual1': 1}
 
         elif atlas_name == 'HCP_MMP1':
             self.maps = nib.load(mmp_map_file).get_fdata()
