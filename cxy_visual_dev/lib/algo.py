@@ -166,6 +166,298 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
 
 
+def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
+           zscore0, zscore1, csv_files, cii_file, pkl_file):
+    """
+    对n_subj x n_vtx形状的矩阵进行PCA降维
+    adapted for dealing with multi files
+
+    Args:
+        data_files (str or 1D array-like): end with .dscalar.nii
+            shape=(n_subj, LR_count_32k)
+        atlas_names (str or 1D array-like): include ROIs' labels and mask map
+        roi_names (str or 1D array-like): 决定选用哪个区域内的顶点来参与PCA
+            corresponding to atlas_names
+        n_component (int): the number of components
+        axis (str): vertex | subject
+            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
+            观察某个主成分在各顶点上的权重，刻画其空间分布。
+            subject: 对被试数量进行降维，得到几个主成分map，
+            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
+        zscore0 (str): None, split, whole
+        zscore1 (str): None, split, whole
+        csv_files (str or 1D array-like): n_subj x n_component
+            corresponding to rows of data_files
+        cii_file (str): n_component x LR_count_32k
+        pkl_file (str): fitted PCA model
+    """
+    # prepare
+    if isinstance(data_files, str):
+        data_files = np.atleast_1d(data_files)
+    else:
+        data_files = np.asarray(data_files)
+        assert data_files.ndim == 1
+    n_row = len(data_files)
+
+    if isinstance(atlas_names, str):
+        atlas_names = np.atleast_1d(atlas_names)
+    else:
+        atlas_names = np.asarray(atlas_names)
+        assert atlas_names.ndim == 1
+    n_col = len(atlas_names)
+
+    if isinstance(roi_names, str):
+        roi_names = np.atleast_1d(roi_names)
+    else:
+        roi_names = np.asarray(roi_names)
+        assert roi_names.ndim == 1
+    assert len(roi_names) == n_col
+
+    if isinstance(csv_files, str):
+        csv_files = np.atleast_1d(csv_files)
+    else:
+        csv_files = np.asarray(csv_files)
+        assert csv_files.ndim == 1
+    assert len(csv_files) == n_row
+
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
+
+    # prepare data
+    roi_idx_maps = []
+    n_vertices = [0]
+    n_subjects = [0]
+    data = []
+    for col_idx in range(n_col):
+        # load maps1
+        reader = CiftiReader(data_files[0])
+        maps1 = reader.get_data()
+
+        # load atlas and mask maps1
+        atlas = Atlas(atlas_names[col_idx])
+        assert atlas.maps.shape == (1, LR_count_32k)
+        roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_names[col_idx]]
+        maps1 = maps1[:, roi_idx_map]
+        roi_idx_maps.append(roi_idx_map)
+        n_vertices.append(n_vertices[-1] + maps1.shape[1])
+        if col_idx == 0:
+            n_subjects.append(n_subjects[-1] + maps1.shape[0])
+
+        # zscore
+        if zscore1 == 'split':
+            maps1 = zscore(maps1, 1)
+        if zscore0 == 'split':
+            maps1 = zscore(maps1, 0)
+
+        if n_row > 1:
+            for row_idx in range(1, n_row):
+                # load maps2
+                maps2 = nib.load(data_files[row_idx]).get_fdata()
+                maps2 = maps2[:, roi_idx_map]
+                if col_idx == 0:
+                    n_subjects.append(n_subjects[-1] + maps2.shape[0])
+
+                # zscore
+                if zscore1 == 'split':
+                    maps2 = zscore(maps2, 1)
+                if zscore0 == 'split':
+                    maps2 = zscore(maps2, 0)
+
+                # concatenate
+                maps1 = np.r_[maps1, maps2]
+        data.append(maps1)
+    data = np.concatenate(data, 1)
+    # zscore
+    if zscore1 == 'whole':
+        data = zscore(data, 1)
+    if zscore0 == 'whole':
+        data = zscore(data, 0)
+
+    # calculate
+    pca = PCA(n_components=n_component)
+    if axis == 'vertex':
+        pca.fit(data)
+        Y = pca.transform(data)
+        csv_data = Y
+        cii_data = pca.components_
+    elif axis == 'subject':
+        data = data.T
+        pca.fit(data)
+        Y = pca.transform(data)
+        csv_data = pca.components_.T
+        cii_data = Y.T
+    else:
+        raise ValueError('Invalid axis:', axis)
+
+    # save
+    for row_idx in range(n_row):
+        s_idx = n_subjects[row_idx]
+        e_idx = n_subjects[row_idx + 1]
+        df = pd.DataFrame(data=csv_data[s_idx:e_idx, :],
+                          columns=component_names)
+        df.to_csv(csv_files[row_idx], index=False)
+
+    maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+    for col_idx in range(n_col):
+        s_idx = n_vertices[col_idx]
+        e_idx = n_vertices[col_idx + 1]
+        maps[:, roi_idx_maps[col_idx]] = cii_data[:, s_idx:e_idx]
+    save2cifti(cii_file, maps, reader.brain_models(), component_names)
+
+    pkl.dump(pca, open(pkl_file, 'wb'))
+
+
+def pca_mf1(data_files, atlas_names, roi_names, n_component, axis,
+            zscore0, zscore1, csv_files, cii_files, pkl_file):
+    """
+    对n_subj x n_vtx形状的矩阵进行PCA降维
+    adapted for dealing with multi files
+
+    Args:
+        data_files (str or array-like): end with .dscalar.nii
+            shape=(n_subj, LR_count_32k)
+            If is array-like, must be 2D.
+        atlas_names (str or array-like): include ROIs' labels and mask map
+            If is array-like, must be 1D, corresponding to
+            columns of data_files.
+        roi_names (str or array-like): 决定选用哪个区域内的顶点来参与PCA
+            If is array-like, must be 1D, corresponding to atlas_names.
+        n_component (int): the number of components
+        axis (str): vertex | subject
+            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
+            观察某个主成分在各顶点上的权重，刻画其空间分布。
+            subject: 对被试数量进行降维，得到几个主成分map，
+            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
+        zscore0 (str): None, split, whole
+        zscore1 (str): None, split, whole
+        csv_files (str or array-like): n_subj x n_component
+            If is array-like, must be 1D, corresponding to rows of data_files.
+        cii_files (str or array-like): n_component x LR_count_32k
+            If is array-like, must be 1D, corresponding to
+            columns of data_files.
+        pkl_file (str): fitted PCA model
+    """
+    # prepare
+    if isinstance(data_files, str):
+        data_files = np.atleast_2d(data_files)
+    else:
+        data_files = np.asarray(data_files)
+        assert data_files.ndim == 2
+    n_row, n_col = data_files.shape
+
+    if isinstance(atlas_names, str):
+        atlas_names = np.atleast_1d(atlas_names)
+    else:
+        atlas_names = np.asarray(atlas_names)
+        assert atlas_names.ndim == 1
+    assert len(atlas_names) == n_col
+
+    if isinstance(roi_names, str):
+        roi_names = np.atleast_1d(roi_names)
+    else:
+        roi_names = np.asarray(roi_names)
+        assert roi_names.ndim == 1
+    assert len(roi_names) == n_col
+
+    if isinstance(csv_files, str):
+        csv_files = np.atleast_1d(csv_files)
+    else:
+        csv_files = np.asarray(csv_files)
+        assert csv_files.ndim == 1
+    assert len(csv_files) == n_row
+
+    if isinstance(cii_files, str):
+        cii_files = np.atleast_1d(cii_files)
+    else:
+        cii_files = np.asarray(cii_files)
+        assert cii_files.ndim == 1
+    assert len(cii_files) == n_col
+
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
+
+    # prepare data
+    bm_list = []
+    roi_idx_maps = []
+    n_vertices = [0]
+    n_subjects = [0]
+    data = []
+    for col_idx in range(n_col):
+        # load maps1
+        reader = CiftiReader(data_files[0, col_idx])
+        maps1 = reader.get_data()
+        bm_list.append(reader.brain_models())
+
+        # load atlas and mask maps1
+        atlas = Atlas(atlas_names[col_idx])
+        assert atlas.maps.shape == (1, LR_count_32k)
+        roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_names[col_idx]]
+        maps1 = maps1[:, roi_idx_map]
+        roi_idx_maps.append(roi_idx_map)
+        n_vertices.append(n_vertices[-1] + maps1.shape[1])
+        if col_idx == 0:
+            n_subjects.append(n_subjects[-1] + maps1.shape[0])
+
+        # zscore
+        if zscore1 == 'split':
+            maps1 = zscore(maps1, 1)
+        if zscore0 == 'split':
+            maps1 = zscore(maps1, 0)
+
+        if n_row > 1:
+            for row_idx in range(1, n_row):
+                # load maps2
+                maps2 = nib.load(data_files[row_idx, col_idx]).get_fdata()
+                maps2 = maps2[:, roi_idx_map]
+                if col_idx == 0:
+                    n_subjects.append(n_subjects[-1] + maps2.shape[0])
+
+                # zscore
+                if zscore1 == 'split':
+                    maps2 = zscore(maps2, 1)
+                if zscore0 == 'split':
+                    maps2 = zscore(maps2, 0)
+
+                # concatenate
+                maps1 = np.r_[maps1, maps2]
+        data.append(maps1)
+    data = np.concatenate(data, 1)
+    # zscore
+    if zscore1 == 'whole':
+        data = zscore(data, 1)
+    if zscore0 == 'whole':
+        data = zscore(data, 0)
+
+    # calculate
+    pca = PCA(n_components=n_component)
+    if axis == 'vertex':
+        pca.fit(data)
+        Y = pca.transform(data)
+        csv_data = Y
+        cii_data = pca.components_
+    elif axis == 'subject':
+        data = data.T
+        pca.fit(data)
+        Y = pca.transform(data)
+        csv_data = pca.components_.T
+        cii_data = Y.T
+    else:
+        raise ValueError('Invalid axis:', axis)
+
+    # save
+    for row_idx in range(n_row):
+        s_idx = n_subjects[row_idx]
+        e_idx = n_subjects[row_idx + 1]
+        df = pd.DataFrame(data=csv_data[s_idx:e_idx, :],
+                          columns=component_names)
+        df.to_csv(csv_files[row_idx], index=False)
+    for col_idx in range(n_col):
+        s_idx = n_vertices[col_idx]
+        e_idx = n_vertices[col_idx + 1]
+        maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+        maps[:, roi_idx_maps[col_idx]] = cii_data[:, s_idx:e_idx]
+        save2cifti(cii_files[col_idx], maps, bm_list[col_idx], component_names)
+    pkl.dump(pca, open(pkl_file, 'wb'))
+
+
 def ROI_analysis_on_PC(data_file, pca_file, pc_num,
                        mask_atlas, mask_name, roi_atlas, out_file):
     """
