@@ -8,6 +8,7 @@ from os.path import join as pjoin
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 
 # >>>32k_fs_LR CIFTI
+All_count_32k = 91282
 LR_count_32k = 59412
 L_offset_32k = 0
 L_count_32k = 29696
