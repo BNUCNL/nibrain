@@ -4,10 +4,26 @@ import pickle as pkl
 import nibabel as nib
 from scipy.stats import zscore, sem
 from scipy.spatial.distance import cdist
+from scipy.signal import detrend
+from scipy.fft import fft, fftfreq
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
     R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
+
+
+def zscore_data(data_file, out_file):
+    """
+    对每个被试做全脑zscore
+
+    Args:
+        data_file (str): .dscalar.nii
+        out_file (str): .dscalar.nii
+    """
+    reader = CiftiReader(data_file)
+    data = reader.get_data()
+    data = zscore(data, 1)
+    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
 
 
 def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
@@ -891,3 +907,50 @@ def polyfit(data_file, info_file, deg, out_file):
         df.to_csv(out_file)
     else:
         save2cifti(out_file, coefs, reader.brain_models(), row_names)
+
+
+def calc_alff(x, tr, axis=0, low_freq_band=(0.01, 0.08),
+              linear_detrend=True):
+    """
+    Calculate amplitude of low-frequency fluctuation (ALFF) and
+    Fractional ALFF (fALFF)
+
+    Parameters:
+    ----------
+        x (array-like): Array to Fourier transform.
+        tr (float): Repetition time (second)
+        axis (int): Default is the first axis (i.e., axis=0).
+            Axis along which the fft is computed.
+        low_freq_band (tuple):  low frequency band (Hz)
+        linear_detrend (bool): do linear detrend or not
+
+    Returns:
+    -------
+        alff (ndarray):
+        falff (ndarray):
+    """
+    x = np.asarray(x)
+    if axis != 0:
+        x = np.swapaxes(x, 0, axis)
+    if linear_detrend:
+        x = detrend(x, axis=0, type='linear')
+
+    # fast fourier transform
+    fft_array = fft(x, axis=0)
+    # get fourier transform sample frequencies
+    freq_scale = fftfreq(x.shape[0], tr)
+    # calculate power of half frequency bands
+    half_band_idx = (0.0 <= freq_scale) & (freq_scale <= (1 / tr) / 2)
+    half_band_array = fft_array[half_band_idx]
+    half_band_power = np.sqrt(np.absolute(half_band_array))
+    half_band_scale = freq_scale[half_band_idx]
+    low_freq_band_idx = (low_freq_band[0] <= half_band_scale) & \
+                        (half_band_scale <= low_freq_band[1])
+
+    # calculate ALFF or fALFF
+    # ALFF: sum of low band power
+    # fALFF: ratio of Alff to total power
+    alff = np.sum(half_band_power[low_freq_band_idx], axis=0)
+    falff = alff / np.sum(half_band_power, axis=0)
+
+    return alff, falff
