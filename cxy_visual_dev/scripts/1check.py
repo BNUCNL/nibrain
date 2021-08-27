@@ -4,7 +4,7 @@ from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import mmp_map_file, LR_count_32k,\
     L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     s1200_1096_myelin, s1200_1096_thickness, s1200_avg_myelin,\
-    s1200_avg_thickness, dataset_name2info
+    s1200_avg_thickness, dataset_name2info, All_count_32k
 
 
 def check_grayordinates():
@@ -43,6 +43,7 @@ def check_grayordinates():
     )
 
     for fpath in fpaths:
+        print(fpath)
         cii = nib.load(fpath)
         assert cii.shape == (1, LR_count_32k)
         idx_map = cii.header.get_index_map(1)
@@ -61,8 +62,28 @@ def check_grayordinates():
         s1200_1096_thickness
     )
     for fpath in fpaths:
+        print(fpath)
         cii = nib.load(fpath)
         assert cii.shape == (1096, LR_count_32k)
+        idx_map = cii.header.get_index_map(1)
+        brain_models = list(idx_map.brain_models)
+        assert brain_models[0].brain_structure == 'CIFTI_STRUCTURE_CORTEX_LEFT'
+        assert brain_models[0].index_offset == L_offset_32k
+        assert brain_models[0].index_count == L_count_32k
+        assert brain_models[1].brain_structure == 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+        assert brain_models[1].index_offset == R_offset_32k
+        assert brain_models[1].index_count == R_count_32k
+
+    # HCPD rfMRI
+    fpaths = (
+        '/nfs/e1/HCPD/fmriresults01/HCD2133433_V1_MR/'
+        'MNINonLinear/Results/rfMRI_REST1_AP/'
+        'rfMRI_REST1_AP_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    )
+    for fpath in fpaths:
+        print(fpath)
+        cii = nib.load(fpath)
+        assert cii.shape[1] == All_count_32k
         idx_map = cii.header.get_index_map(1)
         brain_models = list(idx_map.brain_models)
         assert brain_models[0].brain_structure == 'CIFTI_STRUCTURE_CORTEX_LEFT'
@@ -94,4 +115,4 @@ def check_1096_sid():
 
 if __name__ == '__main__':
     check_grayordinates()
-    check_1096_sid()
+    # check_1096_sid()

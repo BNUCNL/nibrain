@@ -8,6 +8,7 @@ from os.path import join as pjoin
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 
 # >>>32k_fs_LR CIFTI
+All_count_32k = 91282
 LR_count_32k = 59412
 L_offset_32k = 0
 L_count_32k = 29696
@@ -132,9 +133,55 @@ dataset_name2dir = {
 dataset_name2info = {
     'HCPD': pjoin(dataset_name2dir['HCPD'], 'HCPD_SubjInfo.csv'),
     'HCPY': pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv'),
-    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv')
+    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv'),
+    'HCPD_merge-6-7': pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo_merge-6-7.csv')
 }
 # datatset<<<
+
+
+def get_rois(name):
+
+    # >>>Cole_visual_ROI
+    if name == 'Cole_visual_ROI':
+        net_names = ['Primary Visual', 'Secondary Visual',
+                     'Posterior Multimodal', 'Ventral Multimodal']
+        parcel2label = get_parcel2label_by_ColeName(net_names)
+        rois = list(parcel2label.keys())
+
+    elif name == 'Cole_visual_ROI-L1R':
+        net_names = ['Primary Visual', 'Secondary Visual',
+                     'Posterior Multimodal', 'Ventral Multimodal']
+        parcel2label = get_parcel2label_by_ColeName(net_names)
+        rois = list(parcel2label.keys()) + ['L_STV']
+    # Cole_visual_ROI<<<
+
+    # >>>visual path way
+    elif name == 'rPath1':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_FFC', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath2':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V8', 'R_VVC', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath3':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_pFus-face', 'R_mFus-face', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath4':
+        rois = ['R_V1', 'R_V2', 'R_MT', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath5':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath6':
+        rois = ['R_V1', 'R_MT', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath7':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
+    # visual path way<<<
+
+    else:
+        raise ValueError('Not supported name')
+
+    return rois
 
 
 class Atlas:
@@ -201,6 +248,22 @@ class Atlas:
                 else:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_cole_visual': 1, 'R_cole_visual': 2}
+
+        elif atlas_name == 'Cole_visual_L1':
+            mmp_map = nib.load(mmp_map_file).get_fdata()
+            self.maps = np.zeros_like(mmp_map, dtype=np.uint8)
+            net_names = ['Primary Visual', 'Secondary Visual',
+                         'Posterior Multimodal', 'Ventral Multimodal']
+            parcel2label = get_parcel2label_by_ColeName(net_names)
+            for roi, lbl in parcel2label.items():
+                if roi.startswith('L_'):
+                    self.maps[mmp_map == lbl] = 1
+                elif roi.startswith('R_'):
+                    pass
+                else:
+                    raise ValueError('parcel name must start with L_ or R_!')
+            self.maps[mmp_map == mmp_name2label['L_STV']] = 1
+            self.roi2label = {'L_cole_visual1': 1}
 
         elif atlas_name == 'HCP_MMP1':
             self.maps = nib.load(mmp_map_file).get_fdata()

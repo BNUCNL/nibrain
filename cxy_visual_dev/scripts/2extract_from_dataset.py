@@ -1,16 +1,17 @@
 import os
 import time
+import glob
 import subprocess
-from nibabel.nifti2 import save
 import numpy as np
 import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import zscore
+from scipy.spatial.distance import cdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import LR_count_32k,\
     mmp_map_file, dataset_name2dir, dataset_name2info,\
-    s1200_1096_thickness, s1200_1096_myelin
+    All_count_32k
+from cxy_visual_dev.lib.algo import calc_alff
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -157,18 +158,141 @@ def merge_smoothed_data(dataset_name, meas_name, sigma):
     save2cifti(out_file, data, mmp_reader.brain_models(), df['subID'])
 
 
-def zscore_data(data_file, out_file):
-    """
-    对每个被试做全脑zscore
+def alff(subj_par, subj_ids, stem_path, base_path, tr,
+         low_freq_band=(0.01, 0.08), linear_detrend=True):
 
-    Args:
-        data_file (str): .dscalar.nii
-        out_file (str): .dscalar.nii
-    """
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
-    data = zscore(data, 1)
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    # prepare
+    n_subj = len(subj_ids)
+    alff_all_file = pjoin(subj_par, 'alff.dscalar.nii')
+    falff_all_file = pjoin(subj_par, 'falff.dscalar.nii')
+
+    # start
+    first_flag = True
+    brain_models = None
+    volume = None
+    alff_all = np.ones((n_subj, All_count_32k), dtype=np.float64) * np.nan
+    falff_all = np.ones((n_subj, All_count_32k), dtype=np.float64) * np.nan
+    for subj_idx, subj_id in enumerate(subj_ids):
+        time1 = time.time()
+
+        # prepare path
+        stem_dir = pjoin(subj_par, subj_id, stem_path)
+        fpath_ = pjoin(stem_dir, base_path)
+        fpaths = glob.glob(fpath_)
+        n_run = len(fpaths)
+        if n_run == 0:
+            continue
+        alff_sub_file = pjoin(stem_dir, 'alff.dscalar.nii')
+        falff_sub_file = pjoin(stem_dir, 'falff.dscalar.nii')
+
+        # loop all runs
+        alff_sub = np.zeros((n_run, All_count_32k), dtype=np.float64)
+        falff_sub = np.zeros((n_run, All_count_32k), dtype=np.float64)
+        for run_idx, fpath in enumerate(fpaths):
+            # prepare path
+            run_dir = os.path.dirname(fpath)
+            base_name = os.path.basename(fpath)
+            base_name = '.'.join(base_name.split('.')[:-2])
+            alff_run_file = pjoin(run_dir, f'{base_name}_alff.dscalar.nii')
+            falff_run_file = pjoin(run_dir, f'{base_name}_falff.dscalar.nii')
+
+            # get data
+            if first_flag:
+                reader = CiftiReader(fpath)
+                brain_models = reader.brain_models()
+                volume = reader.volume
+                data = reader.get_data()
+                first_flag = False
+            else:
+                data = nib.load(fpath).get_fdata()
+            assert data.shape[1] == All_count_32k
+
+            # calculate alff and falff
+            alff_run, falff_run = calc_alff(data, tr, 0,
+                                            low_freq_band, linear_detrend)
+            alff_sub[run_idx] = alff_run
+            falff_sub[run_idx] = falff_run
+
+            # save run
+            save2cifti(alff_run_file, alff_run[None, :], brain_models,
+                       volume=volume)
+            save2cifti(falff_run_file, falff_run[None, :], brain_models,
+                       volume=volume)
+            print(f'Finish subj-{subj_idx+1}/{n_subj}_run-{run_idx+1}/{n_run}')
+        alff_sub = np.mean(alff_sub, 0, keepdims=True)
+        falff_sub = np.mean(falff_sub, 0, keepdims=True)
+        alff_all[subj_idx] = alff_sub
+        falff_all[subj_idx] = falff_sub
+
+        # save subject
+        save2cifti(alff_sub_file, alff_sub, brain_models, volume=volume)
+        save2cifti(falff_sub_file, falff_sub, brain_models, volume=volume)
+        print(f'Finish subj-{subj_idx+1}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+
+    # save subjects
+    save2cifti(alff_all_file, alff_all, brain_models, subj_ids, volume)
+    save2cifti(falff_all_file, falff_all, brain_models, subj_ids, volume)
+
+
+def ColeParcel_fc_vtx(subj_par, subj_ids, stem_path, base_path):
+
+    # load atlas
+    cap_file = '/nfs/z1/atlas/ColeAnticevicNetPartition/' \
+               'CortexSubcortex_ColeAnticevic_NetPartition_wSubcorGSR_parcels_LR.dlabel.nii'
+    cap_LabelKey_file = '/nfs/z1/atlas/ColeAnticevicNetPartition/' \
+                        'CortexSubcortex_ColeAnticevic_NetPartition_wSubcorGSR_parcels_LR_LabelKey.txt'
+    map = nib.load(cap_file).get_fdata()[0]
+    df = pd.read_csv(cap_LabelKey_file, sep='\t', usecols=['KEYVALUE', 'LABEL'])
+    n_parcel = df.shape[0]
+
+    # start
+    n_subj = len(subj_ids)
+    first_flag = True
+    brain_models = None
+    volume = None
+    for subj_idx, subj_id in enumerate(subj_ids):
+        time1 = time.time()
+
+        # prepare path
+        stem_dir = pjoin(subj_par, subj_id, stem_path)
+        fpath_ = pjoin(stem_dir, base_path)
+        fpaths = glob.glob(fpath_)
+        n_run = len(fpaths)
+        if n_run == 0:
+            continue
+        out_file = pjoin(stem_dir, 'rsfc_ColeParcel2Vertex.dscalar.nii')
+
+        # loop all runs
+        fc_sub = np.zeros((n_parcel, All_count_32k), dtype=np.float64)
+        for run_idx, fpath in enumerate(fpaths):
+
+            # get data
+            if first_flag:
+                reader = CiftiReader(fpath)
+                brain_models = reader.brain_models()
+                volume = reader.volume
+                data = reader.get_data()
+                first_flag = False
+            else:
+                data = nib.load(fpath).get_fdata()
+            data = data.T
+            assert data.shape[0] == All_count_32k
+
+            # prepare ROI time series
+            data_roi = np.zeros((n_parcel, data.shape[1]), dtype=np.float64)
+            for idx, k in enumerate(df['KEYVALUE']):
+                data_roi[idx] = np.mean(data[map == k], 0)
+
+            # calculate RSFC
+            fc_run = 1 - cdist(data_roi, data, metric='correlation')
+            fc_sub += fc_run
+            print(f'Finish subj-{subj_idx+1}/{n_subj}_run-{run_idx+1}/{n_run}')
+
+        fc_sub /= n_run
+        save2cifti(out_file, fc_sub, brain_models, df['LABEL'], volume)
+        print(f'Finish subj-{subj_idx+1}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
 
 
 if __name__ == '__main__':
@@ -180,27 +304,42 @@ if __name__ == '__main__':
     # smooth_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
-    zscore_data(
-        data_file=pjoin(work_dir, 'HCPD_thickness.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPD_thickness_zscore.dscalar.nii')
-    )
-    zscore_data(
-        data_file=s1200_1096_thickness,
-        out_file=pjoin(work_dir, 'HCPY_thickness_zscore.dscalar.nii')
-    )
-    zscore_data(
-        data_file=pjoin(work_dir, 'HCPA_thickness.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPA_thickness_zscore.dscalar.nii')
-    )
-    zscore_data(
-        data_file=pjoin(work_dir, 'HCPD_myelin.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPD_myelin_zscore.dscalar.nii')
-    )
-    zscore_data(
-        data_file=s1200_1096_myelin,
-        out_file=pjoin(work_dir, 'HCPY_myelin_zscore.dscalar.nii')
-    )
-    zscore_data(
-        data_file=pjoin(work_dir, 'HCPA_myelin.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPA_myelin_zscore.dscalar.nii')
+
+    # subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
+    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # alff(
+    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='rfMRI_REST?_??/'
+    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
+    # )
+
+    # subj_par = '/nfs/e1/HCPD/fmriresults01'
+    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # alff(
+    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='rfMRI_REST?_??/'
+    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
+    # )
+
+    # subj_par = '/nfs/z1/HCP/HCPA/fmriresults01'
+    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCA')])
+    # alff(
+    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='rfMRI_REST?_??/'
+    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
+    # )
+
+    subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
+    subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    ColeParcel_fc_vtx(
+        subj_par=subj_par, subj_ids=subj_ids,
+        stem_path='MNINonLinear/Results',
+        base_path='rfMRI_REST?_??/'
+                  'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii'
     )
