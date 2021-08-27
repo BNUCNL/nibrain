@@ -138,15 +138,50 @@ dataset_name2info = {
 }
 # datatset<<<
 
-# >>>visual path way
-rPath1 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_FFC', 'R_TF', 'R_PeEc']
-rPath2 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V8', 'R_VVC', 'R_TF', 'R_PeEc']
-rPath3 = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_pFus-face', 'R_mFus-face', 'R_TF', 'R_PeEc']
-rPath4 = ['R_V1', 'R_V2', 'R_MT', 'R_STV', 'R_VIP']
-rPath5 = ['R_V1', 'R_V2', 'R_V3', 'R_STV', 'R_VIP']
-rPath6 = ['R_V1', 'R_MT', 'R_STV', 'R_VIP']
-rPath7 = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
-# visual path way<<<
+
+def get_rois(name):
+
+    # >>>Cole_visual_ROI
+    if name == 'Cole_visual_ROI':
+        net_names = ['Primary Visual', 'Secondary Visual',
+                     'Posterior Multimodal', 'Ventral Multimodal']
+        parcel2label = get_parcel2label_by_ColeName(net_names)
+        rois = list(parcel2label.keys())
+
+    elif name == 'Cole_visual_ROI-L1R':
+        net_names = ['Primary Visual', 'Secondary Visual',
+                     'Posterior Multimodal', 'Ventral Multimodal']
+        parcel2label = get_parcel2label_by_ColeName(net_names)
+        rois = list(parcel2label.keys()) + ['L_STV']
+    # Cole_visual_ROI<<<
+
+    # >>>visual path way
+    elif name == 'rPath1':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_FFC', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath2':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V8', 'R_VVC', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath3':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_PIT', 'R_pFus-face', 'R_mFus-face', 'R_TF', 'R_PeEc']
+
+    elif name == 'rPath4':
+        rois = ['R_V1', 'R_V2', 'R_MT', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath5':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath6':
+        rois = ['R_V1', 'R_MT', 'R_STV', 'R_VIP']
+
+    elif name == 'rPath7':
+        rois = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
+    # visual path way<<<
+
+    else:
+        raise ValueError('Not supported name')
+
+    return rois
 
 
 class Atlas:
