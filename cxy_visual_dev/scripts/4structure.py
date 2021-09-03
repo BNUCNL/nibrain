@@ -66,13 +66,15 @@ if __name__ == '__main__':
         data_file=pjoin(work_dir,
                         'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
         atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='mean',
-        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-mean.csv')
+        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-mean.csv'),
+        out_index='map name'
     )
     ROI_scalar(
         data_file=pjoin(work_dir,
                         'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-        atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='var',
-        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-var.csv')
+        atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='sem',
+        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-sem.csv'),
+        out_index='map name'
     )
 
     # merge_by_age(
