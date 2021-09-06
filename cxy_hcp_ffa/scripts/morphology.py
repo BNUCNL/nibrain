@@ -26,7 +26,10 @@ def calc_meas_individual(hemi='lh', meas='thickness'):
                   'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
         'va': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
               'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
-              'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
+              'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii',
+        'curv': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                'S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii'
     }
     meas_file = meas2file[meas]
     trg_file = pjoin(work_dir, f'rois_v3_{hemi}_{meas}.pkl')
@@ -275,6 +278,8 @@ if __name__ == '__main__':
     # calc_meas_individual(hemi='rh', meas='myelin')
     # calc_meas_individual(hemi='lh', meas='va')
     # calc_meas_individual(hemi='rh', meas='va')
+    calc_meas_individual(hemi='lh', meas='curv')
+    calc_meas_individual(hemi='rh', meas='curv')
     # pre_ANOVA_individual(meas='thickness')
     # pre_ANOVA_individual(meas='myelin')
     # pre_ANOVA_rm_individual(meas='thickness')
@@ -285,5 +290,5 @@ if __name__ == '__main__':
     # calc_meas_group(hemi='lh', meas='myelin')
     # calc_meas_group(hemi='rh', meas='thickness')
     # calc_meas_group(hemi='rh', meas='myelin')
-    calc_mean_meas_map(meas='thickness')
-    calc_mean_meas_map(meas='myelin')
+    # calc_mean_meas_map(meas='thickness')
+    # calc_mean_meas_map(meas='myelin')
