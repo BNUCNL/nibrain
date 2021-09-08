@@ -1,8 +1,34 @@
+import numpy as np
 from os.path import join as pjoin
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir,
                  'analysis/s2/1080_fROI/refined_with_Kevin/grouping')
+
+
+def count_subject():
+    """
+    统计每组的人数
+    """
+    hemis = ['lh', 'rh']
+    hemi2gid_vec = {
+        'lh': np.load(pjoin(work_dir, 'group_id_lh.npy')),
+        'rh': np.load(pjoin(work_dir, 'group_id_rh.npy'))
+    }
+    gids = [-1, 0, 1, 2]
+    gid2name = {
+        -1: 'pFus',
+        0: 'mFus',
+        1: 'two-C',
+        2: 'two-S'
+    }
+
+    print('the number of subjects of each group:')
+    for gid in gids:
+        n_subjs = []
+        for hemi in hemis:
+            n_subjs.append(str(np.sum(hemi2gid_vec[hemi] == gid)))
+        print(f"{gid2name[gid]} ({'/'.join(hemis)}): {'/'.join(n_subjs)}")
 
 
 def roi_stats(gid=1, hemi='lh'):
@@ -202,6 +228,7 @@ def plot_prob_map_similarity():
 
 
 if __name__ == '__main__':
+    count_subject()
     # roi_stats(gid=0, hemi='lh')
     # roi_stats(gid=0, hemi='rh')
     # roi_stats(gid=1, hemi='lh')
@@ -215,4 +242,4 @@ if __name__ == '__main__':
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
     # calc_prob_map_similarity()
-    plot_prob_map_similarity()
+    # plot_prob_map_similarity()
