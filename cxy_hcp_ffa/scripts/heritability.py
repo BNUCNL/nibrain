@@ -211,7 +211,7 @@ def plot_twinsID_distribution_G0G1G2():
     plt.show()
 
 
-def count_twin_pair_G0G1G2():
+def count_twin_pair_same_group():
     """
     Count the number of twin pairs according to grouping.
     """
@@ -219,8 +219,8 @@ def count_twin_pair_G0G1G2():
     import pandas as pd
 
     hemis = ('lh', 'rh')
-    gids = (0, 1, 2)
-    rows = ('diff', 'G0', 'G1', 'G2', 'limit_G012', 'limit_G12')
+    gids = (-1, 0, 1, 2)
+    rows = ('diff', 'G-1', 'G0', 'G1', 'G2', 'total', 'total_G12')
     zygosity = ('MZ', 'DZ')
     twins_gid_file = pjoin(work_dir, 'twins_gid_1080.csv')
     out_file = pjoin(work_dir, 'count_if_same_group.csv')
@@ -235,11 +235,11 @@ def count_twin_pair_G0G1G2():
             out_dict[col] = np.zeros(n_row)
             data = np.array(df.loc[df['zygosity'] == zyg, items])
             out_dict[col][0] = np.sum(data[:, 0] != data[:, 1])
-            for gid_idx, gid in enumerate(gids):
-                out_dict[col][gid_idx + 1] = np.sum(np.all(data == gid,
-                                                           axis=1))
-            out_dict[col][4] = data.shape[0]
-            out_dict[col][5] = np.sum(~np.any(data == 0, axis=1))
+            for gid_idx, gid in enumerate(gids, 1):
+                out_dict[col][gid_idx] = np.sum(np.all(data == gid,
+                                                       axis=1))
+            out_dict[col][gid_idx+1] = data.shape[0]
+            out_dict[col][gid_idx+2] = np.sum(~np.any(data < 1, axis=1))
     out_df = pd.DataFrame(out_dict, index=rows)
     out_df.to_csv(out_file, index=True)
 
@@ -966,10 +966,10 @@ if __name__ == '__main__':
     # filter_twinsID_1080()
     # filter_twinsID_rfMRI()
     # filter_twinsID_G1G2()
-    count_gender()
-    # map_twinsID_to_groupID()
+    # count_gender()
+    map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
-    # count_twin_pair_G0G1G2()
+    count_twin_pair_same_group()
     # plot_probability_if_twins_belong_to_same_group()
     # prepare_heritability_calculation_TMAV()
     # prepare_heritability_calculation_RSFC()
