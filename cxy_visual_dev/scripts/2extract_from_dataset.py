@@ -310,8 +310,8 @@ if __name__ == '__main__':
     # alff(
     #     subj_par=subj_par, subj_ids=subj_ids,
     #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST?_??/'
-    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     base_path='rfMRI_REST*_??/'
+    #               'rfMRI_REST*_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
@@ -320,8 +320,8 @@ if __name__ == '__main__':
     # alff(
     #     subj_par=subj_par, subj_ids=subj_ids,
     #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST?_??/'
-    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     base_path='rfMRI_REST*_??/'
+    #               'rfMRI_REST*_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
@@ -335,8 +335,17 @@ if __name__ == '__main__':
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
-    subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
+    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # ColeParcel_fc_vtx(
+    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='rfMRI_REST??_??/'
+    #               'rfMRI_REST??_??_Atlas_MSMAll_hp0_clean.dtseries.nii'
+    # )
+
+    subj_par = '/nfs/z1/HCP/HCPA/fmriresults01'
+    subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCA')])
     ColeParcel_fc_vtx(
         subj_par=subj_par, subj_ids=subj_ids,
         stem_path='MNINonLinear/Results',

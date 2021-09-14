@@ -1,8 +1,8 @@
 from os.path import join as pjoin
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
-work_dir = pjoin(proj_dir,
-                 'analysis/s2/1080_fROI/refined_with_Kevin/rfMRI')
+anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
+work_dir = pjoin(anal_dir, 'rfMRI')
 
 
 # ---tools---
@@ -644,5 +644,5 @@ if __name__ == '__main__':
     # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest_paired.csv')
     # prepare_plot(hemi='lh')
     # prepare_plot(hemi='rh')
-    plot_bar()
+    # plot_bar()
     # plot_radar()

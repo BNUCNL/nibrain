@@ -136,7 +136,7 @@ def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
         atlas_name (str): include ROIs' labels and mask map
         rois (None | sequence): ROI names
             If is None, use all ROIs of the atlas.
-        metric (str): mean, var
+        metric (str): mean, var, sem
         out_file (str): end with .csv
         out_index (None | str | sequence):
             If None, don't save index to out_file.
@@ -162,18 +162,22 @@ def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
             vec = np.mean(data, 1)
         elif metric == 'var':
             vec = np.var(data, 1)
+        elif metric == 'sem':
+            vec = sem(data, 1)
         else:
             raise ValueError('not supported metric')
         out_df[roi] = vec
 
     # save
     if out_index is None:
-        out_index = False
+        out_df.to_csv(out_file, index=False)
     elif out_index == 'map name':
-        out_index = reader.map_names()
+        out_df.index = reader.map_names()
+        out_df.to_csv(out_file, index=True)
     else:
         assert len(out_index) == maps.shape[0]
-    out_df.to_csv(out_file, index=out_index)
+        out_df.index = out_index
+        out_df.to_csv(out_file, index=True)
 
 
 def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
