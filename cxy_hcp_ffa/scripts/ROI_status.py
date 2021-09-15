@@ -1,8 +1,8 @@
 from os.path import join as pjoin
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_hcp_ffa.lib.tools import bfs
+from cxy_hcp_ffa.lib.predefine import proj_dir
 
-proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 
 
@@ -369,7 +369,7 @@ def get_mpm(hemi='lh'):
 
     # inputs
     thr = 0.25
-    map_indices = [1, 2]
+    map_indices = (1, 2)
     idx2roi = {
         0: 'IOG-face',
         1: 'pFus-face',
@@ -408,6 +408,60 @@ def get_mpm(hemi='lh'):
     save2nifti(out_file, mpm_map)
 
 
+def roi2cifti():
+    import numpy as np
+    import nibabel as nib
+    from magicbox.io.io import CiftiReader, save2cifti
+    from cxy_hcp_ffa.lib.predefine import mmp_map_file, roi2label
+
+    bms = CiftiReader(mmp_map_file).brain_models()
+    idx2vtx_lh = list(bms[0].vertex_indices)
+    idx2vtx_rh = list(bms[1].vertex_indices)
+
+    # group ROI
+    # data_lh = nib.load(pjoin(work_dir,
+    #                          'MPM_v3_lh_0.25.nii.gz')).get_data()[..., 0].T
+    # data_rh = nib.load(pjoin(work_dir,
+    #                          'MPM_v3_rh_0.25.nii.gz')).get_data()[..., 0].T
+    # map_names = [None]
+    # out_file = pjoin(work_dir, 'MPM_v3_25.dlabel.nii')
+
+    # individual ROI
+    data_lh = nib.load(pjoin(work_dir,
+                             'rois_v3_lh.nii.gz')).get_data().squeeze().T
+    data_rh = nib.load(pjoin(work_dir,
+                             'rois_v3_rh.nii.gz')).get_data().squeeze().T
+    map_names = open(pjoin(proj_dir,
+                           'analysis/s2/subject_id')).read().splitlines()
+    out_file = pjoin(work_dir, 'rois_v3.dlabel.nii')
+    # out_file = pjoin(work_dir, 'HCP_FFA.dlabel.nii')
+
+    data = np.c_[data_lh[:, idx2vtx_lh], data_rh[:, idx2vtx_rh]]
+    data[data == 0] = -1
+    # data[data == 1] = -1  # remove IOG-face
+
+    key2label = {-1: 'None'}
+    for k, v in roi2label.items():
+        key2label[v] = k
+    key2color = {
+        -1: (1.0, 1.0, 1.0, 0.0),
+        1: (1.0, 0.0, 0.0, 1.0),
+        2: (0.0, 1.0, 0.0, 1.0),
+        3: (0.0, 0.0, 1.0, 1.0)
+    }
+
+    label_tables = []
+    for row in data:
+        lbl_tb = nib.cifti2.Cifti2LabelTable()
+        for key in np.unique(row):
+            key = int(key)
+            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2label[key],
+                                                 *key2color[key])
+        label_tables.append(lbl_tb)
+
+    save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
+
+
 if __name__ == '__main__':
     # get_roi_idx_vec()
     # count_roi()
@@ -415,10 +469,11 @@ if __name__ == '__main__':
     # calc_gdist(method='peak')
     # calc_gdist(method='AP_gap-y')
     # calc_gdist(method='AP_gap-geo')
-    calc_gdist(method='min1')
+    # calc_gdist(method='min1')
     # plot_gdist()
     # compare_gdist()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
     # get_mpm(hemi='rh')
+    roi2cifti()
