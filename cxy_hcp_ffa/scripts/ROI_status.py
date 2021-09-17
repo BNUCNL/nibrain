@@ -1,4 +1,6 @@
 from os.path import join as pjoin
+
+from numpy import dtype
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_hcp_ffa.lib.tools import bfs
 from cxy_hcp_ffa.lib.predefine import proj_dir
@@ -408,11 +410,11 @@ def get_mpm(hemi='lh'):
     save2nifti(out_file, mpm_map)
 
 
-def roi2cifti():
+def roi2cifti(roi_type):
     import numpy as np
     import nibabel as nib
     from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_hcp_ffa.lib.predefine import mmp_map_file, roi2label
+    from cxy_hcp_ffa.lib.predefine import mmp_map_file
 
     bms = CiftiReader(mmp_map_file).brain_models()
     idx2vtx_lh = list(bms[0].vertex_indices)
@@ -433,22 +435,51 @@ def roi2cifti():
                              'rois_v3_rh.nii.gz')).get_data().squeeze().T
     map_names = open(pjoin(proj_dir,
                            'analysis/s2/subject_id')).read().splitlines()
-    out_file = pjoin(work_dir, 'rois_v3.dlabel.nii')
-    # out_file = pjoin(work_dir, 'HCP_FFA.dlabel.nii')
 
-    data = np.c_[data_lh[:, idx2vtx_lh], data_rh[:, idx2vtx_rh]]
+    data_lh = data_lh.astype(np.int8)
+    data_rh = data_rh.astype(np.int8)
+    if roi_type == 'FFA':
+        # remove IOG-face
+        out_file = pjoin(work_dir, 'HCP_FFA.dlabel.nii')
+        data_rh[data_rh == 1] = -1
+        data_rh[data_rh == 2] = 1
+        data_rh[data_rh == 3] = 2
+        data_lh[data_lh == 1] = -1
+        data_lh[data_lh == 3] = 4
+        data_lh[data_lh == 2] = 3
+        key2label = {-1: 'None', 1: 'R_pFus-face', 2: 'R_mFus-face',
+                     3: 'L_pFus-face', 4: 'L_mFus-face'}
+        key2color = {
+            -1: (1.0, 1.0, 1.0, 0.0),
+            1: (0.0, 1.0, 0.0, 1.0),
+            2: (0.0, 0.0, 1.0, 1.0),
+            3: (0.0, 1.0, 0.0, 1.0),
+            4: (0.0, 0.0, 1.0, 1.0)
+        }
+    elif roi_type == 'FSR':
+        out_file = pjoin(work_dir, 'rois_v3.dlabel.nii')
+        data_lh[data_lh == 3] = 6
+        data_lh[data_lh == 2] = 5
+        data_lh[data_lh == 1] = 4
+        key2label = {-1: 'None',
+                     1: 'R_IOG-face', 2: 'R_pFus-face', 3: 'R_mFus-face',
+                     4: 'L_IOG-face', 5: 'L_pFus-face', 6: 'L_mFus-face'}
+        key2color = {
+            -1: (1.0, 1.0, 1.0, 0.0),
+            1: (1.0, 0.0, 0.0, 1.0),
+            2: (0.0, 1.0, 0.0, 1.0),
+            3: (0.0, 0.0, 1.0, 1.0),
+            4: (1.0, 0.0, 0.0, 1.0),
+            5: (0.0, 1.0, 0.0, 1.0),
+            6: (0.0, 0.0, 1.0, 1.0)
+        }
+    else:
+        raise ValueError('Not supported roi_type')
+
+    data_lh = data_lh[:, idx2vtx_lh]
+    data_rh = data_rh[:, idx2vtx_rh]
+    data = np.concatenate((data_lh, data_rh), axis=1, dtype=np.int8)
     data[data == 0] = -1
-    # data[data == 1] = -1  # remove IOG-face
-
-    key2label = {-1: 'None'}
-    for k, v in roi2label.items():
-        key2label[v] = k
-    key2color = {
-        -1: (1.0, 1.0, 1.0, 0.0),
-        1: (1.0, 0.0, 0.0, 1.0),
-        2: (0.0, 1.0, 0.0, 1.0),
-        3: (0.0, 0.0, 1.0, 1.0)
-    }
 
     label_tables = []
     for row in data:
@@ -476,4 +507,5 @@ if __name__ == '__main__':
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
     # get_mpm(hemi='rh')
-    roi2cifti()
+    roi2cifti(roi_type='FFA')
+    roi2cifti(roi_type='FSR')
