@@ -21,6 +21,19 @@ def merge_group():
         np.save(out_files.format(hemi=hemi), gid_vec)
 
 
+def npy2csv(lh_file, rh_file, out_file):
+    """
+    把左右的分组编号合并到一个CSV文件中
+    """
+    import pandas as pd
+
+    df = pd.DataFrame()
+    df['lh'] = np.load(lh_file)
+    df['rh'] = np.load(rh_file)
+
+    df.to_csv(out_file, index=False)
+
+
 def count_subject():
     """
     统计每组的人数
@@ -43,6 +56,7 @@ def count_subject():
         print(f"{gid2name[gid]} ({'/'.join(hemis)}): {'/'.join(n_subjs)}")
 
 
+# ---old---
 def roi_stats(gid=1, hemi='lh'):
     import numpy as np
     import nibabel as nib
@@ -240,8 +254,20 @@ def plot_prob_map_similarity():
 
 
 if __name__ == '__main__':
-    merge_group()
-    count_subject()
+    # merge_group()
+    # count_subject()
+    npy2csv(
+        lh_file=pjoin(work_dir, 'group_id_lh_v2.npy'),
+        rh_file=pjoin(work_dir, 'group_id_rh_v2.npy'),
+        out_file=pjoin(work_dir, 'group_id_v2.csv')
+    )
+    npy2csv(
+        lh_file=pjoin(work_dir, 'group_id_lh_v2_merged.npy'),
+        rh_file=pjoin(work_dir, 'group_id_rh_v2_merged.npy'),
+        out_file=pjoin(work_dir, 'group_id_v2_merged.csv')
+    )
+
+    # old
     # roi_stats(gid=0, hemi='lh')
     # roi_stats(gid=0, hemi='rh')
     # roi_stats(gid=1, hemi='lh')

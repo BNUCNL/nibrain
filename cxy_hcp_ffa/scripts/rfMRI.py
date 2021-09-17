@@ -288,6 +288,10 @@ def fc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def pkl2mat():
+    pass
+
+
 def pre_ANOVA_rm():
     """
     Preparation for two-way repeated-measures ANOVA
