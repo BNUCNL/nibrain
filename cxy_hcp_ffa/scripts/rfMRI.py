@@ -680,11 +680,18 @@ if __name__ == '__main__':
     # fc_mean_among_run(hemi='rh')
     # fc_merge_MMP(hemi='lh')
     # fc_merge_MMP(hemi='rh')
+    # pkl2mat(
+    #     lh_file=pjoin(work_dir, 'rsfc_individual2Cole_lh.pkl'),
+    #     rh_file=pjoin(work_dir, 'rsfc_individual2Cole_rh.pkl'),
+    #     out_file=pjoin(work_dir, 'rsfc_FFA2Cole.mat'),
+    #     seeds=('pFus-face', 'mFus-face')
+    # )
     pkl2mat(
-        lh_file=pjoin(work_dir, 'rsfc_individual2Cole_lh.pkl'),
-        rh_file=pjoin(work_dir, 'rsfc_individual2Cole_rh.pkl'),
-        out_file=pjoin(work_dir, 'rsfc_FFA2Cole.mat'),
-        seeds=('pFus-face', 'mFus-face')
+        lh_file=pjoin(work_dir, 'rsfc_individual2MMP_lh.pkl'),
+        rh_file=pjoin(work_dir, 'rsfc_individual2MMP_rh.pkl'),
+        out_file=pjoin(work_dir, 'rsfc_FFA2MMP.mat'),
+        seeds=('pFus-face', 'mFus-face'),
+        exclude_trg_labels=(18, 198)
     )
     # pre_ANOVA_rm()
     # roi_ttest()

@@ -1,5 +1,6 @@
 from os.path import join as pjoin
-from cxy_hcp_ffa.lib.predefine import proj_dir, net2label_cole
+from cxy_hcp_ffa.lib.predefine import proj_dir, net2label_cole, \
+    mmp_name2label
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'grouping/rfMRI')
@@ -17,9 +18,9 @@ def pre_ANOVA_3factors():
     gids = (1, 2)
     hemis = ('lh', 'rh')
     seeds = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2MMP_preANOVA-3factor.csv')
 
     data = loadmat(src_file)
     gid_df = pd.read_csv(gid_file)
@@ -56,9 +57,9 @@ def pre_ANOVA_3factors_mix():
     gids = (1, 2)
     hemis = ('lh', 'rh')
     rois = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-mix.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2MMP_preANOVA-3factor-mix.csv')
 
     data = loadmat(src_file)
     gid_df = pd.read_csv(gid_file)
@@ -105,13 +106,13 @@ def roi_ttest(gid, trg_name2label):
     # parameters
     hemis = ('lh', 'rh')
     roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
     vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest.csv")
+                     f"rsfc_FFA2MMP_G{gid}_{vs_name}_ttest.csv")
 
     # start
     data = loadmat(src_file)
@@ -164,13 +165,13 @@ def roi_pair_ttest(gid, trg_name2label):
     # inputs
     hemis = ('lh', 'rh')
     roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
     vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest-paired.csv")
+                     f"rsfc_FFA2MMP_G{gid}_{vs_name}_ttest-paired.csv")
 
     # start
     data = loadmat(src_file)
@@ -216,12 +217,12 @@ def multitest_correct_ttest(gid=1):
 
     # inputs
     hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
-                                '_pFus_vs_mFus_ttest.csv')
+    data_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
+                                '_pFus_vs_mFus_ttest-paired.csv')
 
     # outputs
-    out_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
-                               '_pFus_vs_mFus_ttest_mtc.csv')
+    out_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
+                               '_pFus_vs_mFus_ttest-paired_mtc.csv')
 
     # start
     data = pd.read_csv(data_file)
@@ -288,10 +289,10 @@ def prepare_plot(gid=1, hemi='lh'):
 if __name__ == '__main__':
     # pre_ANOVA_3factors()
     # pre_ANOVA_3factors_mix()
-    # roi_ttest(gid=1, trg_name2label=net2label_cole)
-    # roi_ttest(gid=2, trg_name2label=net2label_cole)
-    # roi_pair_ttest(gid=1, trg_name2label=net2label_cole)
-    # roi_pair_ttest(gid=2, trg_name2label=net2label_cole)
+    # roi_ttest(gid=1, trg_name2label=mmp_name2label)
+    # roi_ttest(gid=2, trg_name2label=mmp_name2label)
+    # roi_pair_ttest(gid=1, trg_name2label=mmp_name2label)
+    # roi_pair_ttest(gid=2, trg_name2label=mmp_name2label)
     multitest_correct_ttest(gid=1)
     multitest_correct_ttest(gid=2)
 
