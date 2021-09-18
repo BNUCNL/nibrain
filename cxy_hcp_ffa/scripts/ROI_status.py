@@ -1,4 +1,6 @@
 from os.path import join as pjoin
+from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
+from cxy_hcp_ffa.lib.tools import bfs
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
@@ -47,14 +49,20 @@ def calc_gdist(method='peak'):
     """Calculate geodesic distance between each two ROIs.
 
     Args:
-        method (str, optional): 'peak', 'min', 'AP_gap-y', and 'AP_gap-geo'
+        method (str, optional): 'peak', 'min', 'min1', 'AP_gap-y', and 'AP_gap-geo'
             If 'peak', use the distance between two vertices
             with peak activation values in two ROIs respectively.
+
             If 'min', use the minimum distance of pair-wise
             vertices between the two ROIs.
+
+            If 'min1', use the minimum distance of pair-wise
+            vertices between the two ROIs. If the two ROIs are continuous, set as 0.
+
             If 'AP_gap-y', assume the most posterior vertex of mFus-face is P
             and the most anterior vertex of pFus-face is A.
             This distance is calculated as: y coordinate of P - y coordinate of A.
+
             If AP_gap-geo, use the geodesic distance between P and A.
             Defaults to 'peak'.
     """
@@ -174,6 +182,31 @@ def calc_gdist(method='peak'):
                                                          roi1_vertices,
                                                          roi2_vertices)
                                 out_dict[k][subj_idx] = np.min(ds)
+                            elif method == 'min1':
+                                roi1_vertices = np.where(roi1_idx_map)[0]
+                                roi2_vertices = np.where(roi2_idx_map)[0]
+                                mask = activ_map > 1.65
+                                edge_list = get_n_ring_neighbor(faces, mask=mask)
+
+                                continuous_flag = False
+                                for vtx1 in roi1_vertices:
+                                    for vtx2 in roi2_vertices:
+                                        tmp_path = bfs(edge_list, vtx1, vtx2)
+                                        if len(tmp_path) != 0:
+                                            continuous_flag = True
+                                            break
+                                    if continuous_flag:
+                                        break
+
+                                if continuous_flag:
+                                    out_dict[k][subj_idx] = 0
+                                else:
+                                    roi1_vertices = roi1_vertices.astype(np.int32)
+                                    roi2_vertices = roi2_vertices.astype(np.int32)
+                                    ds = gdist.compute_gdist(coords, faces,
+                                                             roi1_vertices,
+                                                             roi2_vertices)
+                                    out_dict[k][subj_idx] = np.min(ds)
                             elif method == 'AP_gap-y':
                                 ys1 = coords_AP[roi1_idx_map, 1]
                                 ys2 = coords_AP[roi2_idx_map, 1]
@@ -380,8 +413,9 @@ if __name__ == '__main__':
     # count_roi()
     # calc_gdist(method='min')
     # calc_gdist(method='peak')
-    calc_gdist(method='AP_gap-y')
-    calc_gdist(method='AP_gap-geo')
+    # calc_gdist(method='AP_gap-y')
+    # calc_gdist(method='AP_gap-geo')
+    calc_gdist(method='min1')
     # plot_gdist()
     # compare_gdist()
     # calc_prob_map(hemi='lh')

@@ -1,8 +1,46 @@
+import numpy as np
 from os.path import join as pjoin
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 work_dir = pjoin(proj_dir,
                  'analysis/s2/1080_fROI/refined_with_Kevin/grouping')
+
+
+def merge_group():
+    """
+    把pFus，mFus和two-C组合并为contiguous组
+    """
+    hemis = ('lh', 'rh')
+    gid_files = pjoin(work_dir, 'group_id_{hemi}_v2.npy')
+    out_files = pjoin(work_dir, 'group_id_{hemi}_v2_merged.npy')
+
+    for hemi in hemis:
+        gid_vec = np.load(gid_files.format(hemi=hemi))
+        idx_vec = np.logical_or(gid_vec == -1, gid_vec == 0)
+        gid_vec[idx_vec] = 1
+        np.save(out_files.format(hemi=hemi), gid_vec)
+
+
+def count_subject():
+    """
+    统计每组的人数
+    """
+    hemis = ('lh', 'rh')
+    gids = (1, 2)
+    gid_files = pjoin(work_dir, 'group_id_{hemi}_v2_merged.npy')
+    # gid2name = {-1: 'pFus', 0: 'mFus', 1: 'two-C', 2: 'two-S'}
+    gid2name = {1: 'continuous', 2: 'separate'}
+
+    hemi2gid_vec = {
+        'lh': np.load(gid_files.format(hemi='lh')),
+        'rh': np.load(gid_files.format(hemi='rh'))
+    }
+    print('the number of subjects of each group:')
+    for gid in gids:
+        n_subjs = []
+        for hemi in hemis:
+            n_subjs.append(str(np.sum(hemi2gid_vec[hemi] == gid)))
+        print(f"{gid2name[gid]} ({'/'.join(hemis)}): {'/'.join(n_subjs)}")
 
 
 def roi_stats(gid=1, hemi='lh'):
@@ -202,6 +240,8 @@ def plot_prob_map_similarity():
 
 
 if __name__ == '__main__':
+    merge_group()
+    count_subject()
     # roi_stats(gid=0, hemi='lh')
     # roi_stats(gid=0, hemi='rh')
     # roi_stats(gid=1, hemi='lh')
@@ -215,4 +255,4 @@ if __name__ == '__main__':
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
     # calc_prob_map_similarity()
-    plot_prob_map_similarity()
+    # plot_prob_map_similarity()
