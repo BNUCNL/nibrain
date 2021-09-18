@@ -12,30 +12,32 @@ def pre_ANOVA_3factors():
     """
     import numpy as np
     import pandas as pd
-    import pickle as pkl
+    from scipy.io import loadmat
 
     gids = (1, 2)
     hemis = ('lh', 'rh')
-    rois = ('pFus-face', 'mFus-face')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_individual2Cole_{hemi}.pkl')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_{hemi}_v2_merged.npy')
-    trg_file = pjoin(work_dir, 'rsfc_individual2Cole_preANOVA-3factor.csv')
+    seeds = ('pFus', 'mFus')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor.csv')
 
+    data = loadmat(src_file)
+    gid_df = pd.read_csv(gid_file)
     out_dict = {'hemi': [], 'gid': [], 'roi': [], 'meas': []}
     for hemi in hemis:
-        data = pkl.load(open(src_file.format(hemi=hemi), 'rb'))
-        gid_vec = np.load(gid_file.format(hemi=hemi))
+        gid_vec = np.array(gid_df[hemi])
         for gid in gids:
             gid_vec_idx = gid_vec == gid
-            for roi in rois:
-                meas_vec = np.mean(data[roi][gid_vec_idx], axis=1)
+            for seed in seeds:
+                col = f'{hemi}_{seed}'
+                meas_vec = np.mean(data[col][gid_vec_idx], axis=1)
                 meas_vec = meas_vec[~np.isnan(meas_vec)]
                 n_valid = len(meas_vec)
                 out_dict['hemi'].extend([hemi] * n_valid)
                 out_dict['gid'].extend([gid] * n_valid)
-                out_dict['roi'].extend([roi.split('-')[0]] * n_valid)
+                out_dict['roi'].extend([seed] * n_valid)
                 out_dict['meas'].extend(meas_vec)
-                print(f'{hemi}_{gid}_{roi}:', n_valid)
+                print(f'{hemi}_{gid}_{seed}:', n_valid)
     out_df = pd.DataFrame(out_dict)
     out_df.to_csv(trg_file, index=False)
 
@@ -49,36 +51,32 @@ def pre_ANOVA_3factors_mix():
     """
     import numpy as np
     import pandas as pd
-    import pickle as pkl
+    from scipy.io import loadmat
 
     gids = (1, 2)
     hemis = ('lh', 'rh')
-    rois = ('pFus-face', 'mFus-face')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_individual2Cole_{hemi}.pkl')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_{hemi}_v2.npy')
-    trg_file = pjoin(work_dir, 'rsfc_individual2Cole_preANOVA-3factor-mix.csv')
+    rois = ('pFus', 'mFus')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-mix.csv')
 
-    hemi2data = {}
-    hemi2gids = {}
-    for hemi in hemis:
-        hemi2data[hemi] = pkl.load(open(src_file.format(hemi=hemi), 'rb'))
-        hemi2gids[hemi] = np.load(gid_file.format(hemi=hemi))
-
+    data = loadmat(src_file)
+    gid_df = pd.read_csv(gid_file)
     out_dict = {'gid': []}
     for idx, gid in enumerate(gids):
-        gid_idx_vec = np.logical_and(hemi2gids['lh'] == gid,
-                                     hemi2gids['rh'] == gid)
+        gid_idx_vec = np.logical_and(gid_df['lh'] == gid,
+                                     gid_df['rh'] == gid)
         nan_vec = None
         for hemi in hemis:
-            data = hemi2data[hemi]
             for roi in rois:
-                meas_vec = np.mean(data[roi][gid_idx_vec], 1)
+                meas_vec = np.mean(data[f'{hemi}_{roi}'][gid_idx_vec], 1)
 
                 if nan_vec is None:
                     nan_vec = np.isnan(meas_vec)
                     non_nan_vec = ~nan_vec
                     n_valid = np.sum(non_nan_vec)
                     print('#NAN:', np.sum(nan_vec))
+                    print(f'G{gid}:', n_valid)
                 else:
                     assert np.all(nan_vec == np.isnan(meas_vec))
 
@@ -87,54 +85,54 @@ def pre_ANOVA_3factors_mix():
                     out_dict[f"{hemi}_{roi.split('-')[0]}"] = meas_vec.tolist()
                 else:
                     out_dict[f"{hemi}_{roi.split('-')[0]}"].extend(meas_vec)
-        print(f'G{gid}:', n_valid)
         out_dict['gid'].extend([gid] * n_valid)
+
     out_df = pd.DataFrame(out_dict)
     out_df.to_csv(trg_file, index=False)
 
 
-def roi_ttest(gid, trg_name2label, trg_labels=None):
+def roi_ttest(gid, trg_name2label):
     """
     compare rsfc difference between ROIs
     scheme: hemi-separately network-wise
     """
     import numpy as np
-    import pickle as pkl
     import pandas as pd
+    from scipy.io import loadmat
     from scipy.stats.stats import ttest_ind
     from magicbox.stats import EffectSize
 
     # parameters
     hemis = ('lh', 'rh')
-    roi_pair = ('pFus-face', 'mFus-face')
-    data_file = pjoin(anal_dir, 'rfMRI/rsfc_individual2Cole_{hemi}.pkl')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_{hemi}_v2_merged.npy')
-    vs_name = f"{roi_pair[0].split('-')[0]}_vs_{roi_pair[1].split('-')[0]}"
+    roi_pair = ('pFus', 'mFus')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
+    vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_individual2Cole_G{gid}_{vs_name}_ttest_new.csv")
+                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest.csv")
 
     # start
+    data = loadmat(src_file)
+    gid_df = pd.read_csv(gid_file)
     trg_label2name = {}
     for k, v in trg_name2label.items():
         trg_label2name[v] = k
-    if trg_labels is None:
-        trg_labels = list(trg_name2label.values())
     out_data = {}
-    out_data['trg_name'] = [trg_label2name[lbl] for lbl in trg_labels]
+    out_data['target_name'] = [trg_label2name[lbl]
+                               for lbl in data['target_label'][0]]
     es = EffectSize()
     for hemi in hemis:
-        data = pkl.load(open(data_file.format(hemi=hemi), 'rb'))
-        gid_vec_idx = np.load(gid_file.format(hemi=hemi)) == gid
-
+        gid_vec_idx = np.array(gid_df[hemi]) == gid
+        item1 = f'{hemi}_{roi_pair[0]}'
+        item2 = f'{hemi}_{roi_pair[1]}'
         out_data[f'CohenD_{hemi}'] = []
         out_data[f't_{hemi}'] = []
         out_data[f'P_{hemi}'] = []
-        for trg_lbl in trg_labels:
-            trg_idx = data['trg_label'].index(trg_lbl)
-            sample1 = data[roi_pair[0]][gid_vec_idx, trg_idx]
-            sample2 = data[roi_pair[1]][gid_vec_idx, trg_idx]
+        for trg_idx, trg_lbl in enumerate(data['target_label'][0]):
+            sample1 = data[item1][gid_vec_idx, trg_idx]
+            sample2 = data[item2][gid_vec_idx, trg_idx]
             nan_vec1 = np.isnan(sample1)
             nan_vec2 = np.isnan(sample2)
             print('#NAN in sample1:', np.sum(nan_vec1))
@@ -152,49 +150,48 @@ def roi_ttest(gid, trg_name2label, trg_labels=None):
     out_data.to_csv(out_file, index=False)
 
 
-def roi_pair_ttest(gid, trg_name2label, trg_labels=None):
+def roi_pair_ttest(gid, trg_name2label):
     """
     compare rsfc difference between ROIs
     scheme: hemi-separately network-wise
     """
     import numpy as np
-    import pickle as pkl
     import pandas as pd
+    from scipy.io import loadmat
     from scipy.stats.stats import ttest_rel
     from magicbox.stats import EffectSize
 
     # inputs
     hemis = ('lh', 'rh')
-    roi_pair = ('pFus-face', 'mFus-face')
-    data_file = pjoin(anal_dir, 'rfMRI/rsfc_individual2Cole_{hemi}.pkl')
-    # gid_file = pjoin(anal_dir, 'grouping/group_id_{hemi}_v2_merged.npy')
-    gid_file = pjoin(anal_dir, 'grouping/old_group_id_{hemi}.npy')
-    vs_name = f"{roi_pair[0].split('-')[0]}_vs_{roi_pair[1].split('-')[0]}"
+    roi_pair = ('pFus', 'mFus')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
+    vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_individual2Cole_G{gid}_{vs_name}_ttest-paired.csv")
+                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest-paired.csv")
 
     # start
+    data = loadmat(src_file)
+    gid_df = pd.read_csv(gid_file)
     trg_label2name = {}
     for k, v in trg_name2label.items():
         trg_label2name[v] = k
-    if trg_labels is None:
-        trg_labels = list(trg_name2label.values())
     out_data = {}
-    out_data['trg_name'] = [trg_label2name[lbl] for lbl in trg_labels]
+    out_data['target_name'] = [trg_label2name[lbl]
+                               for lbl in data['target_label'][0]]
     es = EffectSize()
     for hemi in hemis:
-        data = pkl.load(open(data_file.format(hemi=hemi), 'rb'))
-        gid_vec_idx = np.load(gid_file.format(hemi=hemi)) == gid
-
+        gid_vec_idx = np.array(gid_df[hemi]) == gid
+        item1 = f'{hemi}_{roi_pair[0]}'
+        item2 = f'{hemi}_{roi_pair[1]}'
         out_data[f'CohenD_{hemi}'] = []
         out_data[f't_{hemi}'] = []
         out_data[f'P_{hemi}'] = []
-        for trg_lbl in trg_labels:
-            trg_idx = data['trg_label'].index(trg_lbl)
-            sample1 = data[roi_pair[0]][gid_vec_idx, trg_idx]
-            sample2 = data[roi_pair[1]][gid_vec_idx, trg_idx]
+        for trg_idx, trg_lbl in enumerate(data['target_label'][0]):
+            sample1 = data[item1][gid_vec_idx, trg_idx]
+            sample2 = data[item2][gid_vec_idx, trg_idx]
             nan_vec1 = np.isnan(sample1)
             nan_vec2 = np.isnan(sample2)
             nan_vec = np.logical_or(nan_vec1, nan_vec2)
@@ -219,12 +216,12 @@ def multitest_correct_ttest(gid=1):
 
     # inputs
     hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir, f'rsfc_individual2Cole_G{gid}'
-                                '_pFus_vs_mFus_ttest-paired.csv')
+    data_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                                '_pFus_vs_mFus_ttest.csv')
 
     # outputs
-    out_file = pjoin(work_dir, f'rsfc_individual2Cole_G{gid}'
-                               '_pFus_vs_mFus_ttest-paired_mtc.csv')
+    out_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                               '_pFus_vs_mFus_ttest_mtc.csv')
 
     # start
     data = pd.read_csv(data_file)
@@ -290,13 +287,13 @@ def prepare_plot(gid=1, hemi='lh'):
 
 if __name__ == '__main__':
     # pre_ANOVA_3factors()
-    pre_ANOVA_3factors_mix()
+    # pre_ANOVA_3factors_mix()
     # roi_ttest(gid=1, trg_name2label=net2label_cole)
     # roi_ttest(gid=2, trg_name2label=net2label_cole)
     # roi_pair_ttest(gid=1, trg_name2label=net2label_cole)
     # roi_pair_ttest(gid=2, trg_name2label=net2label_cole)
-    # multitest_correct_ttest(gid=1)
-    # multitest_correct_ttest(gid=2)
+    multitest_correct_ttest(gid=1)
+    multitest_correct_ttest(gid=2)
 
     # old
     # prepare_plot(gid=1, hemi='lh')

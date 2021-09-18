@@ -257,15 +257,20 @@ if __name__ == '__main__':
     # merge_group()
     # count_subject()
     npy2csv(
-        lh_file=pjoin(work_dir, 'group_id_lh_v2.npy'),
-        rh_file=pjoin(work_dir, 'group_id_rh_v2.npy'),
-        out_file=pjoin(work_dir, 'group_id_v2.csv')
+        lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),
+        rh_file=pjoin(work_dir, 'old_group_id_rh.npy'),
+        out_file=pjoin(work_dir, 'old_group_id.csv')
     )
-    npy2csv(
-        lh_file=pjoin(work_dir, 'group_id_lh_v2_merged.npy'),
-        rh_file=pjoin(work_dir, 'group_id_rh_v2_merged.npy'),
-        out_file=pjoin(work_dir, 'group_id_v2_merged.csv')
-    )
+    # npy2csv(
+    #     lh_file=pjoin(work_dir, 'group_id_lh_v2.npy'),
+    #     rh_file=pjoin(work_dir, 'group_id_rh_v2.npy'),
+    #     out_file=pjoin(work_dir, 'group_id_v2.csv')
+    # )
+    # npy2csv(
+    #     lh_file=pjoin(work_dir, 'group_id_lh_v2_merged.npy'),
+    #     rh_file=pjoin(work_dir, 'group_id_rh_v2_merged.npy'),
+    #     out_file=pjoin(work_dir, 'group_id_v2_merged.csv')
+    # )
 
     # old
     # roi_stats(gid=0, hemi='lh')
