@@ -1,6 +1,5 @@
 import os
 import time
-import glob
 import subprocess
 import numpy as np
 import pandas as pd
@@ -241,8 +240,8 @@ def alff(subj_par, check_file, stem_path, base_path, tr,
               f'cost {time.time()-time1} seconds')
 
     # save subjects
-    save2cifti(alff_all_file, alff_all, brain_models, df['subID'], volume)
-    save2cifti(falff_all_file, falff_all, brain_models, df['subID'], volume)
+    save2cifti(alff_all_file, alff_all, brain_models, df['subID'].astype(str), volume)
+    save2cifti(falff_all_file, falff_all, brain_models, df['subID'].astype(str), volume)
 
 
 def ColeParcel_fc_vtx(subj_par, check_file, stem_path, base_path):
@@ -354,10 +353,10 @@ if __name__ == '__main__':
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    subj_par = '/nfs/m1/hcp'
-    ColeParcel_fc_vtx(
-        subj_par=subj_par,
-        check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
-        stem_path='MNINonLinear/Results',
-        base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    )
+    # subj_par = '/nfs/m1/hcp'
+    # ColeParcel_fc_vtx(
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    # )
