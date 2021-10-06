@@ -1,6 +1,7 @@
 from os.path import join as pjoin
+from cxy_hcp_ffa.lib.predefine import proj_dir
+from cxy_hcp_ffa.lib.algo import meas_pkl2csv
 
-proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'structure')
 
@@ -292,3 +293,28 @@ if __name__ == '__main__':
     # calc_meas_group(hemi='rh', meas='myelin')
     # calc_mean_meas_map(meas='thickness')
     # calc_mean_meas_map(meas='myelin')
+
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'rois_v3_lh_thickness.pkl'),
+        rh_file=pjoin(work_dir, 'rois_v3_rh_thickness.pkl'),
+        out_file=pjoin(work_dir, 'FFA_thickness.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'rois_v3_lh_myelin.pkl'),
+        rh_file=pjoin(work_dir, 'rois_v3_rh_myelin.pkl'),
+        out_file=pjoin(work_dir, 'FFA_myelin.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'rois_v3_lh_va.pkl'),
+        rh_file=pjoin(work_dir, 'rois_v3_rh_va.pkl'),
+        out_file=pjoin(work_dir, 'FFA_va.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'rois_v3_lh_curv.pkl'),
+        rh_file=pjoin(work_dir, 'rois_v3_rh_curv.pkl'),
+        out_file=pjoin(work_dir, 'FFA_curv.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )

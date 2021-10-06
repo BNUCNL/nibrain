@@ -1,6 +1,5 @@
 import os
 import time
-import glob
 import subprocess
 import numpy as np
 import pandas as pd
@@ -158,11 +157,15 @@ def merge_smoothed_data(dataset_name, meas_name, sigma):
     save2cifti(out_file, data, mmp_reader.brain_models(), df['subID'])
 
 
-def alff(subj_par, subj_ids, stem_path, base_path, tr,
+def alff(subj_par, check_file, stem_path, base_path, tr,
          low_freq_band=(0.01, 0.08), linear_detrend=True):
 
     # prepare
-    n_subj = len(subj_ids)
+    df = pd.read_csv(check_file, sep='\t')
+    n_subj = df.shape[0]
+    all_runs = df.columns.drop('subID')
+    if 'rfMRI_REST' in all_runs:
+        all_runs = all_runs.drop('rfMRI_REST')
     alff_all_file = pjoin(subj_par, 'alff.dscalar.nii')
     falff_all_file = pjoin(subj_par, 'falff.dscalar.nii')
 
@@ -172,24 +175,30 @@ def alff(subj_par, subj_ids, stem_path, base_path, tr,
     volume = None
     alff_all = np.ones((n_subj, All_count_32k), dtype=np.float64) * np.nan
     falff_all = np.ones((n_subj, All_count_32k), dtype=np.float64) * np.nan
-    for subj_idx, subj_id in enumerate(subj_ids):
+    for subj_idx, idx in enumerate(df.index):
         time1 = time.time()
 
-        # prepare path
-        stem_dir = pjoin(subj_par, subj_id, stem_path)
-        fpath_ = pjoin(stem_dir, base_path)
-        fpaths = glob.glob(fpath_)
-        n_run = len(fpaths)
+        # check valid runs
+        runs = []
+        for run in all_runs:
+            run_status = df.loc[idx, run]
+            if isinstance(run_status, str) and run_status.startswith('ok'):
+                runs.append(run)
+        n_run = len(runs)
         if n_run == 0:
             continue
+
+        # prepare path
+        stem_dir = pjoin(subj_par, str(df.loc[idx, 'subID']), stem_path)
         alff_sub_file = pjoin(stem_dir, 'alff.dscalar.nii')
         falff_sub_file = pjoin(stem_dir, 'falff.dscalar.nii')
 
         # loop all runs
-        alff_sub = np.zeros((n_run, All_count_32k), dtype=np.float64)
-        falff_sub = np.zeros((n_run, All_count_32k), dtype=np.float64)
-        for run_idx, fpath in enumerate(fpaths):
+        alff_sub = np.zeros((1, All_count_32k), dtype=np.float64)
+        falff_sub = np.zeros((1, All_count_32k), dtype=np.float64)
+        for run_idx, run in enumerate(runs, 1):
             # prepare path
+            fpath = pjoin(stem_dir, base_path.format(run=run))
             run_dir = os.path.dirname(fpath)
             base_name = os.path.basename(fpath)
             base_name = '.'.join(base_name.split('.')[:-2])
@@ -210,17 +219,17 @@ def alff(subj_par, subj_ids, stem_path, base_path, tr,
             # calculate alff and falff
             alff_run, falff_run = calc_alff(data, tr, 0,
                                             low_freq_band, linear_detrend)
-            alff_sub[run_idx] = alff_run
-            falff_sub[run_idx] = falff_run
+            alff_sub[0] += alff_run
+            falff_sub[0] += falff_run
 
             # save run
             save2cifti(alff_run_file, alff_run[None, :], brain_models,
                        volume=volume)
             save2cifti(falff_run_file, falff_run[None, :], brain_models,
                        volume=volume)
-            print(f'Finish subj-{subj_idx+1}/{n_subj}_run-{run_idx+1}/{n_run}')
-        alff_sub = np.mean(alff_sub, 0, keepdims=True)
-        falff_sub = np.mean(falff_sub, 0, keepdims=True)
+            print(f'Finish subj-{subj_idx+1}/{n_subj}_run-{run_idx}/{n_run}')
+        alff_sub = alff_sub / n_run
+        falff_sub = falff_sub / n_run
         alff_all[subj_idx] = alff_sub
         falff_all[subj_idx] = falff_sub
 
@@ -231,11 +240,18 @@ def alff(subj_par, subj_ids, stem_path, base_path, tr,
               f'cost {time.time()-time1} seconds')
 
     # save subjects
-    save2cifti(alff_all_file, alff_all, brain_models, subj_ids, volume)
-    save2cifti(falff_all_file, falff_all, brain_models, subj_ids, volume)
+    save2cifti(alff_all_file, alff_all, brain_models, df['subID'].astype(str), volume)
+    save2cifti(falff_all_file, falff_all, brain_models, df['subID'].astype(str), volume)
 
 
-def ColeParcel_fc_vtx(subj_par, subj_ids, stem_path, base_path):
+def ColeParcel_fc_vtx(subj_par, check_file, stem_path, base_path):
+
+    # prepare
+    df_ck = pd.read_csv(check_file, sep='\t')
+    n_subj = df_ck.shape[0]
+    all_runs = df_ck.columns.drop('subID')
+    if 'rfMRI_REST' in all_runs:
+        all_runs = all_runs.drop('rfMRI_REST')
 
     # load atlas
     cap_file = '/nfs/z1/atlas/ColeAnticevicNetPartition/' \
@@ -247,25 +263,31 @@ def ColeParcel_fc_vtx(subj_par, subj_ids, stem_path, base_path):
     n_parcel = df.shape[0]
 
     # start
-    n_subj = len(subj_ids)
     first_flag = True
     brain_models = None
     volume = None
-    for subj_idx, subj_id in enumerate(subj_ids):
+    for subj_idx, idx in enumerate(df_ck.index, 1):
         time1 = time.time()
 
-        # prepare path
-        stem_dir = pjoin(subj_par, subj_id, stem_path)
-        fpath_ = pjoin(stem_dir, base_path)
-        fpaths = glob.glob(fpath_)
-        n_run = len(fpaths)
+        # check valid runs
+        runs = []
+        for run in all_runs:
+            run_status = df_ck.loc[idx, run]
+            if isinstance(run_status, str) and run_status.startswith('ok'):
+                runs.append(run)
+        n_run = len(runs)
         if n_run == 0:
             continue
+
+        # prepare path
+        stem_dir = pjoin(subj_par, str(df_ck.loc[idx, 'subID']), stem_path)
         out_file = pjoin(stem_dir, 'rsfc_ColeParcel2Vertex.dscalar.nii')
 
         # loop all runs
         fc_sub = np.zeros((n_parcel, All_count_32k), dtype=np.float64)
-        for run_idx, fpath in enumerate(fpaths):
+        for run_idx, run in enumerate(runs, 1):
+
+            fpath = pjoin(stem_dir, base_path.format(run=run))
 
             # get data
             if first_flag:
@@ -281,17 +303,17 @@ def ColeParcel_fc_vtx(subj_par, subj_ids, stem_path, base_path):
 
             # prepare ROI time series
             data_roi = np.zeros((n_parcel, data.shape[1]), dtype=np.float64)
-            for idx, k in enumerate(df['KEYVALUE']):
-                data_roi[idx] = np.mean(data[map == k], 0)
+            for k_idx, k in enumerate(df['KEYVALUE']):
+                data_roi[k_idx] = np.mean(data[map == k], 0)
 
             # calculate RSFC
             fc_run = 1 - cdist(data_roi, data, metric='correlation')
             fc_sub += fc_run
-            print(f'Finish subj-{subj_idx+1}/{n_subj}_run-{run_idx+1}/{n_run}')
+            print(f'Finish subj-{subj_idx}/{n_subj}_run-{run_idx}/{n_run}')
 
         fc_sub /= n_run
         save2cifti(out_file, fc_sub, brain_models, df['LABEL'], volume)
-        print(f'Finish subj-{subj_idx+1}/{n_subj}, '
+        print(f'Finish subj-{subj_idx}/{n_subj}, '
               f'cost {time.time()-time1} seconds')
 
 
@@ -305,50 +327,36 @@ if __name__ == '__main__':
     # merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
 
-    # subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
-    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # subj_par = '/nfs/e1/HCPA/fmriresults01'
     # alff(
-    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPA_rfMRI_file_check.tsv'),
     #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST*_??/'
-    #               'rfMRI_REST*_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp0_clean.dtseries.nii',
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    # subj_par = '/nfs/e1/HCPD/fmriresults01'
-    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
-    # alff(
-    #     subj_par=subj_par, subj_ids=subj_ids,
-    #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST*_??/'
-    #               'rfMRI_REST*_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
-    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
-    # )
-
-    # subj_par = '/nfs/z1/HCP/HCPA/fmriresults01'
-    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCA')])
-    # alff(
-    #     subj_par=subj_par, subj_ids=subj_ids,
-    #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST?_??/'
-    #               'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii',
-    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
-    # )
-
-    # subj_par = '/nfs/z1/HCP/HCPD/fmriresults01'
-    # subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCD')])
+    # subj_par = '/nfs/e1/HCPA/fmriresults01'
     # ColeParcel_fc_vtx(
-    #     subj_par=subj_par, subj_ids=subj_ids,
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPA_rfMRI_file_check.tsv'),
     #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST??_??/'
-    #               'rfMRI_REST??_??_Atlas_MSMAll_hp0_clean.dtseries.nii'
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp0_clean.dtseries.nii'
     # )
 
-    subj_par = '/nfs/z1/HCP/HCPA/fmriresults01'
-    subj_ids = sorted([i for i in os.listdir(subj_par) if i.startswith('HCA')])
-    ColeParcel_fc_vtx(
-        subj_par=subj_par, subj_ids=subj_ids,
-        stem_path='MNINonLinear/Results',
-        base_path='rfMRI_REST?_??/'
-                  'rfMRI_REST?_??_Atlas_MSMAll_hp0_clean.dtseries.nii'
-    )
+    # subj_par = '/nfs/m1/hcp'
+    # alff(
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii',
+    #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
+    # )
+
+    # subj_par = '/nfs/m1/hcp'
+    # ColeParcel_fc_vtx(
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    # )

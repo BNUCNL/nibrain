@@ -288,6 +288,49 @@ def fc_merge_MMP(hemi='lh'):
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def pkl2mat(lh_file, rh_file, out_file, seeds, exclude_trg_labels=None):
+    """
+    把原来左右脑用两个pickle文件分开存的数据格式，转换到一个csv文件中
+
+    Args:
+        lh_file (str): 左脑pickle数据
+        rh_file (str): 右脑pickle数据
+        out_file (str): 整理后的CSV文件
+        seeds (sequence): 指定整理哪些seeds
+            IOG-face, pFus-face, mFus-face
+        exclude_trg_labels (sequence, optional): Defaults to None.
+            去掉和指定targets的连接
+    """
+    import numpy as np
+    import pickle as pkl
+    from scipy.io import savemat
+
+    hemis = ('lh', 'rh')
+    hemi2data = {
+        'lh': pkl.load(open(lh_file, 'rb')),
+        'rh': pkl.load(open(rh_file, 'rb'))
+    }
+    assert hemi2data['lh']['trg_label'] == hemi2data['rh']['trg_label']
+    trg_labels = hemi2data['lh']['trg_label']
+
+    if exclude_trg_labels is not None:
+        exclude_trg_indices = [trg_labels.index(i) for i in exclude_trg_labels]
+        for hemi in hemis:
+            for seed in seeds:
+                hemi2data[hemi][seed] = np.delete(hemi2data[hemi][seed],
+                                                  exclude_trg_indices, 1)
+        trg_labels = [i for i in trg_labels if i not in exclude_trg_labels]
+
+    out_dict = {'target_label': trg_labels}
+    for hemi in hemis:
+        data = hemi2data[hemi]
+        for seed in seeds:
+            col = f"{hemi}_{seed.split('-')[0]}"
+            out_dict[col] = data[seed]
+
+    savemat(out_file, out_dict)
+
+
 def pre_ANOVA_rm():
     """
     Preparation for two-way repeated-measures ANOVA
@@ -637,6 +680,19 @@ if __name__ == '__main__':
     # fc_mean_among_run(hemi='rh')
     # fc_merge_MMP(hemi='lh')
     # fc_merge_MMP(hemi='rh')
+    # pkl2mat(
+    #     lh_file=pjoin(work_dir, 'rsfc_individual2Cole_lh.pkl'),
+    #     rh_file=pjoin(work_dir, 'rsfc_individual2Cole_rh.pkl'),
+    #     out_file=pjoin(work_dir, 'rsfc_FFA2Cole.mat'),
+    #     seeds=('pFus-face', 'mFus-face')
+    # )
+    pkl2mat(
+        lh_file=pjoin(work_dir, 'rsfc_individual2MMP_lh.pkl'),
+        rh_file=pjoin(work_dir, 'rsfc_individual2MMP_rh.pkl'),
+        out_file=pjoin(work_dir, 'rsfc_FFA2MMP.mat'),
+        seeds=('pFus-face', 'mFus-face'),
+        exclude_trg_labels=(18, 198)
+    )
     # pre_ANOVA_rm()
     # roi_ttest()
     # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
