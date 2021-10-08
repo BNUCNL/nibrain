@@ -9,18 +9,18 @@ work_dir = pjoin(anal_dir, 'grouping/rfMRI')
 def pre_ANOVA_3factors():
     """
     准备好3因素被试间设计方差分析需要的数据。
-    2 hemispheres x 2 groups x 2 ROIs
+    2 hemispheres x groups x ROIs
     """
     import numpy as np
     import pandas as pd
     from scipy.io import loadmat
 
-    gids = (1, 2)
+    gids = (0, 1, 2)
     hemis = ('lh', 'rh')
     seeds = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2MMP_preANOVA-3factor.csv')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-gid012.csv')
 
     data = loadmat(src_file)
     gid_df = pd.read_csv(gid_file)
@@ -106,13 +106,13 @@ def roi_ttest(gid, trg_name2label):
     # parameters
     hemis = ('lh', 'rh')
     roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
     vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_FFA2MMP_G{gid}_{vs_name}_ttest.csv")
+                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest.csv")
 
     # start
     data = loadmat(src_file)
@@ -217,12 +217,12 @@ def multitest_correct_ttest(gid=1):
 
     # inputs
     hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
-                                '_pFus_vs_mFus_ttest-paired.csv')
+    data_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                                '_pFus_vs_mFus_ttest.csv')
 
     # outputs
-    out_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
-                               '_pFus_vs_mFus_ttest-paired_mtc.csv')
+    out_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                               '_pFus_vs_mFus_ttest_mtc.csv')
 
     # start
     data = pd.read_csv(data_file)
@@ -289,10 +289,12 @@ def prepare_plot(gid=1, hemi='lh'):
 if __name__ == '__main__':
     # pre_ANOVA_3factors()
     # pre_ANOVA_3factors_mix()
-    # roi_ttest(gid=1, trg_name2label=mmp_name2label)
-    # roi_ttest(gid=2, trg_name2label=mmp_name2label)
+    # roi_ttest(gid=0, trg_name2label=net2label_cole)
+    # roi_ttest(gid=1, trg_name2label=net2label_cole)
+    # roi_ttest(gid=2, trg_name2label=net2label_cole)
     # roi_pair_ttest(gid=1, trg_name2label=mmp_name2label)
     # roi_pair_ttest(gid=2, trg_name2label=mmp_name2label)
+    multitest_correct_ttest(gid=0)
     multitest_correct_ttest(gid=1)
     multitest_correct_ttest(gid=2)
 

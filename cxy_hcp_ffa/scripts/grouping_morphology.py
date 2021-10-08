@@ -141,41 +141,41 @@ if __name__ == '__main__':
 
     pre_ANOVA_3factors(
         meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_merged.csv'),
-        out_file=pjoin(work_dir, 'FFA_thickness_preANOVA-3factor.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
+        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
+        out_file=pjoin(work_dir, 'FFA_thickness_preANOVA-3factor-gid012.csv'),
+        gids=(0, 1, 2), rois=('pFus', 'mFus')
     )
     pre_ANOVA_3factors(
         meas_file=pjoin(anal_dir, 'structure/FFA_myelin.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_merged.csv'),
-        out_file=pjoin(work_dir, 'FFA_myelin_preANOVA-3factor.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
+        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
+        out_file=pjoin(work_dir, 'FFA_myelin_preANOVA-3factor-gid012.csv'),
+        gids=(0, 1, 2), rois=('pFus', 'mFus')
     )
-    pre_ANOVA_3factors(
-        meas_file=pjoin(anal_dir, 'structure/FFA_va.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_merged.csv'),
-        out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
+    # pre_ANOVA_3factors(
+    #     meas_file=pjoin(anal_dir, 'structure/FFA_va.csv'),
+    #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2_merged.csv'),
+    #     out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
 
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_thickness_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_myelin.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_myelin_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_va.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
+    #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
+    #     out_file=pjoin(work_dir, 'FFA_thickness_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'structure/FFA_myelin.csv'),
+    #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
+    #     out_file=pjoin(work_dir, 'FFA_myelin_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'structure/FFA_va.csv'),
+    #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
+    #     out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
 
     # old
     # pre_ANOVA(gid=1, morph='thickness')
