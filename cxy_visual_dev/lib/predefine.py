@@ -46,6 +46,26 @@ for name, lbl in zip(*get_name_label_of_MMP()):
     mmp_label2name[lbl] = name
 # HCP MMP1.0<<<
 
+# >>>HCP-MMP1_visual-cortex2
+mmp_vis2_df = pd.read_csv(pjoin(proj_dir,
+                                'data/HCP/HCP-MMP1_visual-cortex2.csv'))
+mmp_vis2_name2label = {}
+mmp_vis2_label2name = {}
+for idx, rid in enumerate(mmp_vis2_df['ID_in_22Region']):
+    if np.isnan(rid):
+        continue
+    name_rh = f"R_{mmp_vis2_df.loc[idx, 'area_name']}"
+    label_rh = idx + 1
+    mmp_vis2_name2label[name_rh] = label_rh
+    mmp_vis2_label2name[label_rh] = name_rh
+
+    name_lh = f"L_{mmp_vis2_df.loc[idx, 'area_name']}"
+    label_lh = idx + 181
+    mmp_vis2_name2label[name_lh] = label_lh
+    mmp_vis2_label2name[label_lh] = name_lh
+# HCP-MMP1_visual-cortex2<<<
+
+
 # >>>ColeAnticevicNetPartition
 cole_net_assignment_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
     'cortex_parcel_network_assignments.mat'
@@ -276,6 +296,26 @@ class Atlas:
             for lbl in ffa_name2label.values():
                 self.maps[fsr_map == lbl] = lbl
             self.roi2label = ffa_name2label
+
+        elif atlas_name == 'MMP-vis2':
+            self.maps = nib.load(
+                pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.dlabel.nii')
+            ).get_fdata()
+            self.roi2label = mmp_vis2_name2label
+
+        elif atlas_name == 'MMP-vis2-LR':
+            map_tmp = nib.load(
+                pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.dlabel.nii')
+            ).get_fdata()
+            self.maps = np.zeros_like(map_tmp, dtype=np.uint8)
+            for roi, lbl in mmp_vis2_name2label.items():
+                if roi.startswith('L_'):
+                    self.maps[map_tmp == lbl] = 1
+                elif roi.startswith('R_'):
+                    self.maps[map_tmp == lbl] = 2
+                else:
+                    raise ValueError('parcel name must start with L_ or R_!')
+            self.roi2label = {'L_MMP_vis2': 1, 'R_MMP_vis2': 2}
 
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')
