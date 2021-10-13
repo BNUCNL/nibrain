@@ -7,9 +7,9 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.spatial.distance import cdist
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import LR_count_32k,\
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
     mmp_map_file, dataset_name2dir, dataset_name2info,\
-    All_count_32k
+    All_count_32k, mmp_vis2_name2label
 from cxy_visual_dev.lib.algo import calc_alff
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
@@ -317,6 +317,92 @@ def ColeParcel_fc_vtx(subj_par, check_file, stem_path, base_path):
               f'cost {time.time()-time1} seconds')
 
 
+def get_HCPY_alff():
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    """
+    info_df = pd.read_csv(dataset_name2info['HCPY'])
+    check_df = pd.read_csv(pjoin(
+        proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv'
+    ), sep='\t')
+    reader = CiftiReader('/nfs/m1/hcp/alff.dscalar.nii')
+    reader_mmp = CiftiReader(mmp_map_file)
+    out_file = pjoin(proj_dir, 'data/HCP/HCPY-alff.dscalar.nii')
+
+    data_1206 = reader.get_data()
+    subj_ids_1206 = check_df['subID'].to_list()
+    assert subj_ids_1206 == [int(i) for i in reader.map_names()]
+    ok_idx_vec = np.all(check_df[
+        ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    ] == 'ok=(1200, 91282)', 1)
+
+    data = np.ones((info_df.shape[0], LR_count_32k), np.float64) * np.nan
+    for idx in info_df.index:
+        idx_1206 = subj_ids_1206.index(info_df.loc[idx, 'subID'])
+        if ok_idx_vec[idx_1206]:
+            data[idx] = data_1206[idx_1206, :LR_count_32k]
+
+    save2cifti(out_file, data, reader_mmp.brain_models(),
+               [str(i) for i in info_df['subID']])
+
+
+def get_HCPY_GBC():
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    GBC计算的是一个MMP-vis2的顶点和HCP-MMP1_visual-cortex2以外的所有parcel的连接的均值
+    """
+    src_file = '/nfs/m1/hcp/{subj_id}/MNINonLinear/Results/'\
+        'rsfc_ColeParcel2Vertex.dscalar.nii'
+    info_df = pd.read_csv(dataset_name2info['HCPY'])
+    check_df = pd.read_csv(pjoin(
+        proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv'), sep='\t')
+    cap_LabelKey_file = '/nfs/z1/atlas/ColeAnticevicNetPartition/' \
+                        'CortexSubcortex_ColeAnticevic_NetPartition_wSubcorGSR_parcels_LR_LabelKey.txt'
+    cap_df = pd.read_csv(cap_LabelKey_file, sep='\t')
+    reader_mmp = CiftiReader(mmp_map_file)
+
+    atlas = Atlas('MMP-vis2-LR')
+    mask_map = np.zeros(LR_count_32k, bool)
+    for _, lbl in atlas.roi2label.items():
+        mask_map = np.logical_or(mask_map, atlas.maps[0] == lbl)
+
+    out_file = pjoin(proj_dir, 'data/HCP/HCPY-GBC_MMP-vis2.dscalar.nii')
+
+    n_subj = info_df.shape[0]
+    subj_ids_1206 = check_df['subID'].to_list()
+    ok_idx_vec = np.all(check_df[
+        ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    ] == 'ok=(1200, 91282)', 1)
+    vis_labels = [cap_df.loc[cap_df['GLASSERLABELNAME'] == f'{i}_ROI', 'LABEL'].item()
+                  for i in mmp_vis2_name2label.keys()]
+
+    data = np.ones((n_subj, LR_count_32k), np.float64) * np.nan
+    first_flag = True
+    map_names = []
+    for idx in info_df.index:
+        time1 = time.time()
+        subj_id = info_df.loc[idx, 'subID']
+        idx_1206 = subj_ids_1206.index(subj_id)
+        if ok_idx_vec[idx_1206]:
+            reader = CiftiReader(src_file.format(subj_id=subj_id))
+            if first_flag:
+                map_names = reader.map_names()
+                vis_indices = [map_names.index(i) for i in vis_labels]
+                first_flag = False
+            else:
+                assert map_names == reader.map_names()
+            src_data = reader.get_data()[:, :LR_count_32k]
+            src_data = np.delete(src_data, vis_indices, 0)
+            print(src_data.shape)
+            data[idx, mask_map] = np.mean(src_data, 0)[mask_map]
+        print(f'Finished {idx+1}/{n_subj}, cost: {time.time()-time1} seconds.')
+
+    save2cifti(out_file, data, reader_mmp.brain_models(),
+               [str(i) for i in info_df['subID']])
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -360,3 +446,6 @@ if __name__ == '__main__':
     #     stem_path='MNINonLinear/Results',
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
+
+    # get_HCPY_alff()
+    get_HCPY_GBC()
