@@ -238,7 +238,7 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
 
 
 def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
-           zscore0, zscore1, csv_files, cii_file, pkl_file):
+           zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
     """
     对n_subj x n_vtx形状的矩阵进行PCA降维
     adapted for dealing with multi files
@@ -295,10 +295,13 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
 
     # prepare data
     roi_idx_maps = []
+    subj_idx_vecs = []
     n_vertices = [0]
     n_subjects = [0]
     data = []
     for col_idx in range(n_col):
+        print(f'---{atlas_names[col_idx]}---')
+
         # load maps1
         reader = CiftiReader(data_files[0])
         maps1 = reader.get_data()
@@ -307,11 +310,21 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         atlas = Atlas(atlas_names[col_idx])
         assert atlas.maps.shape == (1, LR_count_32k)
         roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_names[col_idx]]
-        maps1 = maps1[:, roi_idx_map]
         roi_idx_maps.append(roi_idx_map)
+        maps1 = maps1[:, roi_idx_map]
+
+        non_nan_idx_arr1 = ~np.isnan(maps1)
+        subj_idx_vec1 = np.all(non_nan_idx_arr1, 1)
+        assert np.all(subj_idx_vec1 == np.any(non_nan_idx_arr1, 1))
+        maps1 = maps1[subj_idx_vec1]
+        print(f'{data_files[0]}\n{maps1.shape}\n')
+
         n_vertices.append(n_vertices[-1] + maps1.shape[1])
         if col_idx == 0:
             n_subjects.append(n_subjects[-1] + maps1.shape[0])
+            subj_idx_vecs.append(subj_idx_vec1)
+        else:
+            assert np.all(subj_idx_vecs[0] == subj_idx_vec1)
 
         # zscore
         if zscore1 == 'split':
@@ -324,8 +337,18 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
                 # load maps2
                 maps2 = nib.load(data_files[row_idx]).get_fdata()
                 maps2 = maps2[:, roi_idx_map]
+
+                non_nan_idx_arr2 = ~np.isnan(maps2)
+                subj_idx_vec2 = np.all(non_nan_idx_arr2, 1)
+                assert np.all(subj_idx_vec2 == np.any(non_nan_idx_arr2, 1))
+                maps2 = maps2[subj_idx_vec2]
+                print(f'{data_files[row_idx]}\n{maps2.shape}\n')
+
                 if col_idx == 0:
                     n_subjects.append(n_subjects[-1] + maps2.shape[0])
+                    subj_idx_vecs.append(subj_idx_vec2)
+                else:
+                    np.all(subj_idx_vecs[row_idx] == subj_idx_vec2)
 
                 # zscore
                 if zscore1 == 'split':
@@ -344,7 +367,7 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         data = zscore(data, 0)
 
     # calculate
-    pca = PCA(n_components=n_component)
+    pca = PCA(n_components=n_component, random_state=random_state)
     if axis == 'vertex':
         pca.fit(data)
         Y = pca.transform(data)
@@ -361,10 +384,13 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
 
     # save
     for row_idx in range(n_row):
+        subj_idx_vec = subj_idx_vecs[row_idx]
+        csv_data_tmp = np.ones(
+            (len(subj_idx_vec), csv_data.shape[1]), np.float64) * np.nan
         s_idx = n_subjects[row_idx]
         e_idx = n_subjects[row_idx + 1]
-        df = pd.DataFrame(data=csv_data[s_idx:e_idx, :],
-                          columns=component_names)
+        csv_data_tmp[subj_idx_vec] = csv_data[s_idx:e_idx]
+        df = pd.DataFrame(data=csv_data_tmp, columns=component_names)
         df.to_csv(csv_files[row_idx], index=False)
 
     maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
