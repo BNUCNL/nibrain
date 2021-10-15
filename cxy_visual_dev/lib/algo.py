@@ -921,7 +921,7 @@ def map_operate_map(data_file1, data_file2, operation_method, out_file):
     save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
 
 
-def mask_maps(data_file, atlas_name, roi_name, out_file):
+def mask_maps(data_file, atlas_name, roi_names, out_file):
     """
     把data map在指定atlas的ROI以外的部分全赋值为nan
 
@@ -937,10 +937,12 @@ def mask_maps(data_file, atlas_name, roi_name, out_file):
     data = reader.get_data()
     atlas = Atlas(atlas_name)
     assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+    mask_arr = np.zeros(LR_count_32k, bool)
+    for roi_name in roi_names:
+        mask_arr = np.logical_or(mask_arr, atlas.maps[0] == atlas.roi2label[roi_name])
 
     # calculate
-    data[:, ~roi_idx_map] = np.nan
+    data[:, ~mask_arr] = np.nan
 
     # save
     save2cifti(out_file, data, reader.brain_models(), reader.map_names())
