@@ -6,7 +6,7 @@ from scipy.stats import zscore, sem
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
 from scipy.fft import fft, fftfreq
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, FactorAnalysis
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
     R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
@@ -237,10 +237,10 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
 
 
-def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
-           zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
+def decompose_mf(data_files, atlas_names, roi_names, method, n_component, axis,
+                 zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
     """
-    对n_subj x n_vtx形状的矩阵进行PCA降维
+    对n_subj x n_vtx形状的矩阵进行成分分解
     adapted for dealing with multi files
 
     Args:
@@ -249,6 +249,10 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         atlas_names (str or 1D array-like): include ROIs' labels and mask map
         roi_names (str or 1D array-like): 决定选用哪个区域内的顶点来参与PCA
             corresponding to atlas_names
+        method (str): PCA | FA | FA1
+            'PCA': Principal Component Analysis
+            'FA': Factor Analysis
+            'FA1': Factor Analysis with 'varimax' rotation
         n_component (int): the number of components
         axis (str): vertex | subject
             vertex: 对顶点数量进行降维，得到几个主成分时间序列，
@@ -367,17 +371,26 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         data = zscore(data, 0)
 
     # calculate
-    pca = PCA(n_components=n_component, random_state=random_state)
+    if method == 'PCA':
+        transformer = PCA(n_components=n_component, random_state=random_state)
+    elif method == 'FA1':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation='varimax', random_state=random_state)
+    elif method == 'FA':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation=None, random_state=random_state)
+    else:
+        raise ValueError('not supported method:', method)
     if axis == 'vertex':
-        pca.fit(data)
-        Y = pca.transform(data)
+        transformer.fit(data)
+        Y = transformer.transform(data)
         csv_data = Y
-        cii_data = pca.components_
+        cii_data = transformer.components_
     elif axis == 'subject':
         data = data.T
-        pca.fit(data)
-        Y = pca.transform(data)
-        csv_data = pca.components_.T
+        transformer.fit(data)
+        Y = transformer.transform(data)
+        csv_data = transformer.components_.T
         cii_data = Y.T
     else:
         raise ValueError('Invalid axis:', axis)
@@ -400,7 +413,7 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         maps[:, roi_idx_maps[col_idx]] = cii_data[:, s_idx:e_idx]
     save2cifti(cii_file, maps, reader.brain_models(), component_names)
 
-    pkl.dump(pca, open(pkl_file, 'wb'))
+    pkl.dump(transformer, open(pkl_file, 'wb'))
 
 
 def pca_mf1(data_files, atlas_names, roi_names, n_component, axis,
