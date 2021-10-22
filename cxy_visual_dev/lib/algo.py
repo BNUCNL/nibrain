@@ -9,7 +9,7 @@ from scipy.fft import fft, fftfreq
 from sklearn.decomposition import PCA, FactorAnalysis
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
-    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
+    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file, All_count_32k
 
 
 def zscore_data(data_file, out_file):
@@ -942,12 +942,15 @@ def mask_maps(data_file, atlas_name, roi_names, out_file):
         data_file (str): end with .dscalar.nii
             shape=(n_map, LR_count_32k)
         atlas_name (str):
-        roi_name (str):
+        roi_names (strings):
         out_file (str):
     """
     # prepare
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
+    reader1 = CiftiReader(mmp_map_file)
+    reader2 = CiftiReader(data_file)
+    data = reader2.get_data()
+    if data.shape[1] == All_count_32k:
+        data = data[:, :LR_count_32k]
     atlas = Atlas(atlas_name)
     assert atlas.maps.shape == (1, LR_count_32k)
     mask_arr = np.zeros(LR_count_32k, bool)
@@ -958,7 +961,7 @@ def mask_maps(data_file, atlas_name, roi_names, out_file):
     data[:, ~mask_arr] = np.nan
 
     # save
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
 
 
 def polyfit(data_file, info_file, deg, out_file):

@@ -4,6 +4,8 @@ import nibabel as nib
 from scipy.io import loadmat
 from os.path import join as pjoin
 
+from magicbox.io.io import CiftiReader
+
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 
@@ -128,6 +130,17 @@ for name, lbl in zip(ffa_names, ffa_labels):
     ffa_name2label[name] = lbl
     ffa_label2name[lbl] = name
 # FFA MPM from my HCP-YA project<<<
+
+
+# >>>S1200_7T_Retinotopy
+s1200_avg_eccentricity = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
+    'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
+    'S1200_7T_Retinotopy181.Fit1_Eccentricity_MSMAll.32k_fs_LR.dscalar.nii'
+s1200_avg_angle = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
+    'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
+    'S1200_7T_Retinotopy181.Fit1_PolarAngle_MSMAll.32k_fs_LR.dscalar.nii'
+# S1200_7T_Retinotopy<<<
+
 
 # >>>dataset
 s1200_avg_dir = '/nfs/p1/public_dataset/datasets/hcp/DATA/'\
@@ -297,7 +310,7 @@ class Atlas:
                 self.maps[fsr_map == lbl] = lbl
             self.roi2label = ffa_name2label
 
-        elif atlas_name == 'MMP-vis2':
+        elif atlas_name == 'MMP-vis2-area':
             self.maps = nib.load(
                 pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.dlabel.nii')
             ).get_fdata()
@@ -316,6 +329,32 @@ class Atlas:
                 else:
                     raise ValueError('parcel name must start with L_ or R_!')
             self.roi2label = {'L_MMP_vis2': 1, 'R_MMP_vis2': 2}
+
+        elif atlas_name == 'MMP-vis2':
+            map_tmp = nib.load(
+                pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.dlabel.nii')
+            ).get_fdata()
+            self.maps = np.zeros_like(map_tmp, dtype=np.uint8)
+            self.maps[~np.isnan(map_tmp)] = 1
+            self.roi2label = {'MMP_vis2': 1}
+
+        elif atlas_name == 'wang-vis-area':
+            reader = CiftiReader(
+                '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'
+                'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'
+                'lr.wang2015.32k_fs_LR.dlabel.nii'
+            )
+            map_L, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
+            map_R, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+            lbl_tab = reader.label_tables()[0]
+            self.roi2label = {}
+            for k, v in lbl_tab.items():
+                if k == 0:
+                    continue
+                self.roi2label[f'L_{v.label}'] = k + 25
+                self.roi2label[f'R_{v.label}'] = k
+                map_L[map_L == k] = k + 25
+            self.maps = np.c_[map_L, map_R]
 
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')

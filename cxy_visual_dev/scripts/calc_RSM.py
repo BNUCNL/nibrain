@@ -4,7 +4,8 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
-from cxy_visual_dev.lib.predefine import proj_dir, Atlas
+from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
+    s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'RSM')
@@ -64,5 +65,35 @@ def MT_PC1PC2_AG():
     pkl.dump(data, open(pjoin(work_dir, 'MT-PC1PC2-AG_RSM.pkl'), 'wb'))
 
 
+def EA_C2():
+    """
+    计算HCPY的eccentricity，polar angle平均map和
+    HCPY-M+T_L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii中的C2，以及
+    HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii中的C2
+    之间的相关矩阵。
+    """
+    atlas = Atlas('MMP-vis2')
+    roi_idx_map = atlas.maps[0] == atlas.roi2label['MMP_vis2']
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k][roi_idx_map]
+    map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][roi_idx_map]
+    map_PCA = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii')).get_fdata()[1, roi_idx_map]
+    map_FA = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii')).get_fdata()[1, roi_idx_map]
+    non_nan_vec = ~np.isnan(map_ang)
+    map_ecc = map_ecc[non_nan_vec][None, :]
+    map_ang = map_ang[non_nan_vec][None, :]
+    map_PCA = map_PCA[non_nan_vec][None, :]
+    map_FA = map_FA[non_nan_vec][None, :]
+
+    maps = np.concatenate([map_ecc, map_ang, map_PCA, map_FA], 0)
+    map_names = ('eccentricity', 'angle', 'PCA-C2', 'FA-C2')
+
+    data = {'row_name': map_names, 'col_name': map_names}
+    data['r'], data['p'] = calc_pearson_r_p(maps, maps)
+    pkl.dump(data, open(pjoin(work_dir, 'EA_C2_RSM.pkl'), 'wb'))
+
+
 if __name__ == '__main__':
-    MT_PC1PC2_AG()
+    # MT_PC1PC2_AG()
+    EA_C2()
