@@ -280,7 +280,7 @@ class Atlas:
         Args:
             atlas_name (str): atlas name
                 'cortex': 左右cortex分别作为两个大ROI
-                'HCP-MMP1': HCP MMP1.0的所有ROI
+                'HCP-MMP': HCP MMP1.0的所有ROI
                 'FFA': MPMs of pFus- and mFus-face from my HCP-YA FFA project
                 'Wang2015': (Wang et al., 2015)中定的视觉区
         """
@@ -291,7 +291,7 @@ class Atlas:
             self.maps[0, R_offset_32k:(R_offset_32k+R_count_32k)] = 2
             self.roi2label = {'L_cortex': 1, 'R_cortex': 2}
 
-        elif atlas_name == 'HCP-MMP1':
+        elif atlas_name == 'HCP-MMP':
             self.maps = nib.load(mmp_map_file).get_fdata()
             self.roi2label = mmp_name2label
 
