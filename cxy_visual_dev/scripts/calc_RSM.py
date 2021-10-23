@@ -38,33 +38,6 @@ def calc_pearson_r_p(data1, data2):
     return r_arr, p_arr
 
 
-def MT_PC1PC2_AG():
-    """
-    计算HCPY的myelin，thickness平均map和
-    HCPY-M+T+A+G_mask-L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii中的PC1和PC2，
-    以及HCPY的ALFF，GBC平均map之间的相关矩阵。
-    """
-
-    atlas = Atlas('MMP-vis2-LR')
-    roi_idx_map = atlas.maps == atlas.roi2label['L_MMP_vis2']
-    map_m = nib.load(pjoin(
-        anal_dir, 'mean_map/HCPY-myelin_mean.dscalar.nii')).get_fdata()[roi_idx_map][None, :]
-    map_t = nib.load(pjoin(
-        anal_dir, 'mean_map/HCPY-thickness_mean.dscalar.nii')).get_fdata()[roi_idx_map][None, :]
-    map_PC1PC2 = nib.load(pjoin(
-        anal_dir, 'PCA/HCPY-M+T+A+G_mask-L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii')).get_fdata()[:2, roi_idx_map[0]]
-    map_a = nib.load(pjoin(
-        anal_dir, 'mean_map/HCPY-alff_mean.dscalar.nii')).get_fdata()[roi_idx_map][None, :]
-    map_g = nib.load(pjoin(
-        anal_dir, 'mean_map/HCPY-GBC_MMP-vis2_mean.dscalar.nii')).get_fdata()[roi_idx_map][None, :]
-    maps = np.concatenate([map_m, map_t, map_PC1PC2, map_a, map_g], 0)
-    map_names = ('myelin', 'thickness', 'PC1', 'PC2', 'ALFF', 'GBC')
-
-    data = {'row_name': map_names, 'col_name': map_names}
-    data['r'], data['p'] = calc_pearson_r_p(maps, maps)
-    pkl.dump(data, open(pjoin(work_dir, 'MT-PC1PC2-AG_RSM.pkl'), 'wb'))
-
-
 def EA_C2():
     """
     计算HCPY的eccentricity，polar angle平均map和
@@ -72,28 +45,35 @@ def EA_C2():
     HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii中的C2
     之间的相关矩阵。
     """
-    atlas = Atlas('MMP-vis2')
-    roi_idx_map = atlas.maps[0] == atlas.roi2label['MMP_vis2']
+    atlas = Atlas('MMP-vis2-LR')
+    roi_idx_map = atlas.maps[0] == atlas.roi2label['L_MMP_vis2']
+    out_file = pjoin(work_dir, 'EA_C2_RSM_L-MMP-vis2.pkl')
+
     map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k][roi_idx_map]
     map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][roi_idx_map]
     map_PCA = nib.load(pjoin(
         anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii')).get_fdata()[1, roi_idx_map]
     map_FA = nib.load(pjoin(
         anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii')).get_fdata()[1, roi_idx_map]
-    non_nan_vec = ~np.isnan(map_ang)
+
+    nan_vec = np.zeros_like(map_ecc, bool)
+    for i in (map_ecc, map_ang, map_PCA, map_FA):
+        nan_vec = np.logical_or(nan_vec, np.isnan(i))
+    if np.all(nan_vec):
+        raise ValueError
+    non_nan_vec = ~nan_vec
+
     map_ecc = map_ecc[non_nan_vec][None, :]
     map_ang = map_ang[non_nan_vec][None, :]
     map_PCA = map_PCA[non_nan_vec][None, :]
     map_FA = map_FA[non_nan_vec][None, :]
-
     maps = np.concatenate([map_ecc, map_ang, map_PCA, map_FA], 0)
     map_names = ('eccentricity', 'angle', 'PCA-C2', 'FA-C2')
 
     data = {'row_name': map_names, 'col_name': map_names}
     data['r'], data['p'] = calc_pearson_r_p(maps, maps)
-    pkl.dump(data, open(pjoin(work_dir, 'EA_C2_RSM.pkl'), 'wb'))
+    pkl.dump(data, open(out_file, 'wb'))
 
 
 if __name__ == '__main__':
-    # MT_PC1PC2_AG()
     EA_C2()
