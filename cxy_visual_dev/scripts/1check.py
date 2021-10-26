@@ -1,11 +1,12 @@
 import pandas as pd
 import nibabel as nib
+from os.path import join as pjoin
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import mmp_map_file, LR_count_32k,\
     L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     s1200_1096_myelin, s1200_1096_thickness, s1200_avg_myelin,\
     s1200_avg_thickness, dataset_name2info, All_count_32k,\
-    s1200_avg_eccentricity, s1200_avg_angle
+    s1200_avg_eccentricity, s1200_avg_angle, proj_dir
 
 
 def check_grayordinates():
@@ -78,6 +79,7 @@ def check_grayordinates():
     # HCPD rfMRI
     # S1200_7T_Retinotopy Eccentricity
     # S1200_7T_Retinotopy Polar Angle
+    # ZhouMing's PC1
     fpaths = (
         '/nfs/e1/HCPD/fmriresults01/HCD2133433_V1_MR/'
         'MNINonLinear/Results/rfMRI_REST1_AP/'
@@ -85,7 +87,9 @@ def check_grayordinates():
 
         s1200_avg_eccentricity,
 
-        s1200_avg_angle
+        s1200_avg_angle,
+
+        pjoin(proj_dir, 'data/space/pc1.dtseries.nii')
     )
     for fpath in fpaths:
         print(fpath)

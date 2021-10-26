@@ -135,6 +135,15 @@ s1200_avg_eccentricity = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
 s1200_avg_angle = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
     'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
     'S1200_7T_Retinotopy181.Fit1_PolarAngle_MSMAll.32k_fs_LR.dscalar.nii'
+s1200_avg_anglemirror = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
+    'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
+    'S1200_7T_Retinotopy181.Fit1_PolarAngleMirror_MSMAll.32k_fs_LR.dscalar.nii'
+s1200_avg_RFsize = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
+    'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
+    'S1200_7T_Retinotopy181.Fit1_ReceptiveFieldSize_MSMAll.32k_fs_LR.dscalar.nii'
+s1200_avg_R2 = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
+    'S1200_7T_Retinotopy181/MNINonLinear/fsaverage_LR32k/'\
+    'S1200_7T_Retinotopy181.Fit1_R2_MSMAll.32k_fs_LR.dscalar.nii'
 # S1200_7T_Retinotopy<<<
 
 
