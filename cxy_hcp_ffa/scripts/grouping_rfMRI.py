@@ -9,18 +9,18 @@ work_dir = pjoin(anal_dir, 'grouping/rfMRI')
 def pre_ANOVA_3factors():
     """
     准备好3因素被试间设计方差分析需要的数据。
-    2 hemispheres x 2 groups x 2 ROIs
+    2 hemispheres x groups x ROIs
     """
     import numpy as np
     import pandas as pd
     from scipy.io import loadmat
 
-    gids = (1, 2)
+    gids = (0, 1, 2)
     hemis = ('lh', 'rh')
     seeds = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2MMP_preANOVA-3factor.csv')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-gid012.csv')
 
     data = loadmat(src_file)
     gid_df = pd.read_csv(gid_file)
@@ -106,13 +106,13 @@ def roi_ttest(gid, trg_name2label):
     # parameters
     hemis = ('lh', 'rh')
     roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
+    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
     vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
     out_file = pjoin(work_dir,
-                     f"rsfc_FFA2MMP_G{gid}_{vs_name}_ttest.csv")
+                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest.csv")
 
     # start
     data = loadmat(src_file)
@@ -217,12 +217,12 @@ def multitest_correct_ttest(gid=1):
 
     # inputs
     hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
-                                '_pFus_vs_mFus_ttest-paired.csv')
+    data_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                                '_pFus_vs_mFus_ttest.csv')
 
     # outputs
-    out_file = pjoin(work_dir, f'rsfc_FFA2MMP_G{gid}'
-                               '_pFus_vs_mFus_ttest-paired_mtc.csv')
+    out_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
+                               '_pFus_vs_mFus_ttest_mtc.csv')
 
     # start
     data = pd.read_csv(data_file)
@@ -236,6 +236,41 @@ def multitest_correct_ttest(gid=1):
 
     # save out
     data.to_csv(out_file, index=False)
+
+
+def mtc_file2cifti():
+    import numpy as np
+    import pandas as pd
+    from magicbox.io.io import CiftiReader, save2cifti
+    from cxy_visual_dev.lib.predefine import Atlas, mmp_map_file
+
+    hemis = ('lh', 'rh')
+    fpaths = (
+        pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'),
+        pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv')
+    )
+    gnames = ('continuous', 'separate')
+    out_file = pjoin(work_dir, 'rsfc_FFA2MMP_pFus_vs_mFus_ttest_mtc_cohenD.dscalar.nii')
+
+    atlas = Atlas('HCP_MMP1')
+    reader = CiftiReader(mmp_map_file)
+    data = np.ones((4, atlas.maps.shape[1]), np.float64) * np.nan
+    map_names = []
+    row_idx = 0
+    for f_idx, fpath in enumerate(fpaths):
+        df = pd.read_csv(fpath, index_col='target_name')
+        for hemi in hemis:
+            es_col = f'CohenD_{hemi}'
+            p_col = f'P_{hemi}(fdr_bh)'
+            map_names.append(f'{hemi}_{gnames[f_idx]}')
+            for idx in df.index:
+                if df.loc[idx, p_col] >= 0.05:
+                    continue
+                roi_idx_map = atlas.maps[0] == atlas.roi2label[idx]
+                data[row_idx, roi_idx_map] = df.loc[idx, es_col]
+            row_idx += 1
+
+    save2cifti(out_file, data, reader.brain_models(), map_names)
 
 
 # ---old---
@@ -289,12 +324,15 @@ def prepare_plot(gid=1, hemi='lh'):
 if __name__ == '__main__':
     # pre_ANOVA_3factors()
     # pre_ANOVA_3factors_mix()
-    # roi_ttest(gid=1, trg_name2label=mmp_name2label)
-    # roi_ttest(gid=2, trg_name2label=mmp_name2label)
+    # roi_ttest(gid=0, trg_name2label=net2label_cole)
+    # roi_ttest(gid=1, trg_name2label=net2label_cole)
+    # roi_ttest(gid=2, trg_name2label=net2label_cole)
     # roi_pair_ttest(gid=1, trg_name2label=mmp_name2label)
     # roi_pair_ttest(gid=2, trg_name2label=mmp_name2label)
-    multitest_correct_ttest(gid=1)
-    multitest_correct_ttest(gid=2)
+    # multitest_correct_ttest(gid=0)
+    # multitest_correct_ttest(gid=1)
+    # multitest_correct_ttest(gid=2)
+    mtc_file2cifti()
 
     # old
     # prepare_plot(gid=1, hemi='lh')

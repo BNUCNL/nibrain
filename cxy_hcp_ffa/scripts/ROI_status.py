@@ -61,6 +61,9 @@ def calc_gdist(method='peak'):
             If 'min1', use the minimum distance of pair-wise
             vertices between the two ROIs. If the two ROIs are continuous, set as 0.
 
+            If 'max', use the maximum distance of pair-wise
+            vertices between the two ROIs.
+
             If 'AP_gap-y', assume the most posterior vertex of mFus-face is P
             and the most anterior vertex of pFus-face is A.
             This distance is calculated as: y coordinate of P - y coordinate of A.
@@ -184,6 +187,15 @@ def calc_gdist(method='peak'):
                                                          roi1_vertices,
                                                          roi2_vertices)
                                 out_dict[k][subj_idx] = np.min(ds)
+                            elif method == 'max':
+                                roi1_vertices = np.where(roi1_idx_map)[0]
+                                roi1_vertices = roi1_vertices.astype(np.int32)
+                                roi2_vertices = np.where(roi2_idx_map)[0]
+                                roi2_vertices = roi2_vertices.astype(np.int32)
+                                ds = gdist.compute_gdist(coords, faces,
+                                                         roi1_vertices,
+                                                         roi2_vertices)
+                                out_dict[k][subj_idx] = np.max(ds)
                             elif method == 'min1':
                                 roi1_vertices = np.where(roi1_idx_map)[0]
                                 roi2_vertices = np.where(roi2_idx_map)[0]
@@ -501,11 +513,12 @@ if __name__ == '__main__':
     # calc_gdist(method='AP_gap-y')
     # calc_gdist(method='AP_gap-geo')
     # calc_gdist(method='min1')
+    calc_gdist(method='max')
     # plot_gdist()
     # compare_gdist()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
     # get_mpm(hemi='rh')
-    roi2cifti(roi_type='FFA')
-    roi2cifti(roi_type='FSR')
+    # roi2cifti(roi_type='FFA')
+    # roi2cifti(roi_type='FSR')

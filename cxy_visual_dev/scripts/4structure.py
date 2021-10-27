@@ -7,7 +7,7 @@ from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
     mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row,\
     col_operate_col, map_operate_map, zscore_map, concate_map,\
-    zscore_map_subj, pca_mf, ROI_scalar
+    zscore_map_subj, ROI_scalar
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -62,20 +62,20 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv')
     # )
 
-    ROI_scalar(
-        data_file=pjoin(work_dir,
-                        'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-        atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='mean',
-        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-mean.csv'),
-        out_index='map name'
-    )
-    ROI_scalar(
-        data_file=pjoin(work_dir,
-                        'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-        atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='sem',
-        out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-sem.csv'),
-        out_index='map name'
-    )
+    # ROI_scalar(
+    #     data_file=pjoin(work_dir,
+    #                     'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
+    #     atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='mean',
+    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-mean.csv'),
+    #     out_index='map name'
+    # )
+    # ROI_scalar(
+    #     data_file=pjoin(work_dir,
+    #                     'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
+    #     atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='sem',
+    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-sem.csv'),
+    #     out_index='map name'
+    # )
 
     # merge_by_age(
     #     data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
@@ -94,22 +94,6 @@ if __name__ == '__main__':
     #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
     #     n_component=20, axis='subject',
     #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
-    # )
-
-    # pca_mf(
-    #     data_files=[
-    #         pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #         pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii')
-    #     ],
-    #     atlas_names=['Cole_visual_L1', 'Cole_visual_LR'],
-    #     roi_names=['L_cole_visual1', 'R_cole_visual'],
-    #     n_component=20, axis='subject', zscore0=None, zscore1='split',
-    #     csv_files=[
-    #         pjoin(work_dir, 'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj_myelin.csv'),
-    #         pjoin(work_dir, 'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj_thickness.csv')
-    #     ],
-    #     cii_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-    #     pkl_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.pkl')
     # )
 
     # ROI_analysis_on_PC(
