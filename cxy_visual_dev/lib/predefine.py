@@ -156,6 +156,9 @@ s1200_avg_thickness = pjoin(
 s1200_avg_myelin = pjoin(
     s1200_avg_dir, 'S1200.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
 )
+s1200_avg_curv = pjoin(
+    s1200_avg_dir, 'S1200.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+)
 s1200_1096_thickness = pjoin(
     s1200_avg_dir, 'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii'
 )

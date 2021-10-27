@@ -6,7 +6,7 @@ from os.path import join as pjoin
 from scipy.stats import pearsonr
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_anglemirror, s1200_avg_RFsize, s1200_avg_R2
+    s1200_avg_anglemirror, s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'RSM')
@@ -53,26 +53,41 @@ def calc_pearson_r_p(data1, data2, nan_mode=True):
 
 def calc_RSM1(mask, out_file):
     """
-    计算HCPY-M+T_L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii和
-    HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii中的C2与
-    HCPY的eccentricity, PolarAngle, PolarAngleMirror, RFsize平均map，以及
-    周明的PC1~4 map之间的相关矩阵。
+    计算PCA的C1, C2; FA的C1, C2; DicL的C1, C2; ICA的C1, C2; Curvature;
+    Eccentricity; PolarAngle; PolarAngleMirror; RFsize; 以及
+    周明的PC1~4之间的相关矩阵。
     """
     map_PCA = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_PCA-subj.dscalar.nii'
-    )).get_fdata()[1, mask][None, :]
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2, mask]
+
     map_FA = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_L+R_MMP_vis2_zscore1-split_FA-subj.dscalar.nii'
-    )).get_fdata()[1, mask][None, :]
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_FA-subj.dscalar.nii'
+    )).get_fdata()[:2, mask]
+
+    map_DicL = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_DicL-2-subj.dscalar.nii'
+    )).get_fdata()[:, mask]
+    assert map_DicL.shape[0] == 2
+
+    map_ICA = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_ICA-2-subj.dscalar.nii'
+    )).get_fdata()[:, mask]
+    assert map_ICA.shape[0] == 2
+
+    map_curv = nib.load(s1200_avg_curv).get_fdata()[0, mask][None, :]
     map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_mir = nib.load(s1200_avg_anglemirror).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_rfs = nib.load(s1200_avg_RFsize).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_zm = nib.load(pjoin(proj_dir, 'data/space/zm_PCs.dscalar.nii')).get_fdata()[:, mask]
 
-    maps = np.concatenate([map_PCA, map_FA, map_ecc, map_ang, map_mir, map_rfs, map_zm], 0)
-    map_names = ('PCA-C2', 'FA-C2', 'Eccentricity', 'Angle', 'AngleMirror',
-                 'RFsize', 'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
+    maps = np.concatenate([map_PCA, map_FA, map_DicL, map_ICA, map_curv, map_ecc,
+                           map_ang, map_mir, map_rfs, map_zm], 0)
+    map_names = (
+        'PCA-C1', 'PCA-C2', 'FA-C1', 'FA-C2', 'DicL-C1', 'DicL-C2', 'ICA-C1', 'ICA-C2', 'Curvature',
+        'Eccentricity', 'Angle', 'AngleMirror', 'RFsize', 'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4'
+    )
 
     data = {'row_name': map_names, 'col_name': map_names}
     data['r'], data['p'] = calc_pearson_r_p(maps, maps)
@@ -205,6 +220,14 @@ if __name__ == '__main__':
         mask=atlas.get_mask(rois)[0],
         out_file=pjoin(work_dir, 'RSM_MMP-vis2-early3-LR.pkl')
     )
+
+    rois = get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R')
+    for i in (rois_early_L + rois_early_R):
+        rois.remove(i)
+    calc_RSM1(
+        mask=atlas.get_mask(rois)[0],
+        out_file=pjoin(work_dir, 'RSM_MMP-vis2-later3-LR.pkl')
+    )
     # HCP-MMP-visual2 早期及其它视觉mask3<<<
 
     # >>>受阈上R2限制的HCP-MMP-visual2 早期及其它视觉mask3
@@ -229,5 +252,13 @@ if __name__ == '__main__':
     calc_RSM1(
         mask=np.logical_and(R2_mask, atlas.get_mask(rois)[0]),
         out_file=pjoin(work_dir, 'RSM_MMP-vis2-early3-LR_R2.pkl')
+    )
+
+    rois = get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R')
+    for i in (rois_early_L + rois_early_R):
+        rois.remove(i)
+    calc_RSM1(
+        mask=np.logical_and(R2_mask, atlas.get_mask(rois)[0]),
+        out_file=pjoin(work_dir, 'RSM_MMP-vis2-later3-LR_R2.pkl')
     )
     # 受阈上R2限制的HCP-MMP-visual2 早期及其它视觉mask3<<<
