@@ -1,6 +1,4 @@
 from os.path import join as pjoin
-
-from numpy import dtype
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_hcp_ffa.lib.tools import bfs
 from cxy_hcp_ffa.lib.predefine import proj_dir
