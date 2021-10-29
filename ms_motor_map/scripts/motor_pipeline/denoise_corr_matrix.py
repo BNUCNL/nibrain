@@ -6,10 +6,7 @@
 
 import os, re
 import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-pd.set_option('display.max_rows', None)
+
 
 # read data
 def read_ic_ts(mix_file):
@@ -137,31 +134,6 @@ def rater(subject):
             return key
             break
 
-def init_output_dir(subject, fig_type):
-    # fig type
-    if fig_type == 'within_run':
-        save_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/within_run', subject)
-    if fig_type == 'confounds':
-        save_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/confounds', subject)
-    if fig_type == 'task_related':
-        save_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/task_related', subject)
-    # initiate output dir
-    if not os.path.exists(save_dir):
-        os.mkdir(save_dir)
-    if not os.path.exists(os.path.join(save_dir, 'suggest.txt')):
-        print('#################################DEBUG#############################################')
-        with open(os.path.join(save_dir, 'suggest.txt'), 'w') as f:
-            f.write(subject)
-    return save_dir
-
-def save_fig(fig_type, save_dir):
-    if fig_type == 'within_run':
-        plt.savefig(os.path.join(save_dir, 'within_run_' + rater_name + '.png'))
-    if fig_type == 'confounds':
-        plt.savefig(os.path.join(save_dir, 'confounds_' + rater_name + '.png'))
-    if fig_type == 'task_related':
-        plt.savefig(os.path.join(save_dir, 'task_' + rater_name + '.png'))
-
 def suggest(corr, subject, run, fig_type, rater_name):
     # print(corr)
     if fig_type == 'within_run':
@@ -214,138 +186,71 @@ def suggest(corr, subject, run, fig_type, rater_name):
         # print('##########Eye_list##########')
         # print(Eye_list)
         suspicious_ic_list = list(set(Toe_list).union(Ankle_list, LeftLeg_list, RightLeg_list, Finger_list, Wrist_list, Forearm_list, Upperarm_list, Jaw_list, Lip_list, Tongue_list, Eye_list))
-
     suspicious_ic_list = [i + 1 for i in suspicious_ic_list]
-    # print('##########IC NUM##########')
-    # print(len(suspicious_ic_list))
-    # print('##########IC ID##########')
-    # print(suspicious_ic_list)
 
     # write-in results_suggest.txt file
-    ica_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/melodic', subject, 'ses-1', run)
-    results_df = pd.read_csv(os.path.join(ica_dir, 'results_' + rater_name + '.txt'), skiprows=[0], error_bad_lines=False, sep=', ', engine='python', header=None, index_col=0)
+    ica_dir = os.path.join('/nfs/z1/zhenlab/MotorMap/data/bold/derivatives/melodic', subject, 'ses-1', run)
+    results_df = pd.read_csv(os.path.join(ica_dir, 'results_' + rater_name + '.txt'), skiprows=[0], skipfooter=1, error_bad_lines=False, sep=', ', engine='python', header=None, index_col=0)
     for suspicious_ic in suspicious_ic_list:
         results_df.loc[suspicious_ic, 1] = 'Signal'
         results_df.loc[suspicious_ic, 2] = 'False'
-    for index in results_df.loc[results_df[1] == 'Unknown'].index.tolist():
+    for index in results_df.loc[~(results_df[1] == 'Signal')].index.tolist():
         results_df.loc[index, 1] = 'Unclassified Noise'
         results_df.loc[index, 2] = 'True'
 
-    results_df.to_csv(os.path.join(ica_dir, 'results_suggest.txt'), sep=',', header=None)
+    last_line = list(set(list(range(1, results_df.shape[0]+1))) - set(suspicious_ic_list))
+    results_df.to_csv(os.path.join(ica_dir, 'results_suggest.csv'), sep=',', header=None)
+
     with open(os.path.join(ica_dir, 'results_' + rater_name + '.txt'), 'r') as f1:
         r = f1.readlines()
         header_line = r[0]
-        last_line = r[-2]
-        blank_line = r[-1]
-    with open(os.path.join(ica_dir, 'results_suggest.txt'), 'r') as f2:
+    with open(os.path.join(ica_dir, 'results_suggest.csv'), 'r') as f2:
         content = f2.readlines()
-    with open(os.path.join(ica_dir, 'results_suggest.txt'), 'w') as f3:
+    with open(os.path.join(ica_dir, 'results_suggest.txt'), 'w+') as f3:
         f3.write(header_line)
         for i in content:
             f3.writelines(i)
-        f3.write(last_line)
-        f3.write(blank_line)
+        f3.write(str(last_line))
+        f3.write('\n')
 
 
 
 if __name__ == '__main__':
-    # fig_type_list = ['within_run', 'confounds', 'task_related']
-    fig_type_list = ['task_related']
-    for fig_type in fig_type_list:
-        print('##########FIG_TYPE##########')
-        print(fig_type)
-        # subject_list = ['sub-01', 'sub-02', 'sub-03']
-        subject_list = [sub for sub in os.listdir('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/melodic') if "sub-" in sub]
-        # subject_list.remove('sub-01')
-        subject_list.remove('sub-04')
-        subject_list.remove('sub-60')
-        subject_list.remove('sub-61')
-        subject_list.remove('sub-62')
-        subject_list.remove('sub-63')
-        subject_list.remove('sub-26')
-        subject_list.remove('sub-23')
-        subject_list.remove('sub-27')
-        for subject in subject_list:
-            print('##########SUBJECT##########')
-            print(subject)
-            rater_name = rater(subject)
-            print('##########RATER##########')
-            print(rater_name)
-            melodic_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/melodic', subject)
-            fmriprep_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/fmriprep', subject)
-            design_dir = os.path.join('/nfs/e4/function_guided_resection/MotorMap/data/bold/derivatives/denoise_validation/design_matrix', subject)
-            run_list = os.listdir(os.path.join(melodic_dir, 'ses-1'))
-            # run_list = ['sub-01_ses-1_task-motor_run-1.ica']
-            fig, ax = plt.subplots(2, 3, figsize=(20, 10))
-            plt.subplots_adjust(top=0.9, bottom = 0.1, wspace=0.3, hspace=0.3)
-            for run in run_list:
-                runid = int(re.findall('run-(.+?).ica', run)[0])
-                print('##########RUN ID##########')
-                print(runid)
-                ica_dir = os.path.join(melodic_dir, 'ses-1', run)
-                tmodes_file = os.path.join(ica_dir, 'melodic_mix')
-                results_file = os.path.join(ica_dir, 'results_' + rater_name + '.txt')
-                confounds_file = os.path.join(fmriprep_dir, 'ses-1', 'func', subject + '_ses-1_task-motor_run-' + str(runid) + '_desc-confounds_timeseries.tsv')
-                design_file = os.path.join(design_dir, 'run-' + str(runid), 'design.mat')
-                # read data
-                ic_ts = read_ic_ts(tmodes_file)
-                results = read_results(results_file)
-                hm_df = read_confounds(confounds_file)
-                task_df = read_task(design_file)
-
-                # test_df = task_df.join(hm_df)
-                # corr_test = ic_corr(test_df).replace(1, 0).abs()
-                # # print(corr_test)
-                # sns.heatmap(corr_test.iloc[0:16, -11:-5], cmap='RdBu_r', annot=True)
-                # plt.show()
-
-                # calculate
-                ic_ts_sorted, label_name_list, label_tick_list = sort(ic_ts, results, hm_df, task_df, fig_type)
-                corr = ic_corr(ic_ts_sorted).replace(1, 0).abs()
-                # extract values
-                if fig_type == 'confounds':
-                    corr = corr.iloc[0:-11, -11:]
-                if fig_type == 'task_related':
-                    corr = corr.iloc[0:-16, -16:]
-
-                # set up subplot ticks
-                if runid < 4:
-                    sns.heatmap(corr, cmap='RdBu_r', annot=False, ax=ax[0][runid - 1])
-                    ax[0][runid - 1].set_title(run.replace('.ica', '') + '_' + rater_name)
-                    if fig_type == 'within_run':
-                        ax[0][runid - 1].set_xticks(label_tick_list)
-                        ax[0][runid - 1].set_yticks(label_tick_list)
-                        ax[0][runid - 1].set_xticklabels(label_name_list, fontsize='small')
-                        ax[0][runid - 1].set_yticklabels(label_name_list, fontsize='small')
-                    if fig_type == 'confounds':
-                        ax[0][runid - 1].set_yticks(label_tick_list)
-                        ax[0][runid - 1].set_xticklabels(label_name_list[-11:], fontsize='small')
-                        ax[0][runid - 1].set_yticklabels(label_name_list[0:-11], fontsize='small')
-                    if fig_type == 'task_related':
-                        ax[0][runid - 1].set_yticks(label_tick_list)
-                        ax[0][runid - 1].set_xticklabels(label_name_list[-16:], fontsize='small')
-                        ax[0][runid - 1].set_yticklabels(label_name_list[0:-16], fontsize='small')
-                else:
-                    sns.heatmap(corr, cmap='RdBu_r', annot=False, ax=ax[1][runid - 4])
-                    ax[1][runid - 4].set_title(run.replace('.ica', '') + '_' + rater_name)
-                    if fig_type == 'within_run':
-                        ax[1][runid - 4].set_xticks(label_tick_list)
-                        ax[1][runid - 4].set_yticks(label_tick_list)
-                        ax[1][runid - 4].set_xticklabels(label_name_list, fontsize='small')
-                        ax[1][runid - 4].set_yticklabels(label_name_list, fontsize='small')
-                    if fig_type == 'confounds':
-                        ax[1][runid - 4].set_yticks(label_tick_list)
-                        ax[1][runid - 4].set_xticklabels(label_name_list[-11:], fontsize='small')
-                        ax[1][runid - 4].set_yticklabels(label_name_list[0:-11], fontsize='small')
-                    if fig_type == 'task_related':
-                        ax[1][runid - 4].set_yticks(label_tick_list)
-                        ax[1][runid - 4].set_xticklabels(label_name_list[-16:], fontsize='small')
-                        ax[1][runid - 4].set_yticklabels(label_name_list[0:-16], fontsize='small')
-                save_dir = init_output_dir(subject, fig_type)
-                # output corr matrix
-                corr.to_csv(os.path.join(save_dir, 'run-' + str(runid) + '.tsv'), sep='\t')
-                # output suggest
-                suggest(corr, subject, run, fig_type, rater_name)
-            # fig save
-            save_fig(fig_type, save_dir)
+    fig_type = 'task_related'
+    subject_list = [sub for sub in os.listdir('/nfs/z1/zhenlab/MotorMap/data/bold/derivatives/melodic') if "sub-" in sub]
+    # subject_list = ['sub-04', 'sub-23', 'sub-27', 'sub-46']
+    for subject in subject_list:
+        print('##########SUBJECT##########')
+        print(subject)
+        rater_name = rater(subject)
+        print('##########RATER##########')
+        print(rater_name)
+        melodic_dir = os.path.join('/nfs/z1/zhenlab/MotorMap/data/bold/derivatives/melodic', subject)
+        fmriprep_dir = os.path.join('/nfs/z1/zhenlab/MotorMap/data/bold/derivatives/fmriprep', subject)
+        design_dir = os.path.join('/nfs/z1/zhenlab/MotorMap/data/bold/derivatives/denoise_validation/design_matrix', subject)
+        run_list = os.listdir(os.path.join(melodic_dir, 'ses-1'))
+        for run in run_list:
+            runid = int(re.findall('run-(.+?).ica', run)[0])
+            print('##########RUN ID##########')
+            print(runid)
+            ica_dir = os.path.join(melodic_dir, 'ses-1', run)
+            tmodes_file = os.path.join(ica_dir, 'melodic_mix')
+            results_file = os.path.join(ica_dir, 'results_' + rater_name + '.txt')
+            confounds_file = os.path.join(fmriprep_dir, 'ses-1', 'func', subject + '_ses-1_task-motor_run-' + str(runid) + '_desc-confounds_timeseries.tsv')
+            design_file = os.path.join(design_dir, 'run-' + str(runid), 'design.mat')
+            # read data
+            ic_ts = read_ic_ts(tmodes_file)
+            results = read_results(results_file)
+            hm_df = read_confounds(confounds_file)
+            task_df = read_task(design_file)
+            # calculate
+            ic_ts_sorted, label_name_list, label_tick_list = sort(ic_ts, results, hm_df, task_df, fig_type)
+            corr = ic_corr(ic_ts_sorted).replace(1, 0).abs()
+            # extract values
+            if fig_type == 'confounds':
+                corr = corr.iloc[0:-11, -11:]
+            if fig_type == 'task_related':
+                corr = corr.iloc[0:-16, -16:]
+            # output suggest
+            suggest(corr, subject, run, fig_type, rater_name)
 

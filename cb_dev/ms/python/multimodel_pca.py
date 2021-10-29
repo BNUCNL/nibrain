@@ -73,10 +73,9 @@ subject_info = pd.read_csv(os.path.join(work_dir, 'subject_info.csv'), usecols=[
 
 age_array = np.array(subject_info['age in years'])
 
-component_id = 4
+component_id = 1
 model_list = ['VBM', 'Myelin', 'ALFF', 'GBC']
 for idx, model in enumerate(model_list):
-    # plt.subplot(2, 2, idx + 1)
     x = subject_info['age in years'].unique()
     y = np.zeros((17,))
     y_error = np.zeros((17,))
@@ -84,7 +83,6 @@ for idx, model in enumerate(model_list):
         age_matrix = component_age_series[(component_id - 1), (652 * idx):(652 * idx + 652)][age_array==age]
         y[i,] = np.mean(age_matrix)
         y_error[i,] = sem(age_matrix)
-    # plt.plot(x, y)
     plt.errorbar(x, y, yerr=y_error, label=model)
     xticklabels = subject_info['age in years'].unique()
     plt.xticks(x, xticklabels)
