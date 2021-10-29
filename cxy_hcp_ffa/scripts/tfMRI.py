@@ -1,5 +1,6 @@
 from os.path import join as pjoin
 from cxy_hcp_ffa.lib.predefine import proj_dir
+from cxy_hcp_ffa.lib.algo import meas_pkl2csv
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'tfMRI')
@@ -92,3 +93,16 @@ if __name__ == '__main__':
     # calc_meas_individual(hemi='rh')
     # calc_meas_emotion(hemi='lh')
     # calc_meas_emotion(hemi='rh')
+
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'individual_activ_lh.pkl'),
+        rh_file=pjoin(work_dir, 'individual_activ_rh.pkl'),
+        out_file=pjoin(work_dir, 'FFA_activ.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )
+    meas_pkl2csv(
+        lh_file=pjoin(work_dir, 'individual_activ_lh_emo.pkl'),
+        rh_file=pjoin(work_dir, 'individual_activ_rh_emo.pkl'),
+        out_file=pjoin(work_dir, 'FFA_activ-emo.csv'),
+        rois=('pFus-face', 'mFus-face')
+    )

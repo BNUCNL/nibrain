@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.arraysetops import isin
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
@@ -6,10 +7,10 @@ from scipy.stats import zscore, sem
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
 from scipy.fft import fft, fftfreq
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, FactorAnalysis, DictionaryLearning, FastICA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
-    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
+    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file, All_count_32k
 
 
 def zscore_data(data_file, out_file):
@@ -237,18 +238,22 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
 
 
-def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
-           zscore0, zscore1, csv_files, cii_file, pkl_file):
+def decompose_mf(data_files, masks, method, n_component, axis,
+                 zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
     """
-    对n_subj x n_vtx形状的矩阵进行PCA降维
+    对n_subj x n_vtx形状的矩阵进行成分分解
     adapted for dealing with multi files
 
     Args:
         data_files (str or 1D array-like): end with .dscalar.nii
             shape=(n_subj, LR_count_32k)
-        atlas_names (str or 1D array-like): include ROIs' labels and mask map
-        roi_names (str or 1D array-like): 决定选用哪个区域内的顶点来参与PCA
-            corresponding to atlas_names
+        masks (list of 1D index arraies): 指定大脑区域
+        method (str): PCA | FA | FA1 | DicL | ICA
+            'PCA': Principal Component Analysis
+            'FA': Factor Analysis
+            'FA1': Factor Analysis with 'varimax' rotation
+            'DicL': Dictionary Learning
+            'ICA': Independent Component Analysis
         n_component (int): the number of components
         axis (str): vertex | subject
             vertex: 对顶点数量进行降维，得到几个主成分时间序列，
@@ -270,19 +275,8 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         assert data_files.ndim == 1
     n_row = len(data_files)
 
-    if isinstance(atlas_names, str):
-        atlas_names = np.atleast_1d(atlas_names)
-    else:
-        atlas_names = np.asarray(atlas_names)
-        assert atlas_names.ndim == 1
-    n_col = len(atlas_names)
-
-    if isinstance(roi_names, str):
-        roi_names = np.atleast_1d(roi_names)
-    else:
-        roi_names = np.asarray(roi_names)
-        assert roi_names.ndim == 1
-    assert len(roi_names) == n_col
+    assert isinstance(masks, list)
+    n_col = len(masks)
 
     if isinstance(csv_files, str):
         csv_files = np.atleast_1d(csv_files)
@@ -291,27 +285,31 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         assert csv_files.ndim == 1
     assert len(csv_files) == n_row
 
-    component_names = [f'C{i}' for i in range(1, n_component+1)]
-
     # prepare data
-    roi_idx_maps = []
+    subj_idx_vecs = []
     n_vertices = [0]
     n_subjects = [0]
     data = []
     for col_idx in range(n_col):
-        # load maps1
+        print(f'---{col_idx}---')
+
+        # load and mask maps1
         reader = CiftiReader(data_files[0])
         maps1 = reader.get_data()
+        maps1 = maps1[:, masks[col_idx]]
 
-        # load atlas and mask maps1
-        atlas = Atlas(atlas_names[col_idx])
-        assert atlas.maps.shape == (1, LR_count_32k)
-        roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_names[col_idx]]
-        maps1 = maps1[:, roi_idx_map]
-        roi_idx_maps.append(roi_idx_map)
+        non_nan_idx_arr1 = ~np.isnan(maps1)
+        subj_idx_vec1 = np.all(non_nan_idx_arr1, 1)
+        assert np.all(subj_idx_vec1 == np.any(non_nan_idx_arr1, 1))
+        maps1 = maps1[subj_idx_vec1]
+        print(f'{data_files[0]}\n{maps1.shape}\n')
+
         n_vertices.append(n_vertices[-1] + maps1.shape[1])
         if col_idx == 0:
             n_subjects.append(n_subjects[-1] + maps1.shape[0])
+            subj_idx_vecs.append(subj_idx_vec1)
+        else:
+            assert np.all(subj_idx_vecs[0] == subj_idx_vec1)
 
         # zscore
         if zscore1 == 'split':
@@ -323,9 +321,19 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
             for row_idx in range(1, n_row):
                 # load maps2
                 maps2 = nib.load(data_files[row_idx]).get_fdata()
-                maps2 = maps2[:, roi_idx_map]
+                maps2 = maps2[:, masks[col_idx]]
+
+                non_nan_idx_arr2 = ~np.isnan(maps2)
+                subj_idx_vec2 = np.all(non_nan_idx_arr2, 1)
+                assert np.all(subj_idx_vec2 == np.any(non_nan_idx_arr2, 1))
+                maps2 = maps2[subj_idx_vec2]
+                print(f'{data_files[row_idx]}\n{maps2.shape}\n')
+
                 if col_idx == 0:
                     n_subjects.append(n_subjects[-1] + maps2.shape[0])
+                    subj_idx_vecs.append(subj_idx_vec2)
+                else:
+                    np.all(subj_idx_vecs[row_idx] == subj_idx_vec2)
 
                 # zscore
                 if zscore1 == 'split':
@@ -344,37 +352,58 @@ def pca_mf(data_files, atlas_names, roi_names, n_component, axis,
         data = zscore(data, 0)
 
     # calculate
-    pca = PCA(n_components=n_component)
+    if method == 'PCA':
+        transformer = PCA(n_components=n_component, random_state=random_state)
+    elif method == 'FA1':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation='varimax', random_state=random_state)
+    elif method == 'FA':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation=None, random_state=random_state)
+    elif method == 'DicL':
+        transformer = DictionaryLearning(n_components=n_component, random_state=random_state)
+    elif method == 'ICA':
+        transformer = FastICA(n_components=n_component, random_state=random_state)
+    else:
+        raise ValueError('not supported method:', method)
     if axis == 'vertex':
-        pca.fit(data)
-        Y = pca.transform(data)
+        transformer.fit(data)
+        Y = transformer.transform(data)
         csv_data = Y
-        cii_data = pca.components_
+        cii_data = transformer.components_
     elif axis == 'subject':
         data = data.T
-        pca.fit(data)
-        Y = pca.transform(data)
-        csv_data = pca.components_.T
+        transformer.fit(data)
+        Y = transformer.transform(data)
+        csv_data = transformer.components_.T
         cii_data = Y.T
     else:
         raise ValueError('Invalid axis:', axis)
 
     # save
+    if n_component is None:
+        n_component = csv_data.shape[1]
+    else:
+        assert n_component == csv_data.shape[1]
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
     for row_idx in range(n_row):
+        subj_idx_vec = subj_idx_vecs[row_idx]
+        csv_data_tmp = np.ones(
+            (len(subj_idx_vec), csv_data.shape[1]), np.float64) * np.nan
         s_idx = n_subjects[row_idx]
         e_idx = n_subjects[row_idx + 1]
-        df = pd.DataFrame(data=csv_data[s_idx:e_idx, :],
-                          columns=component_names)
+        csv_data_tmp[subj_idx_vec] = csv_data[s_idx:e_idx]
+        df = pd.DataFrame(data=csv_data_tmp, columns=component_names)
         df.to_csv(csv_files[row_idx], index=False)
 
     maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
     for col_idx in range(n_col):
         s_idx = n_vertices[col_idx]
         e_idx = n_vertices[col_idx + 1]
-        maps[:, roi_idx_maps[col_idx]] = cii_data[:, s_idx:e_idx]
+        maps[:, masks[col_idx]] = cii_data[:, s_idx:e_idx]
     save2cifti(cii_file, maps, reader.brain_models(), component_names)
 
-    pkl.dump(pca, open(pkl_file, 'wb'))
+    pkl.dump(transformer, open(pkl_file, 'wb'))
 
 
 def pca_mf1(data_files, atlas_names, roi_names, n_component, axis,
@@ -895,29 +924,28 @@ def map_operate_map(data_file1, data_file2, operation_method, out_file):
     save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
 
 
-def mask_maps(data_file, atlas_name, roi_name, out_file):
+def mask_maps(data_file, mask, out_file):
     """
-    把data map在指定atlas的ROI以外的部分全赋值为nan
+    把data map在指定mask以外的部分全赋值为nan
 
     Args:
         data_file (str): end with .dscalar.nii
             shape=(n_map, LR_count_32k)
-        atlas_name (str):
-        roi_name (str):
+        mask (1D index array)
         out_file (str):
     """
     # prepare
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
+    reader1 = CiftiReader(mmp_map_file)
+    reader2 = CiftiReader(data_file)
+    data = reader2.get_data()
+    if data.shape[1] == All_count_32k:
+        data = data[:, :LR_count_32k]
 
     # calculate
-    data[:, ~roi_idx_map] = np.nan
+    data[:, ~mask] = np.nan
 
     # save
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
 
 
 def polyfit(data_file, info_file, deg, out_file):
