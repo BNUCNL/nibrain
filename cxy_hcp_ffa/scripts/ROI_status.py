@@ -66,7 +66,7 @@ def calc_gdist(method='peak'):
             and the most anterior vertex of pFus-face is A.
             This distance is calculated as: y coordinate of P - y coordinate of A.
 
-            If AP_gap-geo, use the geodesic distance between P and A.
+            If 'AP_gap-geo', use the geodesic distance between P and A.
             Defaults to 'peak'.
     """
     import os
@@ -92,8 +92,8 @@ def calc_gdist(method='peak'):
     activ_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
 
     # outputs
-    log_file = pjoin(work_dir, f'gdist_{method}_log')
-    out_file = pjoin(work_dir, f'gdist_{method}.csv')
+    log_file = pjoin(work_dir, f'gdist_{method}_log_new')
+    out_file = pjoin(work_dir, f'gdist_{method}_new.csv')
 
     # preparation
     subj_ids = open(subj_file).read().splitlines()
@@ -187,12 +187,14 @@ def calc_gdist(method='peak'):
                                 out_dict[k][subj_idx] = np.min(ds)
                             elif method == 'max':
                                 roi1_vertices = np.where(roi1_idx_map)[0]
-                                roi1_vertices = roi1_vertices.astype(np.int32)
                                 roi2_vertices = np.where(roi2_idx_map)[0]
                                 roi2_vertices = roi2_vertices.astype(np.int32)
-                                ds = gdist.compute_gdist(coords, faces,
-                                                         roi1_vertices,
-                                                         roi2_vertices)
+                                ds = np.zeros(len(roi1_vertices), np.float64)
+                                for roi1_vtx_idx, roi1_vtx in enumerate(roi1_vertices):
+                                    roi1_vtx = np.array([roi1_vtx], np.int32)
+                                    ds[roi1_vtx_idx] = np.max(gdist.compute_gdist(
+                                        coords, faces, roi1_vtx, roi2_vertices
+                                    ))
                                 out_dict[k][subj_idx] = np.max(ds)
                             elif method == 'min1':
                                 roi1_vertices = np.where(roi1_idx_map)[0]

@@ -237,8 +237,8 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
 
 
-def decompose_mf(data_files, masks, method, n_component, axis,
-                 zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
+def decompose_mf(data_files, masks, method, n_component, axis, zscore0,
+                 zscore1, csv_files, cii_file, pkl_file, random_state=None):
     """
     对n_subj x n_vtx形状的矩阵进行成分分解
     adapted for dealing with multi files
@@ -260,7 +260,11 @@ def decompose_mf(data_files, masks, method, n_component, axis,
             subject: 对被试数量进行降维，得到几个主成分map，
             观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
         zscore0 (str): None, split, whole
+            split: do zscore across subjects of each data_file
+            whole: do zscore across subjects of all data_files
         zscore1 (str): None, split, whole
+            split: do zscore across vertices of each mask
+            whole: do zscore across vertices of all masks
         csv_files (str or 1D array-like): n_subj x n_component
             corresponding to rows of data_files
         cii_file (str): n_component x LR_count_32k
@@ -310,7 +314,6 @@ def decompose_mf(data_files, masks, method, n_component, axis,
         else:
             assert np.all(subj_idx_vecs[0] == subj_idx_vec1)
 
-        # zscore
         if zscore1 == 'split':
             maps1 = zscore(maps1, 1)
         if zscore0 == 'split':
@@ -334,7 +337,6 @@ def decompose_mf(data_files, masks, method, n_component, axis,
                 else:
                     np.all(subj_idx_vecs[row_idx] == subj_idx_vec2)
 
-                # zscore
                 if zscore1 == 'split':
                     maps2 = zscore(maps2, 1)
                 if zscore0 == 'split':
@@ -344,7 +346,7 @@ def decompose_mf(data_files, masks, method, n_component, axis,
                 maps1 = np.r_[maps1, maps2]
         data.append(maps1)
     data = np.concatenate(data, 1)
-    # zscore
+
     if zscore1 == 'whole':
         data = zscore(data, 1)
     if zscore0 == 'whole':
