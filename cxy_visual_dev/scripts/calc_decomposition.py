@@ -29,16 +29,17 @@ if __name__ == '__main__':
     # )
 
     # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===
-    rois = ('L_V1', 'L_V2', 'L_V3', 'R_V1', 'R_V2', 'R_V3')
-    decompose_mf(
-        data_files=[s1200_1096_myelin, s1200_1096_thickness],
-        masks=[atlas.get_mask(roi)[0] for roi in rois],
-        method='PCA', n_component=20, axis='subject', zscore0=None, zscore1='split',
-        csv_files=[
-            pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj_M.csv'),
-            pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj_T.csv')
-        ],
-        cii_file=pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj.dscalar.nii'),
-        pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj.pkl'),
-        random_state=7
-    )
+    # rois = ('L_V1', 'L_V2', 'L_V3', 'R_V1', 'R_V2', 'R_V3')
+    # decompose_mf(
+    #     data_files=[s1200_1096_myelin, s1200_1096_thickness],
+    #     masks=[atlas.get_mask(roi)[0] for roi in rois],
+    #     method='PCA', n_component=20, axis='subject', zscore0=None, zscore1='split',
+    #     csv_files=[
+    #         pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj_M.csv'),
+    #         pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj_T.csv')
+    #     ],
+    #     cii_file=pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj.dscalar.nii'),
+    #     pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-LR-V123_zscore1-split_PCA-subj.pkl'),
+    #     random_state=7
+    # )
+    # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===

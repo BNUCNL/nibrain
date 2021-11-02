@@ -92,8 +92,8 @@ def calc_gdist(method='peak'):
     activ_file = pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
 
     # outputs
-    log_file = pjoin(work_dir, f'gdist_{method}_log_new')
-    out_file = pjoin(work_dir, f'gdist_{method}_new.csv')
+    log_file = pjoin(work_dir, f'gdist_{method}_log')
+    out_file = pjoin(work_dir, f'gdist_{method}.csv')
 
     # preparation
     subj_ids = open(subj_file).read().splitlines()
