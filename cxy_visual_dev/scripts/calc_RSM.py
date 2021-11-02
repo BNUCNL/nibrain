@@ -4,6 +4,7 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
+from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
     s1200_avg_anglemirror, s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
@@ -53,7 +54,7 @@ def calc_pearson_r_p(data1, data2, nan_mode=True):
 
 def calc_RSM1(mask, out_file):
     """
-    计算PCA的C1, C2; distFromCalcSulc, Curvature;
+    计算PCA的C1, C2; distFromCalcSulc; Curvature; VertexArea;
     Eccentricity; PolarAngle; RFsize; 以及
     周明的PC1~4之间的相关矩阵。
     """
@@ -65,17 +66,29 @@ def calc_RSM1(mask, out_file):
         anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
 
-    map_curv = nib.load(s1200_avg_curv).get_fdata()[0, mask][None, :]
+    reader = CiftiReader(s1200_avg_curv)
+    curv_l, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
+    curv_r, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+    map_curv = np.c_[curv_l, curv_r][0, mask][None, :]
+
+    va_l = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    va_r = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.R.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    map_va = np.r_[va_l[idx2v_l], va_r[idx2v_r]][mask][None, :]
+
     map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_rfs = nib.load(s1200_avg_RFsize).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_zm = nib.load(pjoin(proj_dir, 'data/space/zm_PCs.dscalar.nii')).get_fdata()[:, mask]
 
-    maps = np.concatenate([map_PCA, map_dist, map_curv,
+    maps = np.concatenate([map_PCA, map_dist, map_curv, map_va,
                            map_ecc, map_ang, map_rfs, map_zm], 0)
     map_names = (
-        'PCA-C1', 'PCA-C2', 'distFromCalcSulc', 'Curvature', 'Eccentricity',
-        'Angle', 'RFsize', 'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
+        'PCA-C1', 'PCA-C2', 'distFromCalcSulc', 'Curvature', 'VertexArea',
+        'Eccentricity', 'Angle', 'RFsize', 'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
 
     data = {'row_name': map_names, 'col_name': map_names}
     data['r'], data['p'] = calc_pearson_r_p(maps, maps)
@@ -87,13 +100,17 @@ if __name__ == '__main__':
     R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
     rois_LR = get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R')
 
-    # >>>受阈上R2限制的HCP-MMP-visual2 mask
+    # >>>HCP-MMP-visual2 mask
     # mask_LR = atlas.get_mask(rois_LR)[0]
+    # calc_RSM1(
+    #     mask=mask_LR,
+    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-LR.pkl')
+    # )
     # calc_RSM1(
     #     mask=np.logical_and(R2_mask, mask_LR),
     #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-LR_R2.pkl')
     # )
-    # 受阈上R2限制的HCP-MMP-visual2 mask<<<
+    # HCP-MMP-visual2 mask<<<
 
     # >>>HCP-MMP-visual2早期及其它视觉mask
     rois_early = get_rois('MMP-vis2-G1') + get_rois('MMP-vis2-G2')

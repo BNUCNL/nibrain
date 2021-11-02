@@ -165,6 +165,12 @@ s1200_1096_thickness = pjoin(
 s1200_1096_myelin = pjoin(
     s1200_avg_dir, 'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
 )
+s1200_1096_curv = pjoin(
+    s1200_avg_dir, 'S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_1096_va = pjoin(
+    s1200_avg_dir, 'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
+)
 
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',

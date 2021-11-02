@@ -1,5 +1,4 @@
 import os
-from nibabel.cifti2.cifti2 import Cifti2Label
 import numpy as np
 import nibabel as nib
 from os.path import join as pjoin
@@ -145,7 +144,28 @@ def make_R2_thr98_mask():
                reader.brain_models(), label_tables=[lbl_tab])
 
 
+def make_va_MMP_vis2():
+    """
+    用MMP-vis2 mask卡一下vertex area
+    """
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R'))
+    reader = CiftiReader(mmp_map_file)
+    _, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
+    _, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+
+    va_l = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    va_r = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.R.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    data = np.r_[va_l[idx2v_l], va_r[idx2v_r]][None, :]
+    data[~mask] = np.nan
+    save2cifti(pjoin(work_dir, 'va_MMP-vis2.dscalar.nii'), data, reader.brain_models())
+
+
 if __name__ == '__main__':
     # C2_corr_ecc_angle_area()
     # make_EDMV_dlabel()
-    make_R2_thr98_mask()
+    # make_R2_thr98_mask()
+    make_va_MMP_vis2()
