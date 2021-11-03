@@ -6,7 +6,8 @@ from cxy_visual_dev.lib.predefine import mmp_map_file, LR_count_32k,\
     L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     s1200_1096_myelin, s1200_1096_thickness, s1200_avg_myelin,\
     s1200_avg_thickness, dataset_name2info, All_count_32k,\
-    s1200_avg_eccentricity, s1200_avg_angle, proj_dir
+    s1200_avg_eccentricity, s1200_avg_angle, proj_dir,\
+    s1200_avg_curv, s1200_1096_curv, s1200_1096_va
 
 
 def check_grayordinates():
@@ -20,6 +21,7 @@ def check_grayordinates():
     # HCPA individual surface thickness data
     # S1200 average myelin file
     # S1200 average thickness file
+    # S1200 average curvature file
     fpaths = (
         mmp_map_file,
 
@@ -41,7 +43,9 @@ def check_grayordinates():
 
         s1200_avg_myelin,
 
-        s1200_avg_thickness
+        s1200_avg_thickness,
+
+        s1200_avg_curv
     )
 
     for fpath in fpaths:
@@ -59,9 +63,13 @@ def check_grayordinates():
 
     # S1200 1096 myelin file
     # S1200 1096 thickness file
+    # S1200 1096 curvature file
+    # S1200 1096 vertex area file
     fpaths = (
         s1200_1096_myelin,
-        s1200_1096_thickness
+        s1200_1096_thickness,
+        s1200_1096_curv,
+        s1200_1096_va
     )
     for fpath in fpaths:
         print(fpath)
