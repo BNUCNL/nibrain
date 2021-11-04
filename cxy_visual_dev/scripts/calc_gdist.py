@@ -56,8 +56,20 @@ def calc_gdist_map_from_src_32k_fs_LR(src_lh, src_rh, out_file):
 
 
 if __name__ == '__main__':
+    # calc_gdist_map_from_src_32k_fs_LR(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii')
+    # )
+
     calc_gdist_map_from_src_32k_fs_LR(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus.label')),
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii')
+        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_MT.label')),
+        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_MT.label')),
+        out_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii')
+    )
+
+    calc_gdist_map_from_src_32k_fs_LR(
+        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OccipitalPole.label')),
+        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
+        out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
     )

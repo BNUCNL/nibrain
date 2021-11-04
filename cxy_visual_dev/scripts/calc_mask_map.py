@@ -40,8 +40,20 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPY-curv_MMP-vis2.dscalar.nii')
     # )
 
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus_MMP-vis2.dscalar.nii')
+    # )
+
     mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus_MMP-vis2.dscalar.nii')
+        out_file=pjoin(work_dir, 'gdist_src-MT_MMP-vis2.dscalar.nii')
+    )
+
+    mask_maps(
+        data_file=pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'gdist_src-OccipitalPole_MMP-vis2.dscalar.nii')
     )
