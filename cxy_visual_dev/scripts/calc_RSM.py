@@ -7,7 +7,7 @@ from scipy.stats import pearsonr
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_anglemirror, s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'RSM')
