@@ -6,8 +6,9 @@ Created on Wed Nov  3 04:46:16 2021
 @author: MaSai
 """
 
-import os
-import subprocess
+import os, subprocess
+import numpy as np
+import pandas as pd
 
 class task_analysis(object):
 
@@ -15,66 +16,6 @@ class task_analysis(object):
         self.project_dir = project_dir
         self.subject_list = subject_list
         self.fsf_template_dir = fsf_template_dir
-
-    def _decompose_ev(self, subj_id, ses_id, run_id, ev_cond):
-        """
-        -------------------
-        Decompose paradigm into different conditions
-        we promise:
-        0: fixation
-        1: toe
-        2: ankle
-        3: leftleg
-        4: rightleg
-        5: forearm
-        6: upperarm
-        7: wrist
-        8: finger
-        9: eye
-        10: jaw
-        11: lip
-        12: tongue
-
-        Parameters:
-        -----------
-        ev_cond[pd.DataFrame]: experimental variable paradigm
-        """
-        labeldict = {1: 'toe', 2: 'ankle', 3: 'leftleg', 4: 'rightleg', 5: 'forearm', 6: 'upperarm', 7: 'wrist',
-                     8: 'finger', 9: 'eye', 10: 'jaw', 11: 'lip', 12: 'tongue'}
-        assert (
-            np.all(np.unique(ev_cond['trial_type']) == np.arange(len(labeldict) + 1))), "Conditions are not complete."
-        for lbl in labeldict.keys():
-            ev_cond_tmp = ev_cond[ev_cond['trial_type'] == lbl]
-            ev_cond_decomp = np.zeros((3, len(ev_cond_tmp)))
-            ev_cond_decomp[0, :] = np.array(ev_cond_tmp['onset'])
-            ev_cond_decomp[1, :] = np.array(ev_cond_tmp['duration'])
-            ev_cond_decomp[2, :] = np.ones(len(ev_cond_tmp))
-            ev_cond_decomp = ev_cond_decomp.T
-            outpath = os.path.join(self.ciftify_workdir, subj_id, 'MNINonLinear', 'Results',
-                                   ses_id + '_' + 'task-' + self.task + '_' + 'run-' + run_id, 'EVs')
-            if not os.path.isdir(outpath):
-                subprocess.call('mkdir ' + outpath, shell=True)
-            np.savetxt(os.path.join(outpath, labeldict[lbl] + '.txt'), ev_cond_decomp, fmt='%-6.1f', delimiter='\t',
-                       newline='\n')
-
-    def prepare_EVs(self):
-        """
-        """
-        for subj_id in self.subject_id:
-            # Load ses_id
-            session_id = os.listdir(os.path.join(self.data_inpath, subj_id))
-            for ses_id in session_id:
-                # Load run_id
-                with open(os.path.join(self.data_inpath, subj_id,
-                                       ses_id, 'tmp', 'run_info',
-                                       self.task + '.rlf'), 'r') as f:
-                    runs_id = f.read().splitlines()
-                for run_id in runs_id:
-                    ev_cond = pd.read_csv(os.path.join(self.data_inpath, subj_id, ses_id, 'func',
-                                                       subj_id + '_' + ses_id + '_' + 'task-' + self.task + '_' + 'run-' + run_id + '_events.tsv'),
-                                          sep='\t')
-                    self._decompose_ev(subj_id, ses_id, run_id, ev_cond)
-
 
     def prepare_fsf(self):
         level1_fsf_file = os.path.join(self.fsf_template_dir, 'level1.fsf')
