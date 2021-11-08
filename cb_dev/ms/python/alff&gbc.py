@@ -53,7 +53,7 @@ for subject in subject_list:
     fc_cb_cc = np.mean(fc_cb[parcel_in_cc[0],:], axis=0)
     fc_cb_cc_vol = np.zeros(vol_size)
     fc_cb_cc_vol[cb_index_matrix[:, 0], cb_index_matrix[:, 1], cb_index_matrix[:, 2]] = fc_cb_cc
-    save2nifti(os.path.join(rfmri_dir, 'cerebellum_cortex_gbc_mni.nii.gz'), falff_vol, affine=affine_matrix, header=None)
+    save2nifti(os.path.join(rfmri_dir, 'cerebellum_cortex_gbc_mni.nii.gz'), fc_cb_cc_vol, affine=affine_matrix, header=None)
 
 
 
