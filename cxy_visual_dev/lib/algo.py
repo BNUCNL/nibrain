@@ -237,8 +237,8 @@ def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
 
 
-def decompose_mf(data_files, masks, method, n_component, axis, zscore0,
-                 zscore1, csv_files, cii_file, pkl_file, random_state=None):
+def decompose_mf_old(data_files, masks, method, n_component, axis, zscore0,
+                     zscore1, csv_files, cii_file, pkl_file, random_state=None):
     """
     对n_subj x n_vtx形状的矩阵进行成分分解
     adapted for dealing with multi files
@@ -403,6 +403,158 @@ def decompose_mf(data_files, masks, method, n_component, axis, zscore0,
         e_idx = n_vertices[col_idx + 1]
         maps[:, masks[col_idx]] = cii_data[:, s_idx:e_idx]
     save2cifti(cii_file, maps, reader.brain_models(), component_names)
+
+    pkl.dump(transformer, open(pkl_file, 'wb'))
+
+
+def decompose_mf(fpaths, vtx_masks, subj_mask, cat_shape, method, n_component, axis,
+                 zscore0, zscore1, csv_files, cii_files, pkl_file,
+                 random_state=None):
+    """
+    对n_subj x n_vtx形状的矩阵进行成分分解
+    adapted for dealing with multi files
+
+    Args:
+        fpaths (list): a list of file paths
+            end with ".dscalar.nii"
+            shape=(n_subj, LR_count_32k)
+        vtx_masks (list): a list of 1D index arraies
+            指定大脑区域
+        subj_mask (ndarray): 1D index array
+            指定使用的被试（尚未开发相关功能，目前只能设置为None）
+        cat_shape (tuple): (n_row, n_col)
+            按照这个形状，以行优先的顺序拼接数据
+        method (str): PCA | FA | FA1 | DicL | ICA
+            'PCA': Principal Component Analysis
+            'FA': Factor Analysis
+            'FA1': Factor Analysis with 'varimax' rotation
+            'DicL': Dictionary Learning
+            'ICA': Independent Component Analysis
+        n_component (int): the number of components
+        axis (str): vertex | subject
+            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
+            观察某个主成分在各顶点上的权重，刻画其空间分布。
+            subject: 对被试数量进行降维，得到几个主成分map，
+            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
+        zscore0 (str): None, split, whole
+            split: do zscore across subjects of each row
+            whole: do zscore across subjects of all rows
+        zscore1 (str): None, split, whole
+            split: do zscore across vertices of each mask of each column
+            whole: do zscore across vertices of all columns
+        csv_files (list): a list of CSV files
+            shape=(n_subj, n_component)
+            len(csv_files)=n_row
+        cii_files (list): a list of .dscalar.nii files
+            shape=(n_component, LR_count_32k)
+            len(cii_files)=n_col
+        pkl_file (str): fitted model
+        random_state (int, optional):
+    """
+    # prepare
+    if subj_mask is not None:
+        raise ValueError("subj_mask is not ready to be used.")
+    n_row, n_col = cat_shape
+    assert len(fpaths) == n_row * n_col
+    assert len(csv_files) == n_row
+    assert len(cii_files) == n_col
+
+    # prepare data
+    reader = None
+    n_vertices = [0]  # each mask's offset and count
+    n_subjects = [0]  # each row's offset and count
+    data = []
+    f_idx = 0
+    for row_idx in range(n_row):
+        data1 = []
+        for col_idx in range(n_col):
+            fpath = fpaths[f_idx]
+
+            # load maps
+            if f_idx == 0:
+                reader = CiftiReader(fpath)
+                maps = reader.get_data()
+            else:
+                maps = nib.load(fpath).get_fdata()
+
+            # extract masked data
+            data2 = []
+            for mask in vtx_masks:
+                maps_mask = maps[:, mask]
+                n_vertices.append(n_vertices[-1] + maps_mask.shape[1])
+                if zscore1 == 'split':
+                    maps_mask = zscore(maps_mask, 1)
+                data2.append(maps_mask)
+            data2 = np.concatenate(data2, 1)
+
+            # update
+            data1.append(data2)
+            f_idx += 1
+
+        data1 = np.concatenate(data1, 1)
+        if zscore0 == 'split':
+            data1 = zscore(data1, 0)
+        n_subjects.append(n_subjects[-1] + data1.shape[0])
+
+        # update
+        data.append(data1)
+    data = np.concatenate(data, 0)
+
+    if zscore1 == 'whole':
+        data = zscore(data, 1)
+    if zscore0 == 'whole':
+        data = zscore(data, 0)
+
+    # calculate
+    if method == 'PCA':
+        transformer = PCA(n_components=n_component, random_state=random_state)
+    elif method == 'FA1':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation='varimax', random_state=random_state)
+    elif method == 'FA':
+        transformer = FactorAnalysis(
+            n_components=n_component, rotation=None, random_state=random_state)
+    elif method == 'DicL':
+        transformer = DictionaryLearning(n_components=n_component, random_state=random_state)
+    elif method == 'ICA':
+        transformer = FastICA(n_components=n_component, random_state=random_state)
+    else:
+        raise ValueError('not supported method:', method)
+    if axis == 'vertex':
+        transformer.fit(data)
+        Y = transformer.transform(data)
+        csv_data = Y
+        cii_data = transformer.components_
+    elif axis == 'subject':
+        data = data.T
+        transformer.fit(data)
+        Y = transformer.transform(data)
+        csv_data = transformer.components_.T
+        cii_data = Y.T
+    else:
+        raise ValueError('Invalid axis:', axis)
+
+    # save
+    if n_component is None:
+        n_component = csv_data.shape[1]
+    else:
+        assert n_component == csv_data.shape[1]
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
+    for row_idx in range(n_row):
+        s_idx = n_subjects[row_idx]
+        e_idx = n_subjects[row_idx + 1]
+        df = pd.DataFrame(data=csv_data[s_idx:e_idx], columns=component_names)
+        df.to_csv(csv_files[row_idx], index=False)
+
+    i = 0
+    for col_idx in range(n_col):
+        cii_data_tmp = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+        for mask in vtx_masks:
+            s_idx = n_vertices[i]
+            e_idx = n_vertices[i + 1]
+            cii_data_tmp[:, mask] = cii_data[:, s_idx:e_idx]
+            i += 1
+        save2cifti(cii_files[col_idx], cii_data_tmp, reader.brain_models(), component_names)
 
     pkl.dump(transformer, open(pkl_file, 'wb'))
 
