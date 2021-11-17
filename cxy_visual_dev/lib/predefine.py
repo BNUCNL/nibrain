@@ -231,86 +231,46 @@ def get_rois(name):
                 continue
             rois.append(f"R_{df.loc[idx, 'area_name']}")
 
-    elif name == 'MMP-vis2-G1':
-        # Group1在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
+    elif name.startswith('MMP-vis2-G'):
+        # name的格式是以MMP-vis2-G开头，后面跟的是Group的编号n
+        # Group n在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
+        trg = int(name[10:])
         df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
         rois = []
         for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 1:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G2':
-        # Group2在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 2:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G3':
-        # Group3在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 3:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G4':
-        # Group4在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 4:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G5':
-        # Group5在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 5:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G13':
-        # Group13在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 13:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G14':
-        # Group14在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 14:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G16':
-        # Group16在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 16:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G17':
-        # Group17在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 17:
-                rois.append(df.loc[idx, 'area_name'])
-
-    elif name == 'MMP-vis2-G18':
-        # Group18在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
-        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
-        rois = []
-        for idx, rid in enumerate(df['ID_in_22Region']):
-            if rid == 18:
+            if rid == trg:
                 rois.append(df.loc[idx, 'area_name'])
     # HCP-MMP1_visual-cortex2<<<
+
+    # >>>HCP-MMP1_visual-cortex3
+    elif name == 'MMP-vis3-L':
+        # HCP-MMP1_visual-cortex3的所有ROI（左脑）
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if np.isnan(rid):
+                continue
+            rois.append(f"L_{df.loc[idx, 'area_name']}")
+
+    elif name == 'MMP-vis3-R':
+        # HCP-MMP1_visual-cortex3的所有ROI（右脑）
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if np.isnan(rid):
+                continue
+            rois.append(f"R_{df.loc[idx, 'area_name']}")
+
+    elif name.startswith('MMP-vis3-G'):
+        # name的格式是以MMP-vis3-G开头，后面跟的是Group的编号n
+        # Group n在HCP-MMP1_visual-cortex3中的的所有ROI（不区分左右）
+        trg = int(name[10:])
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if rid == trg:
+                rois.append(df.loc[idx, 'area_name'])
+    # HCP-MMP1_visual-cortex3<<<
 
     # >>>(Wang et al, 2015) visual ROIs
     elif name == 'Wang2015-L':
