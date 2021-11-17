@@ -12,7 +12,14 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-if __name__ == '__main__':
+def old_fit():
+    """
+    分别用枕极和MT做锚点，和距状沟锚点一起描述C1
+    这里用这三个map作为三个特征去线性拟合C1（左右脑拼起来之前分别做zscore）
+
+    用HCPD每个被试的myelin和thickness map去拟合C1C2
+    这里做拼接左右脑数据的时候会分别做zscore
+    """
     mask = Atlas('HCP-MMP').get_mask(
         get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R'))[0]
     mask_L = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis2-L'))[0]
@@ -20,31 +27,6 @@ if __name__ == '__main__':
     C1C2_maps = nib.load(pjoin(
         anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_PCA-subj.dscalar.nii'
     )).get_fdata()[:2]
-
-    # src_files = [
-    #         pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
-    #         pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
-    #         pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii')]
-    # X_list = [cat_data_from_cifti([i], (1, 1), [mask])[0].T for i in src_files]
-    # Y = C1C2_maps[0, mask][:, None]
-    # linear_fit1(
-    #     X_list=X_list, feat_names=['CalcarineSulcus', 'OccipitalPole', 'MT'],
-    #     Y=Y, trg_names=['C1'], score_metric='R2',
-    #     out_file=pjoin(work_dir, 'CalcS+OcPole+MT=C1_new.csv'),
-    #     standard_scale=True
-    # )
-
-    # src_files = [
-    #         pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-    #         pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii')]
-    # X_list = [cat_data_from_cifti([i], (1, 1), [mask])[0].T for i in src_files]
-    # Y = C1C2_maps[:, mask].T
-    # linear_fit1(
-    #     X_list=X_list, feat_names=['Myelination', 'Thickness'],
-    #     Y=Y, trg_names=['C1', 'C2'], score_metric='R2',
-    #     out_file=pjoin(work_dir, 'HCPD-M+T=C1C2_new.csv'),
-    #     standard_scale=True
-    # )
 
     src_files = [
             pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
@@ -78,3 +60,41 @@ if __name__ == '__main__':
         out_file=pjoin(work_dir, 'HCPD-M+T=C1C2.csv'),
         standard_scale=False
     )
+
+
+if __name__ == '__main__':
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+    C1C2_maps = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+
+    src_files = [
+            pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+            # pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
+            pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii')]
+    X_list = []
+    for src_file in src_files:
+        data = nib.load(src_file).get_fdata()[:, mask]
+        X_list.append(data.T)
+    Y = C1C2_maps[0, mask][:, None]
+    linear_fit1(
+        X_list=X_list, feat_names=['CalcarineSulcus', 'MT'],
+        Y=Y, trg_names=['C1'], score_metric='R2',
+        out_file=pjoin(work_dir, 'CalcS+MT=C1.csv'),
+        standard_scale=True
+    )
+
+    # src_files = [
+    #         pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #         pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii')]
+    # X_list = []
+    # for src_file in src_files:
+    #     data = nib.load(src_file).get_fdata()[:, mask]
+    #     X_list.append(data.T)
+    # Y = C1C2_maps[:, mask].T
+    # linear_fit1(
+    #     X_list=X_list, feat_names=['Myelination', 'Thickness'],
+    #     Y=Y, trg_names=['C1', 'C2'], score_metric='R2',
+    #     out_file=pjoin(work_dir, 'HCPD-M+T=C1C2.csv'),
+    #     standard_scale=True
+    # )
