@@ -95,14 +95,27 @@ if __name__ == '__main__':
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 联合myelin和thickness做空间PCA
+    # decompose(
+    #     fpaths=[s1200_1096_myelin, s1200_1096_thickness], cat_shape=(2, 1),
+    #     method='PCA', axis=0,
+    #     csv_files=[
+    #         pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
+    #         pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')],
+    #     cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    # )
+
+    # 在成人数据上，联合myelin和thickness做右脑HCP-MMP1_visual-cortex3的空间PCA
     decompose(
         fpaths=[s1200_1096_myelin, s1200_1096_thickness], cat_shape=(2, 1),
         method='PCA', axis=0,
         csv_files=[
-            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
-            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')],
-        cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-        pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_PCA-subj_M.csv'),
+            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_PCA-subj_T.csv')],
+        cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_PCA-subj.dscalar.nii')],
+        pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_PCA-subj.pkl'),
         vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+        map_mask=None, zscore0=None, zscore1=None, n_component=20, random_state=7
     )
