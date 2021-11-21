@@ -100,19 +100,18 @@ def calc_RSM1(mask, out_file):
 def calc_RSM2():
     """
     计算各年龄内被试之间thickness或myelin的空间pattern的相似性矩阵
-    左右脑合并，并在合并之前分别做zscore
+    做半脑的时候不用zscore，因为皮尔逊相关本来就是要减均值和除标准差的。
     """
     # prepare visual cortex mask
     atlas = Atlas('HCP-MMP')
     masks = [
-        atlas.get_mask(get_rois('MMP-vis2-L'))[0],
-        atlas.get_mask(get_rois('MMP-vis2-R'))[0]
+        atlas.get_mask(get_rois('MMP-vis3-R'))[0]
     ]
 
     # prepare sptial pattern
-    meas_name = 'myelin'
+    meas_name = 'thickness'
     data_file = pjoin(proj_dir, f'data/HCP/HCPD_{meas_name}.dscalar.nii')
-    data = cat_data_from_cifti([data_file], (1, 1), masks, zscore1='split')[0]
+    data = cat_data_from_cifti([data_file], (1, 1), masks, zscore1=None)[0]
 
     # prepare ages
     info_df = pd.read_csv(dataset_name2info['HCPD'])
@@ -120,7 +119,7 @@ def calc_RSM2():
     ages_uniq = np.unique(ages)
 
     # calculating
-    out_file = pjoin(work_dir, 'RSM_HCPD-{0}_MMP-vis2-LR_zscore1-split_age-{1}.pkl')
+    out_file = pjoin(work_dir, 'RSM_HCPD-{0}_MMP-vis3-R_age-{1}.pkl')
     for age in ages_uniq:
         idx_vec = ages == age
         names = info_df.loc[idx_vec, 'subID'].to_list()
