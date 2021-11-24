@@ -9,6 +9,13 @@ from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 
+# >>>CIFTI brain structure
+hemi2stru = {
+    'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+    'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+}
+# CIFTI brain structure<<<
+
 # >>>32k_fs_LR CIFTI
 All_count_32k = 91282
 LR_count_32k = 59412
