@@ -23,6 +23,14 @@ L_offset_32k = 0
 L_count_32k = 29696
 R_offset_32k = 29696
 R_count_32k = 29716
+
+# 左脑枕极的顶点号
+# 左脑枕极及其1阶近邻见data/L_OccipitalPole.label
+L_OccipitalPole_32k = 23908
+
+# 右脑枕极的顶点号
+# 右脑枕极及其1阶近邻见data/R_OccipitalPole.label
+R_OccipitalPole_32k = 23868
 # 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
@@ -177,6 +185,12 @@ s1200_1096_curv = pjoin(
 )
 s1200_1096_va = pjoin(
     s1200_avg_dir, 'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
+)
+s1200_midthickness_L = pjoin(
+    s1200_avg_dir, 'S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_midthickness_R = pjoin(
+    s1200_avg_dir, 'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'
 )
 
 dataset_name2dir = {
@@ -412,3 +426,39 @@ class Atlas:
                     mask, self.maps == self.roi2label[roi])
 
         return mask
+
+
+class MedialWall:
+
+    def __init__(self, method=1):
+        """
+        Get vertices of medial wall in 32k_fs_LR space
+
+        Args:
+            method (int, optional): Defaults to 1.
+                1: 直接从存有MedialWall的dlabel文件中提取顶点号
+                2：找到HCP MMP1.0 atlas dlabel文件中略去的顶点号
+                这两种方法的结果是一致的
+        """
+        if method == 1:
+            reader = CiftiReader(pjoin(
+                s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
+            ))
+            self.L_vertices = np.where(
+                reader.get_data(hemi2stru['lh'])[0][0] == 1
+            )[0].tolist()
+            self.R_vertices = np.where(
+                reader.get_data(hemi2stru['rh'])[0][0] == 1
+            )[0].tolist()
+        elif method == 2:
+            reader = CiftiReader(mmp_map_file)
+            _, L_shape, L_idx2vtx = reader.get_data(hemi2stru['lh'])
+            self.L_vertices = sorted(
+                set(range(L_shape[0])).difference(L_idx2vtx)
+            )
+            _, R_shape, R_idx2vtx = reader.get_data(hemi2stru['rh'])
+            self.R_vertices = sorted(
+                set(range(R_shape[0])).difference(R_idx2vtx)
+            )
+        else:
+            raise ValueError

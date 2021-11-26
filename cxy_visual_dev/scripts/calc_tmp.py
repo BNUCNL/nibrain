@@ -3,7 +3,6 @@ import numpy as np
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr, variation
-from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas, get_rois,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k,\
     mmp_map_file, s1200_avg_R2
