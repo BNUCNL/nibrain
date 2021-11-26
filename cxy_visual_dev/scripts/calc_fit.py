@@ -69,8 +69,8 @@ if __name__ == '__main__':
     )).get_fdata()[:2]
 
     src_files = [
-            pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
-            # pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
+            # pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+            pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
             pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii')]
     X_list = []
     for src_file in src_files:
@@ -78,9 +78,9 @@ if __name__ == '__main__':
         X_list.append(data.T)
     Y = C1C2_maps[0, mask][:, None]
     linear_fit1(
-        X_list=X_list, feat_names=['CalcarineSulcus', 'MT'],
+        X_list=X_list, feat_names=['OccipitalPole', 'MT'],
         Y=Y, trg_names=['C1'], score_metric='R2',
-        out_file=pjoin(work_dir, 'CalcS+MT=C1.csv'),
+        out_file=pjoin(work_dir, 'OcPole+MT=C1.csv'),
         standard_scale=True
     )
 
