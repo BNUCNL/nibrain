@@ -429,10 +429,13 @@ class Atlas:
 
 
 class MedialWall:
+    """
+    medial wall in 32k_fs_LR space
+    """
 
     def __init__(self, method=1):
         """
-        Get vertices of medial wall in 32k_fs_LR space
+        Initialize medial wall vertices
 
         Args:
             method (int, optional): Defaults to 1.
@@ -462,3 +465,30 @@ class MedialWall:
             )
         else:
             raise ValueError
+
+    def remove_from_faces(self, hemi, faces):
+        """
+        去除faces中的medial wall顶点
+
+        Args:
+            hemi (str): hemisphere
+                lh: left hemisphere
+                rh: right hemisphere
+            faces (ndarray): n_face x 3
+                surface mesh顶点的三角连边关系
+
+        Returns:
+            [ndarray]: 去除medial wall之后的faces
+        """
+        if hemi == 'lh':
+            medial_wall = self.L_vertices
+        elif hemi == 'rh':
+            medial_wall = self.R_vertices
+        else:
+            raise ValueError('hemi must be lh or rh')
+
+        row_indices = ~np.any(np.in1d(
+            faces.ravel(), medial_wall).reshape(faces.shape), 1)
+        faces = faces[row_indices]
+
+        return faces
