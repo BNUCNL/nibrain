@@ -14,6 +14,7 @@ hemi2stru = {
     'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
     'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
 }
+hemi2Hemi = {'lh': 'L', 'rh': 'R'}
 # CIFTI brain structure<<<
 
 # >>>32k_fs_LR CIFTI
@@ -191,6 +192,9 @@ s1200_midthickness_L = pjoin(
 )
 s1200_midthickness_R = pjoin(
     s1200_avg_dir, 'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_MedialWall = pjoin(
+    s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
 )
 
 dataset_name2dir = {
@@ -444,9 +448,7 @@ class MedialWall:
                 这两种方法的结果是一致的
         """
         if method == 1:
-            reader = CiftiReader(pjoin(
-                s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
-            ))
+            reader = CiftiReader(s1200_MedialWall)
             self.L_vertices = np.where(
                 reader.get_data(hemi2stru['lh'])[0][0] == 1
             )[0].tolist()
