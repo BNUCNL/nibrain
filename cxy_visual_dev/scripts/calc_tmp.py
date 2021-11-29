@@ -3,8 +3,9 @@ import numpy as np
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
-from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
-    s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, mmp_map_file
+from cxy_visual_dev.lib.predefine import proj_dir, Atlas, get_rois,\
+    s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k,\
+    mmp_map_file, s1200_avg_R2
 from magicbox.io.io import save2cifti, CiftiReader
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -74,5 +75,97 @@ def C2_corr_ecc_angle_area():
     save2cifti(out_file, data, reader.brain_models(), map_names)
 
 
+def make_EDMV_dlabel():
+    """
+    依据HCP MMP的22组，将HCP-MMP-visual2分成四份：
+    Early: Group1+2
+    Dorsal: Group3+16+17+18
+    Middle: Group5
+    Ventral: Group4+13+14
+    将其制作成.dlabel.nii文件
+    """
+    reader = CiftiReader(mmp_map_file)
+    atlas = Atlas('HCP-MMP')
+    out_file = pjoin(work_dir, 'MMP-vis2-EDMV.dlabel.nii')
+
+    data = np.ones((1, LR_count_32k), np.float64) * np.nan
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+
+    rois_early = get_rois('MMP-vis2-G1') + get_rois('MMP-vis2-G2')
+    rois_early_L = [f'L_{roi}' for roi in rois_early]
+    rois_early_R = [f'R_{roi}' for roi in rois_early]
+    rois_early_LR = rois_early_L + rois_early_R
+    mask_early_LR = atlas.get_mask(rois_early_LR)
+    data[mask_early_LR] = 1
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'early', 1, 0, 0, 1)
+
+    rois_dorsal = get_rois('MMP-vis2-G3') + get_rois('MMP-vis2-G16') +\
+        get_rois('MMP-vis2-G17') + get_rois('MMP-vis2-G18')
+    rois_dorsal_L = [f'L_{roi}' for roi in rois_dorsal]
+    rois_dorsal_R = [f'R_{roi}' for roi in rois_dorsal]
+    rois_dorsal_LR = rois_dorsal_L + rois_dorsal_R
+    mask_dorsal_LR = atlas.get_mask(rois_dorsal_LR)
+    data[mask_dorsal_LR] = 2
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'dorsal', 0, 1, 0, 1)
+
+    rois_middle = get_rois('MMP-vis2-G5')
+    rois_middle_L = [f'L_{roi}' for roi in rois_middle]
+    rois_middle_R = [f'R_{roi}' for roi in rois_middle]
+    rois_middle_LR = rois_middle_L + rois_middle_R
+    mask_middle_LR = atlas.get_mask(rois_middle_LR)
+    data[mask_middle_LR] = 3
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'middle', 0, 0, 1, 1)
+
+    rois_ventral = get_rois('MMP-vis2-G4') + get_rois('MMP-vis2-G13') +\
+        get_rois('MMP-vis2-G14')
+    rois_ventral_L = [f'L_{roi}' for roi in rois_ventral]
+    rois_ventral_R = [f'R_{roi}' for roi in rois_ventral]
+    rois_ventral_LR = rois_ventral_L + rois_ventral_R
+    mask_ventral_LR = atlas.get_mask(rois_ventral_LR)
+    data[mask_ventral_LR] = 4
+    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'ventral', 1, 1, 0, 1)
+
+    save2cifti(out_file, data, reader.brain_models(), label_tables=[lbl_tab])
+
+
+def make_R2_thr98_mask():
+    """
+    将S1200_7T_Retinotopy181.Fit1_R2_MSMAll.32k_fs_LR.dscalar.nii
+    在9.8以上的阈上部分做成mask，存为dlabel文件
+    """
+    reader = CiftiReader(mmp_map_file)
+    r2_map = nib.load(s1200_avg_R2).get_fdata()[:, :LR_count_32k]
+    data = np.zeros((1, LR_count_32k), np.uint8)
+    data[r2_map > 9.8] = 1
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, 'Subthreshold', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'Suprathreshold', 1, 0, 0, 1)
+    save2cifti(pjoin(work_dir, 'R2-thr9.8.dlabel.nii'), data,
+               reader.brain_models(), label_tables=[lbl_tab])
+
+
+def make_va_MMP_vis2():
+    """
+    用MMP-vis2 mask卡一下vertex area
+    """
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis2-L') + get_rois('MMP-vis2-R'))
+    reader = CiftiReader(mmp_map_file)
+    _, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
+    _, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+
+    va_l = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    va_r = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                    'S1200.R.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
+    data = np.r_[va_l[idx2v_l], va_r[idx2v_r]][None, :]
+    data[~mask] = np.nan
+    save2cifti(pjoin(work_dir, 'va_MMP-vis2.dscalar.nii'), data, reader.brain_models())
+
+
 if __name__ == '__main__':
-    C2_corr_ecc_angle_area()
+    # C2_corr_ecc_angle_area()
+    # make_EDMV_dlabel()
+    # make_R2_thr98_mask()
+    # make_va_MMP_vis2()

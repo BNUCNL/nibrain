@@ -9,6 +9,14 @@ from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 
+# >>>CIFTI brain structure
+hemi2stru = {
+    'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+    'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+}
+hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+# CIFTI brain structure<<<
+
 # >>>32k_fs_LR CIFTI
 All_count_32k = 91282
 LR_count_32k = 59412
@@ -16,6 +24,14 @@ L_offset_32k = 0
 L_count_32k = 29696
 R_offset_32k = 29696
 R_count_32k = 29716
+
+# 左脑枕极的顶点号
+# 左脑枕极及其1阶近邻见data/L_OccipitalPole.label
+L_OccipitalPole_32k = 23908
+
+# 右脑枕极的顶点号
+# 右脑枕极及其1阶近邻见data/R_OccipitalPole.label
+R_OccipitalPole_32k = 23868
 # 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
@@ -165,6 +181,21 @@ s1200_1096_thickness = pjoin(
 s1200_1096_myelin = pjoin(
     s1200_avg_dir, 'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'
 )
+s1200_1096_curv = pjoin(
+    s1200_avg_dir, 'S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_1096_va = pjoin(
+    s1200_avg_dir, 'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'
+)
+s1200_midthickness_L = pjoin(
+    s1200_avg_dir, 'S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_midthickness_R = pjoin(
+    s1200_avg_dir, 'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_MedialWall = pjoin(
+    s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
+)
 
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',
@@ -224,7 +255,47 @@ def get_rois(name):
             if np.isnan(rid):
                 continue
             rois.append(f"R_{df.loc[idx, 'area_name']}")
+
+    elif name.startswith('MMP-vis2-G'):
+        # name的格式是以MMP-vis2-G开头，后面跟的是Group的编号n
+        # Group n在HCP-MMP1_visual-cortex2中的的所有ROI（不区分左右）
+        trg = int(name[10:])
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex2.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if rid == trg:
+                rois.append(df.loc[idx, 'area_name'])
     # HCP-MMP1_visual-cortex2<<<
+
+    # >>>HCP-MMP1_visual-cortex3
+    elif name == 'MMP-vis3-L':
+        # HCP-MMP1_visual-cortex3的所有ROI（左脑）
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if np.isnan(rid):
+                continue
+            rois.append(f"L_{df.loc[idx, 'area_name']}")
+
+    elif name == 'MMP-vis3-R':
+        # HCP-MMP1_visual-cortex3的所有ROI（右脑）
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if np.isnan(rid):
+                continue
+            rois.append(f"R_{df.loc[idx, 'area_name']}")
+
+    elif name.startswith('MMP-vis3-G'):
+        # name的格式是以MMP-vis3-G开头，后面跟的是Group的编号n
+        # Group n在HCP-MMP1_visual-cortex3中的的所有ROI（不区分左右）
+        trg = int(name[10:])
+        df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3.csv'))
+        rois = []
+        for idx, rid in enumerate(df['ID_in_22Region']):
+            if rid == trg:
+                rois.append(df.loc[idx, 'area_name'])
+    # HCP-MMP1_visual-cortex3<<<
 
     # >>>(Wang et al, 2015) visual ROIs
     elif name == 'Wang2015-L':
@@ -359,3 +430,67 @@ class Atlas:
                     mask, self.maps == self.roi2label[roi])
 
         return mask
+
+
+class MedialWall:
+    """
+    medial wall in 32k_fs_LR space
+    """
+
+    def __init__(self, method=1):
+        """
+        Initialize medial wall vertices
+
+        Args:
+            method (int, optional): Defaults to 1.
+                1: 直接从存有MedialWall的dlabel文件中提取顶点号
+                2：找到HCP MMP1.0 atlas dlabel文件中略去的顶点号
+                这两种方法的结果是一致的
+        """
+        if method == 1:
+            reader = CiftiReader(s1200_MedialWall)
+            self.L_vertices = np.where(
+                reader.get_data(hemi2stru['lh'])[0][0] == 1
+            )[0].tolist()
+            self.R_vertices = np.where(
+                reader.get_data(hemi2stru['rh'])[0][0] == 1
+            )[0].tolist()
+        elif method == 2:
+            reader = CiftiReader(mmp_map_file)
+            _, L_shape, L_idx2vtx = reader.get_data(hemi2stru['lh'])
+            self.L_vertices = sorted(
+                set(range(L_shape[0])).difference(L_idx2vtx)
+            )
+            _, R_shape, R_idx2vtx = reader.get_data(hemi2stru['rh'])
+            self.R_vertices = sorted(
+                set(range(R_shape[0])).difference(R_idx2vtx)
+            )
+        else:
+            raise ValueError
+
+    def remove_from_faces(self, hemi, faces):
+        """
+        去除faces中的medial wall顶点
+
+        Args:
+            hemi (str): hemisphere
+                lh: left hemisphere
+                rh: right hemisphere
+            faces (ndarray): n_face x 3
+                surface mesh顶点的三角连边关系
+
+        Returns:
+            [ndarray]: 去除medial wall之后的faces
+        """
+        if hemi == 'lh':
+            medial_wall = self.L_vertices
+        elif hemi == 'rh':
+            medial_wall = self.R_vertices
+        else:
+            raise ValueError('hemi must be lh or rh')
+
+        row_indices = ~np.any(np.in1d(
+            faces.ravel(), medial_wall).reshape(faces.shape), 1)
+        faces = faces[row_indices]
+
+        return faces
