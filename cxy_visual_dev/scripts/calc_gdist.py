@@ -1,7 +1,8 @@
 import os
+import time
 import gdist
 import numpy as np
-import nibabel as nib
+import pickle as pkl
 from os.path import join as pjoin
 from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir, mmp_map_file,\
@@ -63,20 +64,37 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
 
 
 if __name__ == '__main__':
-    calc_gdist_map_from_src(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus.label')),
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii')
+    # )
 
-    calc_gdist_map_from_src(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_MT.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_MT.label')),
-        out_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_MT.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_MT.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii')
+    # )
 
-    calc_gdist_map_from_src(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OccipitalPole.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
-        out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OccipitalPole.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
+    # )
+
+    # 计算每条radial line的测地距离map
+    fpath = pjoin(anal_dir, 'variation/MMP-vis3_RadialLine-R.pkl')
+    out_file = pjoin(work_dir, 'gdist_src-MMP-vis3_RadialLine-R.dscalar.nii')
+
+    lines = pkl.load(open(fpath, 'rb'))
+    n_line = len(lines)
+    out_maps = np.zeros((n_line, LR_count_32k), np.float64)
+    map_names = []
+    for idx, line in enumerate(lines):
+        time1 = time.time()
+        out_maps[idx] = calc_gdist_map_from_src(
+            src_lh=None, src_rh=line)
+        map_names.append(str(line[-1]))
+        print(f'Finished {idx+1}/{n_line}: cost {time.time() - time1} seconds')
+    save2cifti(out_file, out_maps,
+               CiftiReader(mmp_map_file).brain_models(), map_names)
