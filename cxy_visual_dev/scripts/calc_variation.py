@@ -17,6 +17,7 @@ from magicbox.algorithm.triangular_mesh import label_edge_detection,\
     get_n_ring_neighbor
 from magicbox.algorithm.graph import bfs
 from magicbox.algorithm.tool import calc_overlap
+from magicbox.stats import calc_coef_var
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'variation')
@@ -71,11 +72,7 @@ def calc_variation1():
         pc_maps = pc_maps - np.min(pc_maps, 1, keepdims=True)
         var_func = variation
     elif method == 'CV3':
-        # 用绝对值计算作为分母的均值（标准差还是基于原数据计算）
-        def var_func(arr, axis=None, ddof=0):
-            var = np.std(arr, axis, ddof=ddof) /\
-                np.mean(np.abs(arr), axis)
-            return var
+        var_func = calc_coef_var
     elif method == 'std':
         var_func = np.std
     else:
@@ -404,14 +401,6 @@ def prepare_ring_bar(width=5):
     save2cifti(out_ring_file, ring_map, bm_list, label_tables=[ring_lbl_tab])
 
 
-def variation_upgrade(arr, axis=None, ddof=0):
-    # 改进后的变异系数计算方式
-    # 用绝对值计算作为分母的均值（标准差还是基于原数据计算）
-    var = np.std(arr, axis, ddof=ddof) /\
-        np.mean(np.abs(arr), axis)
-    return var
-
-
 def calc_var_ring_bar():
     """
     分别在圆环和长条内计算变异
@@ -422,7 +411,7 @@ def calc_var_ring_bar():
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
-    method = 'std/n_vtx'  # CV3, std, std/n_vtx
+    method = 'CV4'  # CV1, CV3, CV4, std, std/n_vtx
     n_pc = 2  # 前N个成分
     bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width5.dlabel.nii')
     ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5.dlabel.nii')
@@ -445,8 +434,13 @@ def calc_var_ring_bar():
     pc_names = tuple(pc_reader.map_names()[:n_pc])
 
     # prepare method
-    if method == 'CV3':
-        var_func = variation_upgrade
+    if method == 'CV1':
+        var_func = variation
+    elif method == 'CV3':
+        var_func = calc_coef_var
+    elif method == 'CV4':
+        def var_func(arr, axis):
+            return np.abs(variation(arr, axis))
     elif method == 'std':
         var_func = np.std
     elif method == 'std/n_vtx':
