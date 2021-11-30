@@ -6,7 +6,8 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import variation, sem
 from matplotlib import pyplot as plt
-from cxy_visual_dev.lib.predefine import proj_dir, get_rois,\
+from scipy.stats.stats import mode
+from cxy_visual_dev.lib.predefine import LR_count_32k, proj_dir, get_rois,\
     Atlas, mmp_map_file, s1200_midthickness_R, s1200_midthickness_L,\
     MedialWall, hemi2stru, mmp_name2label, L_offset_32k, L_count_32k,\
     R_offset_32k, R_count_32k, s1200_MedialWall, R_OccipitalPole_32k,\
@@ -17,7 +18,7 @@ from magicbox.algorithm.triangular_mesh import label_edge_detection,\
     get_n_ring_neighbor
 from magicbox.algorithm.graph import bfs
 from magicbox.algorithm.tool import calc_overlap
-from magicbox.stats import calc_coef_var
+from magicbox.stats import calc_coef_var, calc_cqv
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'variation')
@@ -401,6 +402,70 @@ def prepare_ring_bar(width=5):
     save2cifti(out_ring_file, ring_map, bm_list, label_tables=[ring_lbl_tab])
 
 
+def split_ring_dv():
+    """
+    把圆环按照上下视野分割开
+    实际上是分成了腹侧和背侧
+
+    背侧圆环是层号不变
+    腹侧圆环是基于原来的基础加上背侧的最大层号
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    hemi2loc = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5.dlabel.nii')
+    dv_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_split-dorsal-ventral.nii.gz')
+    out_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5_split-DV.dlabel.nii')
+
+    # prepare visual mask
+    offset, count = hemi2loc[hemi]
+    vis_mask = Atlas('HCP-MMP').get_mask(
+        get_rois(f'MMP-vis3-{Hemi}'))[0, offset:(offset+count)]
+
+    # prepare ring mask
+    reader = CiftiReader(ring_file)
+    ring_mask, shape, idx2vtx = reader.get_data(hemi2stru[hemi])
+    ring_mask = ring_mask[0, vis_mask]
+    lbl_tab_old = reader.label_tables()[0]
+
+    # prepare DV mask
+    dv_mask = nib.load(dv_file).get_fdata().squeeze()
+    assert dv_mask.shape == shape
+    dv_mask = dv_mask[idx2vtx][vis_mask]
+    v_mask = np.logical_or(dv_mask == 0, dv_mask == 1)
+    d_mask = dv_mask == 2
+
+    # split ring to dorsal and ventral
+    d_max = np.max(ring_mask[d_mask])
+    print('d_max:', d_max)
+    ring_mask[v_mask] += d_max
+    ring_nums = np.unique(ring_mask)
+    print(ring_nums)
+    n_ring = len(ring_nums)
+
+    # restore shape and save out
+    ring_mask_new = np.zeros((1, LR_count_32k), np.uint16)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    ring_mask_new[0, offset:(offset+count)][vis_mask] = ring_mask
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, n_ring)
+    for ring_idx, ring in enumerate(ring_nums):
+        if ring > d_max:
+            key_old = ring - d_max
+            d_or_v = 'V'
+        else:
+            key_old = ring
+            d_or_v = 'D'
+        label = f'{d_or_v}_{lbl_tab_old[key_old].label}'
+        lbl_tab[ring] = nib.cifti2.Cifti2Label(
+            ring, label, *cmap(color_indices[ring_idx]))
+    save2cifti(out_file, ring_mask_new, reader.brain_models(), label_tables=[lbl_tab])
+
+
 def calc_var_ring_bar():
     """
     分别在圆环和长条内计算变异
@@ -411,11 +476,14 @@ def calc_var_ring_bar():
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
-    method = 'CV4'  # CV1, CV3, CV4, std, std/n_vtx
+    method = 'CQV1'  # CV1, CV3, CV4, CV5, std, std/n_vtx, CQV, CQV1
     n_pc = 2  # 前N个成分
     bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width5.dlabel.nii')
-    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5.dlabel.nii')
+    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5_split-DV.dlabel.nii')
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    out_file1 = pjoin(work_dir, 'within_between.jpg')
+    out_file2 = pjoin(work_dir, 'within.jpg')
+    out_file3 = pjoin(work_dir, 'between.jpg')
 
     # loading
     bar_reader = CiftiReader(bar_file)
@@ -441,6 +509,11 @@ def calc_var_ring_bar():
     elif method == 'CV4':
         def var_func(arr, axis):
             return np.abs(variation(arr, axis))
+    elif method == 'CV5':
+        def var_func(arr, axis):
+            var = np.abs(variation(arr, axis))
+            var = var / arr.shape[axis]
+            return var
     elif method == 'std':
         var_func = np.std
     elif method == 'std/n_vtx':
@@ -448,6 +521,13 @@ def calc_var_ring_bar():
             var = np.std(arr, axis, ddof=ddof) /\
                 arr.shape[axis]
             return var
+    elif method == 'CQV':
+        var_func = calc_cqv
+    elif method == 'CQV1':
+        def var_func(arr, axis):
+            return np.abs(calc_cqv(arr, axis))
+    else:
+        raise ValueError
 
     # calculating
     bar_vars = np.zeros((n_pc, n_bar), np.float64)
@@ -469,12 +549,18 @@ def calc_var_ring_bar():
     yerr = np.array([var_between_layer_yerr, var_within_layer_yerr])
     plot_bar(y, figsize=(4, 4), yerr=yerr,
              label=('between_layer', 'within_layer'),
-             xticklabel=pc_names, ylabel='variation', mode='go on')
-    plot_bar(bar_vars, figsize=(8, 4), label=pc_names,
-             xlabel='bar number', ylabel='variation', mode='go on')
+             xticklabel=pc_names, ylabel='variation',
+             #  mode='go on',
+             mode=out_file1)
     plot_bar(ring_vars, figsize=(8, 4), label=pc_names,
-             xlabel='layer number', ylabel='variation', mode='go on')
-    plt.show()
+             xlabel='layer number', ylabel='variation',
+             #  mode='go on',
+             mode=out_file2)
+    plot_bar(bar_vars, figsize=(8, 4), label=pc_names,
+             xlabel='bar number', ylabel='variation',
+             #  mode='go on',
+             mode=out_file3)
+    # plt.show()
 # 以枕极为原点，以圆环代表层，以长条代表跨层<<<
 
 
@@ -484,4 +570,5 @@ if __name__ == '__main__':
     # simplify_radial_line()
     # line_pkl2cii()
     # prepare_ring_bar(width=5)
+    # split_ring_dv()
     calc_var_ring_bar()
