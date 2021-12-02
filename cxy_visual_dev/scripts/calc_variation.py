@@ -242,7 +242,7 @@ def simplify_radial_line():
     """
     # prepare parameters
     thr = 0.9
-    N = 2
+    N = 6
     hemi = 'rh'
     fname = f'MMP-vis3_RadialLine-{hemi2Hemi[hemi]}'
     fpath = pjoin(work_dir, f'{fname}.pkl')
@@ -289,7 +289,7 @@ def line_pkl2cii():
     存一个dscalar文件，在其中记录每个顶点被line经过的频率
     """
     hemi = 'rh'
-    fname = f'MMP-vis3_RadialLine-{hemi2Hemi[hemi]}_thr90_N2'
+    fname = f'MMP-vis3_RadialLine-{hemi2Hemi[hemi]}_thr90_N6'
     fpath = pjoin(work_dir, f'{fname}.pkl')
     out_dlabel_file = pjoin(work_dir, f'{fname}.dlabel.nii')
     out_dscalar_file = pjoin(work_dir, f'{fname}.dscalar.nii')
@@ -321,7 +321,7 @@ def line_pkl2cii():
     save2cifti(out_dscalar_file, out_dscalar, [bm])
 
 
-def prepare_ring_bar(width=5):
+def prepare_ring_bar(N=2, width=5):
     """
     产生厚度为width的圆环和长条
     长条的数量由事先精简好的line的数量决定
@@ -339,10 +339,10 @@ def prepare_ring_bar(width=5):
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))
-    line_file = pjoin(work_dir, f'MMP-vis3_RadialLine-{Hemi}_thr90_N2.pkl')
+    line_file = pjoin(work_dir, f'MMP-vis3_RadialLine-{Hemi}_thr90_N{N}.pkl')
     line_gdist_file = pjoin(anal_dir, f'gdist/gdist_src-MMP-vis3_RadialLine-{Hemi}.dscalar.nii')
     OP_gdist_file = pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii')
-    out_bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width{width}.dlabel.nii')
+    out_bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N{N}_width{width}.dlabel.nii')
     out_ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width{width}.dlabel.nii')
 
     # load line gdist maps
@@ -476,7 +476,7 @@ def calc_var_ring_bar():
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
-    method = 'CQV1'  # CV1, CV3, CV4, CV5, std, std/n_vtx, CQV, CQV1
+    method = 'std/n_vtx'  # CV1, CV3, CV4, CV5, std, std/n_vtx, CQV, CQV1
     n_pc = 2  # 前N个成分
     bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width5.dlabel.nii')
     ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5_split-DV.dlabel.nii')
@@ -547,19 +547,203 @@ def calc_var_ring_bar():
     # plot
     y = np.array([var_between_layer_y, var_within_layer_y])
     yerr = np.array([var_between_layer_yerr, var_within_layer_yerr])
-    plot_bar(y, figsize=(4, 4), yerr=yerr,
+    plot_bar(y, figsize=(3, 3), yerr=yerr,
              label=('between_layer', 'within_layer'),
              xticklabel=pc_names, ylabel='variation',
-             #  mode='go on',
-             mode=out_file1)
-    plot_bar(ring_vars, figsize=(8, 4), label=pc_names,
+             mode=out_file1, title=method)
+    plot_bar(ring_vars, figsize=(7, 3), label=pc_names,
              xlabel='layer number', ylabel='variation',
-             #  mode='go on',
-             mode=out_file2)
-    plot_bar(bar_vars, figsize=(8, 4), label=pc_names,
+             mode=out_file2, title='within')
+    plot_bar(bar_vars, figsize=(7, 3), label=pc_names,
              xlabel='bar number', ylabel='variation',
-             #  mode='go on',
-             mode=out_file3)
+             mode=out_file3, title='between')
+    # plt.show()
+
+
+def calc_var_local():
+    """
+    在长条和圆环相交的格子内，分别沿长条和圆环分段求平均。
+    沿长条的所有段的平均的变异即为层间变异
+    沿圆环的所有段的平均的变异即为层内变异
+
+    为了去除边缘有些相交范围过小，或是包含信号太少的部分。
+    规定相交部分包含的沿着长条或圆环的距离范围比例达到90%以上
+    并且相交部分有信号的比例要达到90%以上
+    如果格子内沿着长条或圆环走向的信号分段出现断层，也直接舍弃这个格子
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    width = 12
+    method = 'CQV1'  # CV1, CV3, CV4, CV5, std, std/n_vtx, CQV, CQV1
+    n_pc = 2  # 前N个成分
+    grid_file = None  # 是否输出标记相交的格子的map
+    # grid_file = pjoin(work_dir, 'grid_map.dscalar.nii')
+    vis_mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N6_width{width}.dlabel.nii')
+    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width{width}.dlabel.nii')
+    pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    line_gdist_file = pjoin(anal_dir, f'gdist/gdist_src-MMP-vis3_RadialLine-{Hemi}.dscalar.nii')
+    OP_gdist_file = pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii')
+    out_file1 = pjoin(work_dir, 'within_between.jpg')
+    out_file2 = pjoin(work_dir, 'within.jpg')
+    out_file3 = pjoin(work_dir, 'between.jpg')
+
+    # loading
+    bar_reader = CiftiReader(bar_file)
+    bar_maps = bar_reader.get_data()
+    n_bar = bar_maps.shape[0]
+    border_vertices = [int(i) for i in bar_reader.map_names()]
+
+    ring_reader = CiftiReader(ring_file)
+    ring_map = ring_reader.get_data()[0]
+    ring_nums = ring_reader.label_info[0]['key']
+    ring_nums.remove(0)
+    n_ring = len(ring_nums)
+
+    pc_reader = CiftiReader(pc_file)
+    pc_maps = pc_reader.get_data()[:n_pc]
+    pc_names = tuple(pc_reader.map_names()[:n_pc])
+
+    reader = CiftiReader(line_gdist_file)
+    border_vertices_all = [int(i) for i in reader.map_names()]
+    map_indices = [border_vertices_all.index(i) for i in border_vertices]
+    line_gdist_maps = reader.get_data()[map_indices]
+
+    OP_gdist_map = nib.load(OP_gdist_file).get_fdata()[0]
+
+    # prepare method
+    if method == 'CV1':
+        var_func = variation
+    elif method == 'CV3':
+        var_func = calc_coef_var
+    elif method == 'CV4':
+        def var_func(arr, axis):
+            return np.abs(variation(arr, axis))
+    elif method == 'CV5':
+        def var_func(arr, axis):
+            var = np.abs(variation(arr, axis))
+            var = var / arr.shape[axis]
+            return var
+    elif method == 'std':
+        var_func = np.std
+    elif method == 'std/n_vtx':
+        def var_func(arr, axis, ddof=0):
+            var = np.std(arr, axis, ddof=ddof) /\
+                arr.shape[axis]
+            return var
+    elif method == 'CQV':
+        var_func = calc_cqv
+    elif method == 'CQV1':
+        def var_func(arr, axis):
+            return np.abs(calc_cqv(arr, axis))
+    else:
+        raise ValueError
+
+    # calculating
+    width_half = width / 2
+    n_segment = int(width / 2)
+    n_boundary = n_segment + 1
+    within_vars = []
+    between_vars = []
+    if grid_file is not None:
+        grid_map = np.zeros((1, pc_maps.shape[1]), np.uint16)
+        grid_num = 1
+    for bar_idx in range(n_bar):
+        bar_idx_map = bar_maps[bar_idx].astype(bool)
+        line_gdist_map = line_gdist_maps[bar_idx]
+        for ring_idx in range(n_ring):
+            ring_idx_map = ring_map == ring_nums[ring_idx]
+            bar_ring_mask = np.logical_and(bar_idx_map, ring_idx_map)
+            bar_ring_mask_size = np.sum(bar_ring_mask)
+            if bar_ring_mask_size == 0:
+                continue
+
+            OP_gdists = OP_gdist_map[bar_ring_mask]
+            OP_gdist_min, OP_gdist_max = np.min(OP_gdists), np.max(OP_gdists)
+            if (OP_gdist_max - OP_gdist_min) / width <= 0.9:
+                continue
+
+            line_gdists = line_gdist_map[bar_ring_mask]
+            line_gdist_min, line_gdist_max = np.min(line_gdists), np.max(line_gdists)
+            if (line_gdist_max - line_gdist_min) / width_half <= 0.9:
+                continue
+
+            bar_ring_vis_mask = np.logical_and(bar_ring_mask, vis_mask)
+            bar_ring_vis_mask_size = np.sum(bar_ring_vis_mask)
+            if bar_ring_vis_mask_size / bar_ring_mask_size <= 0.9:
+                continue
+
+            fault_flag = False
+            OP_gdists = OP_gdist_map[bar_ring_vis_mask]
+            boundaries1 = np.linspace(np.min(OP_gdists), np.max(OP_gdists), n_boundary)
+            means1 = np.zeros((n_pc, n_segment), np.float64)
+            for s_idx, s_boundary in enumerate(boundaries1[:-1]):
+                e_idx = s_idx + 1
+                e_boundary = boundaries1[e_idx]
+                if e_idx == n_segment:
+                    segment_mask = np.logical_and(
+                        OP_gdist_map >= s_boundary, OP_gdist_map <= e_boundary)
+                else:
+                    segment_mask = np.logical_and(
+                        OP_gdist_map >= s_boundary, OP_gdist_map < e_boundary)
+                segment_mask = np.logical_and(segment_mask, bar_ring_vis_mask)
+                if not np.any(segment_mask):
+                    fault_flag = True
+                    break
+                segments = pc_maps[:, segment_mask]
+                means1[:, s_idx] = np.mean(segments, 1)
+
+            line_gdists = line_gdist_map[bar_ring_vis_mask]
+            boundaries2 = np.linspace(np.min(line_gdists), np.max(line_gdists), n_boundary)
+            means2 = np.zeros((n_pc, n_segment), np.float64)
+            for s_idx, s_boundary in enumerate(boundaries2[:-1]):
+                e_idx = s_idx + 1
+                e_boundary = boundaries2[e_idx]
+                if e_idx == n_segment:
+                    segment_mask = np.logical_and(
+                        line_gdist_map >= s_boundary, line_gdist_map <= e_boundary)
+                else:
+                    segment_mask = np.logical_and(
+                        line_gdist_map >= s_boundary, line_gdist_map < e_boundary)
+                segment_mask = np.logical_and(segment_mask, bar_ring_vis_mask)
+                if not np.any(segment_mask):
+                    fault_flag = True
+                    break
+                segments = pc_maps[:, segment_mask]
+                means2[:, s_idx] = np.mean(segments, 1)
+
+            if fault_flag:
+                # 虽然通过了前面的重重考验，但满足这个判断
+                # 说明有断层，直接舍弃这个格子
+                break
+            if grid_file is not None:
+                grid_map[0, bar_ring_vis_mask] = grid_num
+                grid_num += 1
+            between_vars.append(var_func(means1, 1))
+            within_vars.append(var_func(means2, 1))
+    within_vars = np.array(within_vars).T
+    between_vars = np.array(between_vars).T
+    print(within_vars.shape)
+    print(between_vars.shape)
+    within_var_y = np.mean(within_vars, 1)
+    within_var_yerr = sem(within_vars, 1)
+    between_var_y = np.mean(between_vars, 1)
+    between_var_yerr = sem(between_vars, 1)
+
+    # plot
+    y = np.array([between_var_y, within_var_y])
+    yerr = np.array([between_var_yerr, within_var_yerr])
+    plot_bar(y, figsize=(2, 3), yerr=yerr,
+             label=('between', 'within'),
+             xticklabel=pc_names, ylabel='variation',
+             mode=out_file1, title=method)
+    plot_bar(within_vars, figsize=(8, 4), label=pc_names,
+             ylabel='variation', mode=out_file2, title='within')
+    plot_bar(between_vars, figsize=(8, 4), label=pc_names,
+             ylabel='variation', mode=out_file3, title='between')
+    if grid_file is not None:
+        save2cifti(grid_file, grid_map, pc_reader.brain_models())
     # plt.show()
 # 以枕极为原点，以圆环代表层，以长条代表跨层<<<
 
@@ -569,6 +753,8 @@ if __name__ == '__main__':
     # get_radial_line()
     # simplify_radial_line()
     # line_pkl2cii()
-    # prepare_ring_bar(width=5)
+    # prepare_ring_bar(N=2, width=5)
     # split_ring_dv()
-    calc_var_ring_bar()
+    # calc_var_ring_bar()
+    # prepare_ring_bar(N=6, width=12)
+    calc_var_local()
