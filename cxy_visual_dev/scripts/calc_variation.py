@@ -1138,10 +1138,77 @@ def get_max_var_diameter(method):
 def calc_diameter_angle(method):
     """
     计算get_max_var_diameter得到的两条直径之间的夹角
-    两条直径的端点在圆环上相隔的顶点数（小的那一段） / 圆环总顶点数
+    两条直径的端点在圆环上相隔的顶点数(interval)（小的那一段） / 圆环总顶点数 * 360
+    由于圆环上顶点数量大致在30（5环近邻时）左右，总之分辨率有限。
+    因此设置一个容忍度，即计算90度对应的相隔顶点数(interval_RightAngle)，
+    当interval在其附近时都认为是90度。
+    interval_RightAngle为整数时，[interval_RightAngle - 1, interval_RightAngle,
+    interval_RightAngle + 1]都算90度
+    interval_RightAngle不是整数时，[int(interval_RightAngle),
+    int(interval_RightAngle) + 1]都算90度
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    max_diameter_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5_max-{method}.pkl')
+    radius_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius5.pkl')
+    map_names = ['normal', 'tolerance']
+    out_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5_max-{method}_angle.dscalar.nii')
+
+    # loading
+    max_diameters_dict = pkl.load(open(max_diameter_file, 'rb'))
+    radil_list = pkl.load(open(radius_file, 'rb'))
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # calculating
+    out_maps = np.ones((2, bm.index_count), np.float64) * np.nan
+    for radil in radil_list:
+        # get sorted neighbors and intervals of 90度
+        center = radil[0][0]
+        neighbors_Nring_sort = [i[-1] for i in radil]
+        n_neighbor = len(neighbors_Nring_sort)
+        interval_RightAngle = 90 / 360 * n_neighbor
+        if int(interval_RightAngle) == interval_RightAngle:
+            intervals_RightAngle = [
+                interval_RightAngle - 1, interval_RightAngle,
+                interval_RightAngle + 1]
+        else:
+            intervals_RightAngle = [
+                int(interval_RightAngle),
+                int(interval_RightAngle) + 1]
+
+        # get interval between PC1 and PC2 diameters
+        pc1_diameter = max_diameters_dict[center][0]
+        pc2_diameter = max_diameters_dict[center][1]
+        pc1_indices = [
+            neighbors_Nring_sort.index(pc1_diameter[0]),
+            neighbors_Nring_sort.index(pc1_diameter[-1])]
+        pc2_indices = [
+            neighbors_Nring_sort.index(pc2_diameter[0]),
+            neighbors_Nring_sort.index(pc2_diameter[-1])]
+        intervals = []
+        for pc1_idx in pc1_indices:
+            for pc2_idx in pc2_indices:
+                intervals.append(np.abs(pc1_idx - pc2_idx))
+        interval = np.min(intervals)
+
+        # calculate angle
+        angle1 = interval / n_neighbor * 360
+        angle2 = 90 if interval in intervals_RightAngle else angle1
+        out_maps[0, center] = angle1
+        out_maps[1, center] = angle2
+
+    # save out
+    save2cifti(out_file, out_maps, [bm], map_names)
+# 在局部范围内分别找到PC1和PC2的最大变异方向<<<
+
+
+def plot_diameter_angle(method):
+    """
+    用条形图展示角度的分布
     """
     pass
-# 在局部范围内分别找到PC1和PC2的最大变异方向<<<
 
 
 if __name__ == '__main__':
@@ -1163,7 +1230,11 @@ if __name__ == '__main__':
     # get_max_var_line(method='CQV1')
     # get_center_and_radius()
     # get_diameter()
-    get_max_var_diameter(method='CV3')
-    get_max_var_diameter(method='CV4')
-    get_max_var_diameter(method='std')
-    get_max_var_diameter(method='CQV1')
+    # get_max_var_diameter(method='CV3')
+    # get_max_var_diameter(method='CV4')
+    # get_max_var_diameter(method='std')
+    # get_max_var_diameter(method='CQV1')
+    calc_diameter_angle(method='CV3')
+    calc_diameter_angle(method='CV4')
+    calc_diameter_angle(method='std')
+    calc_diameter_angle(method='CQV1')
