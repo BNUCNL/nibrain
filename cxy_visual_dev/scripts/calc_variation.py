@@ -838,6 +838,83 @@ def get_center_and_line():
     save2cifti(out_dscalar_file, out_dscalar, [bm])
 
 
+def get_max_var_line(method):
+    """
+    计算所有连线上PC1和PC2的变异
+    将具有最大变异的连线分别作为PC1和PC2的最大变异方向
+
+    存为pickle文件，内容是三层嵌套列表，第一层的每个元素对应每个中心点
+    第二层的列表的第一个元素就是PC1的最大变异方向的line，第二个是PC2的
+
+    存为dlabel文件，中心点为绿色，PC1的line为红色，PC2的line为蓝色。
+    在存每个中心点时，会看其和对应的line1和line2和第一个map中已存在lines有重叠
+    如果有就继续看第二个，以此类推，直到找到没有重叠的map。如果遍历当前所有map都有
+    重叠，就继续新建一个空map。
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    n_pc = 2  # 前N个成分
+    fname = f'MMP-vis3-{Hemi}_center150-line5'
+    fpath = pjoin(work_dir, f'{fname}.pkl')
+    pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    if method == 'std/n_vtx':
+        out_pkl_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.pkl')
+        out_dlabel_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.dlabel.nii')
+    else:
+        out_pkl_file = pjoin(work_dir, f'{fname}_max-{method}.pkl')
+        out_dlabel_file = pjoin(work_dir, f'{fname}_max-{method}.dlabel.nii')
+
+    # loading
+    center_lines = pkl.load(open(fpath, 'rb'))
+
+    pc_reader = CiftiReader(pc_file)
+    pc_maps = pc_reader.get_data(hemi2stru[hemi], True)[:n_pc]
+    pc_names = tuple(pc_reader.map_names()[:n_pc])
+
+    var_func = get_var_func(method)
+
+    # get brain model
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # calculating
+    max_lines = []
+    for lines in center_lines:
+        vars = np.zeros((n_pc, len(lines)), np.float64)
+        for line_idx, line in enumerate(lines):
+            vars[:, line_idx] = var_func(pc_maps[:, line], 1)
+        max_indices = np.argmax(vars, 1)
+        max_lines.append([lines[i] for i in max_indices])
+
+    # save out
+    pkl.dump(max_lines, open(out_pkl_file, 'wb'))
+    out_maps = []
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'center', 0, 1, 0, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'PC1', 1, 0, 0, 1)
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'PC2', 0, 0, 1, 1)
+    for lines in max_lines:
+        all_vertices = lines[0] + lines[1]
+        assert lines[0][0] == lines[1][0]
+        found_map = False
+        for out_map in out_maps:
+            if np.all(out_map[all_vertices] == 0):
+                found_map = True
+                break
+        if not found_map:
+            out_map = np.zeros(pc_maps.shape[1], np.uint8)
+            out_maps.append(out_map)
+        out_map[lines[0][0]] = 1
+        out_map[lines[0][1:]] = 2
+        out_map[lines[1][1:]] = 3
+    n_map = len(out_maps)
+    out_maps = np.array(out_maps)
+    lbl_tabs = [lbl_tab] * n_map
+    save2cifti(out_dlabel_file, out_maps, [bm], label_tables=lbl_tabs)
+
+
 def get_center_and_radius():
     """
     遍历视觉皮层所有顶点，留下那些第n_ring近邻在视觉皮层内的点做为中心点
@@ -936,86 +1013,134 @@ def get_center_and_radius():
 
 def get_diameter():
     """
-    
+    对于每个第n_ring已经排过序的中心点，
+    第1个点与第int(n_neighbor/2)+1点和中心点的两条半径构成一条直径
+    以此类推
+
+    存为pickle文件，数据是一个字典，键是中心点的顶点号
+    值是列表，保存着该中心点的所有直径
+
+    存为dlabel文件，中心点为绿色，边界为黑色
+    第1个点对应的line为红色
+    第int(int(n_neighbor/2)/2)+1个点的line为蓝色
+    用不重叠的圆环叠满一个map
     """
-    pass
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    radil_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius5.pkl')
+    out_pkl_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5.pkl')
+    out_dlabel_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5.dlabel.nii')
+
+    # loading
+    radil_list = pkl.load(open(radil_file, 'rb'))
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # look for diameter
+    diameters_dict = dict()
+    out_dlabel = np.zeros((1, bm.index_count), np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'center', 0, 1, 0, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'ring', 0, 0, 0, 1)
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'diameter1', 1, 0, 0, 1)
+    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'diameter2', 0, 0, 1, 1)
+    dlabel_flag = False
+    for radil in radil_list:
+        neighbors_Nring = [i[-1] for i in radil]
+        if np.all(out_dlabel[0, neighbors_Nring] == 0):
+            dlabel_flag = True
+
+        n_radius_half = int(len(radil) / 2)
+        diameters = []
+        for i in range(n_radius_half):
+            j = n_radius_half + i
+            diameter = radil[i][::-1] + radil[j][1:]
+            assert sorted(set(diameter)) == sorted(diameter)
+            diameters.append(diameter)
+
+            if dlabel_flag:
+                if i == 0:
+                    out_dlabel[0, diameter] = 3
+                elif i == int(n_radius_half / 2):
+                    out_dlabel[0, diameter] = 4
+
+        if dlabel_flag:
+            out_dlabel[0, radil[0][0]] = 1
+            out_dlabel[0, neighbors_Nring] = 2
+            dlabel_flag = False
+        diameters_dict[radil[0][0]] = diameters
+
+    # save out
+    pkl.dump(diameters_dict, open(out_pkl_file, 'wb'))
+    save2cifti(out_dlabel_file, out_dlabel, [bm], label_tables=[lbl_tab])
 
 
-def get_max_var_line(method):
+def get_max_var_diameter(method):
     """
-    计算所有连线上PC1和PC2的变异
-    将具有最大变异的连线分别作为PC1和PC2的最大变异方向
+    计算所有直径上PC1和PC2的变异
+    将具有最大变异的直径分别作为PC1和PC2的最大变异方向
 
-    存为pickle文件，内容是三层嵌套列表，第一层的每个元素对应每个中心点
-    第二层的列表的第一个元素就是PC1的最大变异方向的line，第二个是PC2的
+    存为pickle文件，数据是一个字典，键是中心点的顶点号
+    值是列表，保存着2个列表，第1个是PC1对应的直径，第2个是PC2的
 
-    存为dlabel文件，中心点为绿色，PC1的line为红色，PC2的line为蓝色。
-    在存每个中心点时，会看其和对应的line1和line2和第一个map中已存在lines有重叠
-    如果有就继续看第二个，以此类推，直到找到没有重叠的map。如果遍历当前所有map都有
-    重叠，就继续新建一个空map。
+    存为dlabel文件，中心点为绿色，PC1的line为红色，PC2的line为蓝色，边界为黑色
+    用不重叠的圆环叠满一个map
     """
     # prepare parameters
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     n_pc = 2  # 前N个成分
-    fname = f'MMP-vis3-{Hemi}_center150-line5'
+    fname = f'MMP-vis3-{Hemi}_diameter5'
     fpath = pjoin(work_dir, f'{fname}.pkl')
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
-    if method == 'std/n_vtx':
-        out_pkl_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.pkl')
-        out_dlabel_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.dlabel.nii')
-    else:
-        out_pkl_file = pjoin(work_dir, f'{fname}_max-{method}.pkl')
-        out_dlabel_file = pjoin(work_dir, f'{fname}_max-{method}.dlabel.nii')
+    out_pkl_file = pjoin(work_dir, f'{fname}_max-{method}.pkl')
+    out_dlabel_file = pjoin(work_dir, f'{fname}_max-{method}.dlabel.nii')
 
     # loading
-    center_lines = pkl.load(open(fpath, 'rb'))
-
-    pc_reader = CiftiReader(pc_file)
-    pc_maps = pc_reader.get_data(hemi2stru[hemi], True)[:n_pc]
-    pc_names = tuple(pc_reader.map_names()[:n_pc])
-
+    diameters_dict = pkl.load(open(fpath, 'rb'))
+    pc_maps = CiftiReader(pc_file).get_data(hemi2stru[hemi], True)[:n_pc]
     var_func = get_var_func(method)
-
-    # get brain model
     bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
     bm.index_offset = 0
 
     # calculating
-    max_lines = []
-    for lines in center_lines:
-        vars = np.zeros((n_pc, len(lines)), np.float64)
-        for line_idx, line in enumerate(lines):
-            vars[:, line_idx] = var_func(pc_maps[:, line], 1)
-        max_indices = np.argmax(vars, 1)
-        max_lines.append([lines[i] for i in max_indices])
-
-    # save out
-    pkl.dump(max_lines, open(out_pkl_file, 'wb'))
-    out_maps = []
+    max_diameters_dict = dict()
+    out_dlabel = np.zeros((1, bm.index_count), np.uint8)
     lbl_tab = nib.cifti2.Cifti2LabelTable()
     lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
     lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'center', 0, 1, 0, 1)
-    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'PC1', 1, 0, 0, 1)
-    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'PC2', 0, 0, 1, 1)
-    for lines in max_lines:
-        all_vertices = lines[0] + lines[1]
-        assert lines[0][0] == lines[1][0]
-        found_map = False
-        for out_map in out_maps:
-            if np.all(out_map[all_vertices] == 0):
-                found_map = True
-                break
-        if not found_map:
-            out_map = np.zeros(pc_maps.shape[1], np.uint8)
-            out_maps.append(out_map)
-        out_map[lines[0][0]] = 1
-        out_map[lines[0][1:]] = 2
-        out_map[lines[1][1:]] = 3
-    n_map = len(out_maps)
-    out_maps = np.array(out_maps)
-    lbl_tabs = [lbl_tab] * n_map
-    save2cifti(out_dlabel_file, out_maps, [bm], label_tables=lbl_tabs)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'ring', 0, 0, 0, 1)
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'PC1', 1, 0, 0, 1)
+    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'PC2', 0, 0, 1, 1)
+    for center, diameters in diameters_dict.items():
+        vars = np.zeros((n_pc, len(diameters)), np.float64)
+        neighbors_Nring = []
+        for d_idx, diameter in enumerate(diameters):
+            vars[:, d_idx] = var_func(pc_maps[:, diameter], 1)
+            neighbors_Nring.append(diameter[0])
+            neighbors_Nring.append(diameter[-1])
+        max_indices = np.argmax(vars, 1)
+        max_diameters_dict[center] = [diameters[i] for i in max_indices]
+
+        if np.all(out_dlabel[0, neighbors_Nring] == 0):
+            out_dlabel[0, max_diameters_dict[center][0]] = 3
+            out_dlabel[0, max_diameters_dict[center][1]] = 4
+            out_dlabel[0, center] = 1
+            out_dlabel[0, neighbors_Nring] = 2
+
+    # save out
+    pkl.dump(max_diameters_dict, open(out_pkl_file, 'wb'))
+    save2cifti(out_dlabel_file, out_dlabel, [bm], label_tables=[lbl_tab])
+
+
+def calc_diameter_angle(method):
+    """
+    计算get_max_var_diameter得到的两条直径之间的夹角
+    两条直径的端点在圆环上相隔的顶点数（小的那一段） / 圆环总顶点数
+    """
+    pass
 # 在局部范围内分别找到PC1和PC2的最大变异方向<<<
 
 
@@ -1030,10 +1155,15 @@ if __name__ == '__main__':
     # prepare_ring_bar(N=6, width=12)
     # calc_var_local()
     # get_center_and_line()
-    get_center_and_radius()
     # get_max_var_line(method='CV3')
     # get_max_var_line(method='CV4')
     # get_max_var_line(method='CV5')
     # get_max_var_line(method='std')
     # get_max_var_line(method='std/n_vtx')
     # get_max_var_line(method='CQV1')
+    # get_center_and_radius()
+    # get_diameter()
+    get_max_var_diameter(method='CV3')
+    get_max_var_diameter(method='CV4')
+    get_max_var_diameter(method='std')
+    get_max_var_diameter(method='CQV1')
