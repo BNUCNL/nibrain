@@ -6,6 +6,7 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import variation, sem
 from matplotlib import pyplot as plt
+from scipy.stats.stats import mode
 from cxy_visual_dev.lib.predefine import LR_count_32k, proj_dir, get_rois,\
     Atlas, mmp_map_file, s1200_midthickness_R, s1200_midthickness_L,\
     MedialWall, hemi2stru, mmp_name2label, L_offset_32k, L_count_32k,\
@@ -1208,7 +1209,32 @@ def plot_diameter_angle(method):
     """
     用条形图展示角度的分布
     """
-    pass
+    fpath = pjoin(work_dir, f'MMP-vis3-R_diameter5_max-{method}_angle.dscalar.nii')
+    # out_file = 'go on'
+    out_file = pjoin(work_dir, f'plot_diameter_angle_{method}.jpg')
+
+    reader = CiftiReader(fpath)
+    angle_maps = reader.get_data()
+    map_names = reader.map_names()
+    n_map = len(map_names)
+
+    ys = []
+    xticlabels = []
+    for map_idx in range(n_map):
+        angle_map = angle_maps[map_idx]
+        angles = angle_map[~np.isnan(angle_map)]
+        x = np.unique(angles)
+        y = np.zeros_like(x, np.uint16)
+        for angle_idx, angle in enumerate(x):
+            y[angle_idx] = np.sum(angles == angle)
+        xticlabels.append(tuple('{:.2f}'.format(i) for i in x))
+        ys.append(y)
+
+    plot_bar(ys, 2, 1, (8, 4), fc_ec_flag=True, fc=[('w',)] * 2,
+             ec=[('k',)] * 2, show_height='', xlabel='angle', xticklabel=xticlabels,
+             rotate_xticklabel=True, ylabel='#vertex', title=map_names, mode=out_file)
+    if out_file == 'go on':
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -1234,7 +1260,11 @@ if __name__ == '__main__':
     # get_max_var_diameter(method='CV4')
     # get_max_var_diameter(method='std')
     # get_max_var_diameter(method='CQV1')
-    calc_diameter_angle(method='CV3')
-    calc_diameter_angle(method='CV4')
-    calc_diameter_angle(method='std')
-    calc_diameter_angle(method='CQV1')
+    # calc_diameter_angle(method='CV3')
+    # calc_diameter_angle(method='CV4')
+    # calc_diameter_angle(method='std')
+    # calc_diameter_angle(method='CQV1')
+    plot_diameter_angle(method='CV3')
+    plot_diameter_angle(method='CV4')
+    plot_diameter_angle(method='std')
+    plot_diameter_angle(method='CQV1')
