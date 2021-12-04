@@ -6,7 +6,6 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import variation, sem
 from matplotlib import pyplot as plt
-from scipy.stats.stats import mode
 from cxy_visual_dev.lib.predefine import LR_count_32k, proj_dir, get_rois,\
     Atlas, mmp_map_file, s1200_midthickness_R, s1200_midthickness_L,\
     MedialWall, hemi2stru, mmp_name2label, L_offset_32k, L_count_32k,\
@@ -26,6 +25,63 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
+def get_var_func(method):
+    """
+    选一种计算变异的方式
+
+    Args:
+        method (str):
+
+    Returns:
+        callable: variation function
+    """
+    if method == 'CV1':
+        # std/mean
+        var_func = variation
+
+    elif method == 'CV3':
+        # std/取绝对值之后的mean
+        var_func = calc_coef_var
+
+    elif method == 'CV4':
+        # std/|mean|
+        def var_func(arr, axis):
+            return np.abs(variation(arr, axis))
+
+    elif method == 'CV5':
+        # std/|mean|/n_sample
+        def var_func(arr, axis):
+            var = np.abs(variation(arr, axis))
+            var = var / arr.shape[axis]
+            return var
+
+    elif method == 'std':
+        # std
+        var_func = np.std
+
+    elif method == 'std/n_vtx':
+        # std/n_sample
+        def var_func(arr, axis, ddof=0):
+            var = np.std(arr, axis, ddof=ddof) /\
+                arr.shape[axis]
+            return var
+
+    elif method == 'CQV':
+        # (Q3-Q1)/(Q3+Q1)
+        var_func = calc_cqv
+
+    elif method == 'CQV1':
+        # |(Q3-Q1)/(Q3+Q1)|
+        def var_func(arr, axis):
+            return np.abs(calc_cqv(arr, axis))
+
+    else:
+        raise ValueError('not supported method')
+
+    return var_func
+
+
+# >>>old
 def calc_variation1():
     """
     对于PC1，我们已经认定它是从后到前渐变的梯度，并且用以枕极为锚点的距离作为PC1的理想模型。
@@ -103,6 +159,7 @@ def calc_variation1():
     plot_bar(segment_vars, figsize=(8, 4), label=pc_names,
              xticklabel=np.arange(1, n_segment+1),
              ylabel='variation', title=title, mode=out_file2)
+# old<<<
 
 
 # >>>以枕极为原点，以圆环代表层，以长条代表跨层
@@ -476,20 +533,20 @@ def calc_var_ring_bar():
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
-    method = 'std/n_vtx'  # CV1, CV3, CV4, CV5, std, std/n_vtx, CQV, CQV1
+    method = 'CV4'
     n_pc = 2  # 前N个成分
     bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width5.dlabel.nii')
     ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5_split-DV.dlabel.nii')
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
-    out_file1 = pjoin(work_dir, 'within_between.jpg')
-    out_file2 = pjoin(work_dir, 'within.jpg')
-    out_file3 = pjoin(work_dir, 'between.jpg')
+    out_file1, out_file2, out_file3 = ('go on',) * 3
+    # out_file1 = pjoin(work_dir, 'within_between.jpg')
+    # out_file2 = pjoin(work_dir, 'within.jpg')
+    # out_file3 = pjoin(work_dir, 'between.jpg')
 
     # loading
     bar_reader = CiftiReader(bar_file)
     bar_maps = bar_reader.get_data()[:, mask]
     n_bar = bar_maps.shape[0]
-    bar_name = bar_reader.map_names()
 
     ring_reader = CiftiReader(ring_file)
     ring_map = ring_reader.get_data()[0, mask]
@@ -501,33 +558,7 @@ def calc_var_ring_bar():
     pc_maps = pc_reader.get_data()[:n_pc, mask]
     pc_names = tuple(pc_reader.map_names()[:n_pc])
 
-    # prepare method
-    if method == 'CV1':
-        var_func = variation
-    elif method == 'CV3':
-        var_func = calc_coef_var
-    elif method == 'CV4':
-        def var_func(arr, axis):
-            return np.abs(variation(arr, axis))
-    elif method == 'CV5':
-        def var_func(arr, axis):
-            var = np.abs(variation(arr, axis))
-            var = var / arr.shape[axis]
-            return var
-    elif method == 'std':
-        var_func = np.std
-    elif method == 'std/n_vtx':
-        def var_func(arr, axis, ddof=0):
-            var = np.std(arr, axis, ddof=ddof) /\
-                arr.shape[axis]
-            return var
-    elif method == 'CQV':
-        var_func = calc_cqv
-    elif method == 'CQV1':
-        def var_func(arr, axis):
-            return np.abs(calc_cqv(arr, axis))
-    else:
-        raise ValueError
+    var_func = get_var_func(method)
 
     # calculating
     bar_vars = np.zeros((n_pc, n_bar), np.float64)
@@ -557,7 +588,8 @@ def calc_var_ring_bar():
     plot_bar(bar_vars, figsize=(7, 3), label=pc_names,
              xlabel='bar number', ylabel='variation',
              mode=out_file3, title='between')
-    # plt.show()
+    if out_file1 == 'go on':
+        plt.show()
 
 
 def calc_var_local():
@@ -585,9 +617,10 @@ def calc_var_local():
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
     line_gdist_file = pjoin(anal_dir, f'gdist/gdist_src-MMP-vis3_RadialLine-{Hemi}.dscalar.nii')
     OP_gdist_file = pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii')
-    out_file1 = pjoin(work_dir, 'within_between.jpg')
-    out_file2 = pjoin(work_dir, 'within.jpg')
-    out_file3 = pjoin(work_dir, 'between.jpg')
+    out_file1, out_file2, out_file3 = ('go on',) * 3
+    # out_file1 = pjoin(work_dir, 'within_between.jpg')
+    # out_file2 = pjoin(work_dir, 'within.jpg')
+    # out_file3 = pjoin(work_dir, 'between.jpg')
 
     # loading
     bar_reader = CiftiReader(bar_file)
@@ -612,33 +645,7 @@ def calc_var_local():
 
     OP_gdist_map = nib.load(OP_gdist_file).get_fdata()[0]
 
-    # prepare method
-    if method == 'CV1':
-        var_func = variation
-    elif method == 'CV3':
-        var_func = calc_coef_var
-    elif method == 'CV4':
-        def var_func(arr, axis):
-            return np.abs(variation(arr, axis))
-    elif method == 'CV5':
-        def var_func(arr, axis):
-            var = np.abs(variation(arr, axis))
-            var = var / arr.shape[axis]
-            return var
-    elif method == 'std':
-        var_func = np.std
-    elif method == 'std/n_vtx':
-        def var_func(arr, axis, ddof=0):
-            var = np.std(arr, axis, ddof=ddof) /\
-                arr.shape[axis]
-            return var
-    elif method == 'CQV':
-        var_func = calc_cqv
-    elif method == 'CQV1':
-        def var_func(arr, axis):
-            return np.abs(calc_cqv(arr, axis))
-    else:
-        raise ValueError
+    var_func = get_var_func(method)
 
     # calculating
     width_half = width / 2
@@ -734,18 +741,282 @@ def calc_var_local():
     # plot
     y = np.array([between_var_y, within_var_y])
     yerr = np.array([between_var_yerr, within_var_yerr])
-    plot_bar(y, figsize=(2, 3), yerr=yerr,
+    plot_bar(y, figsize=(3, 3), yerr=yerr,
              label=('between', 'within'),
              xticklabel=pc_names, ylabel='variation',
              mode=out_file1, title=method)
-    plot_bar(within_vars, figsize=(8, 4), label=pc_names,
+    plot_bar(within_vars, figsize=(7, 3), label=pc_names,
              ylabel='variation', mode=out_file2, title='within')
-    plot_bar(between_vars, figsize=(8, 4), label=pc_names,
+    plot_bar(between_vars, figsize=(7, 3), label=pc_names,
              ylabel='variation', mode=out_file3, title='between')
     if grid_file is not None:
         save2cifti(grid_file, grid_map, pc_reader.brain_models())
-    # plt.show()
+    if out_file1 == 'go on':
+        plt.show()
 # 以枕极为原点，以圆环代表层，以长条代表跨层<<<
+
+
+# >>>在局部范围内分别找到PC1和PC2的最大变异方向
+# 选视觉皮层内的n_vtx个不重复的顶点作为中心点
+# 对于某个中心点，取其第n_ring环近邻作为该中心的局部范围的边界
+# 选取中心点的标准是其第n_ring环近邻都在视觉皮层内
+# 由于我们的视觉皮层mask没有出现内部空缺的现象，因此这个标准
+# 能保证中心点到边界的最短路径肯定也是被包含在视觉皮层内
+# 找到中心点到边界的所有连线（最短路径），计算所有连线上PC1和PC2的变异
+# 将具有最大变异的连线分别作为PC1和PC2的最大变异方向
+def get_center_and_line():
+    """
+    随机找固定数量(n_vtx)的中心点
+    找到n_vtx个中心及和其第n_ring环近邻的连线
+    存为一个三层嵌套列表，第一层的每个元素对应每个中心点
+    第二层的列表保存着对应中心点到其边界的所有连线（第三层列表）
+    第三层的列表的第一个元素就是对应的中心点，最后一个元素是边界上的一个点
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    n_vtx = 150
+    n_ring = 5
+    rois = get_rois(f'MMP-vis3-{Hemi}')
+    hemi2geo = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
+    out_name = f'MMP-vis3-{Hemi}_center{n_vtx}-line{n_ring}'
+    out_pkl_file = pjoin(work_dir, f'{out_name}.pkl')
+    out_dlabel_file = pjoin(work_dir, f'{out_name}.dlabel.nii')
+    out_dscalar_file = pjoin(work_dir, f'{out_name}.dscalar.nii')
+
+    # make visual mask
+    mmp_map = CiftiReader(mmp_map_file).get_data(hemi2stru[hemi], True)[0]
+    vis_mask = np.zeros_like(mmp_map, bool)
+    for roi in rois:
+        vis_mask[mmp_map == mmp_name2label[roi]] = True
+    vis_vertices = np.where(vis_mask)[0]
+
+    # get faces
+    faces = GiftiReader(hemi2geo[hemi]).faces
+    neighbors_list_1ring = get_n_ring_neighbor(faces)
+    neighbors_list = get_n_ring_neighbor(faces, n_ring, True)
+
+    # get brain model
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # look for center
+    centers = []
+    while len(centers) < n_vtx:
+        center = np.random.choice(vis_vertices)
+        if center in centers:
+            continue
+        if not neighbors_list[center].issubset(vis_vertices):
+            continue
+        centers.append(center)
+
+    # get lines
+    out_pkl = []
+    out_dlabel = np.zeros((n_vtx, bm.index_count), np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, f'center_line_{Hemi}', 0, 0, 0, 1)
+    lbl_tabs = [lbl_tab] * n_vtx
+    out_dscalar = np.zeros((1, bm.index_count), np.uint16)
+    for idx, center in enumerate(centers):
+        time1 = time.time()
+        lines = []
+        for neighbor in neighbors_list[center]:
+            line = bfs(neighbors_list_1ring, center, neighbor)
+            lines.append(line)
+            out_dlabel[idx, line] = 1
+            out_dscalar[0, line] += 1
+        out_pkl.append(lines)
+        print(f'Finished {idx+1}/{n_vtx}, cost: {time.time() - time1} seconds.')
+
+    # save out
+    pkl.dump(out_pkl, open(out_pkl_file, 'wb'))
+    map_names = [str(i) for i in centers]
+    # save2cifti(out_dlabel_file, out_dlabel, [bm], map_names, label_tables=lbl_tabs)
+    save2cifti(out_dscalar_file, out_dscalar, [bm])
+
+
+def get_center_and_radius():
+    """
+    遍历视觉皮层所有顶点，留下那些第n_ring近邻在视觉皮层内的点做为中心点
+    找到各中心及和其第n_ring环近邻的连线，并将第n_ring近邻沿着该圆环排序
+
+    存为一个三层嵌套列表，第一层的每个元素对应每个中心点
+    第二层的列表保存着对应中心点到其边界的所有连线（第三层列表）
+    第三层的列表的第一个元素就是对应的中心点，最后一个元素是边界上的一个点
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    n_ring = 5
+    rois = get_rois(f'MMP-vis3-{Hemi}')
+    hemi2geo = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
+    out_name = f'MMP-vis3-{Hemi}-radius{n_ring}'
+    out_pkl_file = pjoin(work_dir, f'{out_name}.pkl')
+    out_dlabel_file = pjoin(work_dir, f'{out_name}.dlabel.nii')
+
+    # make visual mask
+    mmp_map = CiftiReader(mmp_map_file).get_data(hemi2stru[hemi], True)[0]
+    vis_mask = np.zeros_like(mmp_map, bool)
+    for roi in rois:
+        vis_mask[mmp_map == mmp_name2label[roi]] = True
+    vis_vertices = np.where(vis_mask)[0]
+    n_vtx_total = len(vis_vertices)
+
+    # get faces
+    faces = GiftiReader(hemi2geo[hemi]).faces
+    neighbors_list_1ring = get_n_ring_neighbor(faces)
+    neighbors_list_Nring = get_n_ring_neighbor(faces, n_ring, True)
+
+    # get brain model
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # look for center and sort radil
+    radil_list = []
+    out_dlabel = np.zeros((1, bm.index_count), np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'center', 0, 1, 0, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'ring', 0, 0, 0, 1)
+    for idx, vtx in enumerate(vis_vertices, 1):
+        time1 = time.time()
+
+        # get center and the n_ring neighbors
+        neighbors_Nring = neighbors_list_Nring[vtx]
+        if not neighbors_Nring.issubset(vis_vertices):
+            continue
+        neighbors_Nring = list(neighbors_Nring)
+        if np.all(out_dlabel[0, neighbors_Nring] == 0):
+            out_dlabel[0, vtx] = 1
+            out_dlabel[0, neighbors_Nring] = 2
+
+        # sort the n_ring neighbors
+        mask_tmp = np.zeros(bm.index_count, np.uint8)
+        mask_tmp[neighbors_Nring] = 1
+        neighbors_list_tmp = get_n_ring_neighbor(faces, mask=mask_tmp)
+        neighbors_Nring_sort = []  # 沿着圆环顺序将顶点加入该列表
+        pending_queue = []  # 过渡区
+        for neighbor_Nring in neighbors_Nring:
+            # 找到只有两个近邻的顶点作为起始点
+            # 随机删掉一个近邻，留下另一个作为延伸的方向
+            if len(neighbors_list_tmp[neighbor_Nring]) == 2:
+                pending_queue.append(neighbor_Nring)
+                neighbors_list_tmp[neighbor_Nring].pop()
+                break
+        while pending_queue:
+            # 按顺序处理完近邻后再加入neighbors_Nring_sort
+            for neighbor_Nring in neighbors_Nring:
+                neighbors_list_tmp[neighbor_Nring].difference_update(pending_queue)
+            pending_queue_tmp = []
+            for pending_vtx in pending_queue:
+                pending_queue_tmp.extend(neighbors_list_tmp[pending_vtx])
+            neighbors_Nring_sort.extend(pending_queue)
+            pending_queue = pending_queue_tmp
+        assert sorted(neighbors_Nring_sort) == sorted(neighbors_Nring)
+
+        # get radil
+        radil = []
+        for neighbor in neighbors_Nring_sort:
+            radius = bfs(neighbors_list_1ring, vtx, neighbor)
+            radil.append(radius)
+        radil_list.append(radil)
+
+        print(f'Finished {idx}/{n_vtx_total}, '
+              f'cost: {time.time() - time1} seconds.')
+
+    # save out
+    pkl.dump(radil_list, open(out_pkl_file, 'wb'))
+    save2cifti(out_dlabel_file, out_dlabel, [bm], label_tables=[lbl_tab])
+
+
+def get_diameter():
+    """
+    
+    """
+    pass
+
+
+def get_max_var_line(method):
+    """
+    计算所有连线上PC1和PC2的变异
+    将具有最大变异的连线分别作为PC1和PC2的最大变异方向
+
+    存为pickle文件，内容是三层嵌套列表，第一层的每个元素对应每个中心点
+    第二层的列表的第一个元素就是PC1的最大变异方向的line，第二个是PC2的
+
+    存为dlabel文件，中心点为绿色，PC1的line为红色，PC2的line为蓝色。
+    在存每个中心点时，会看其和对应的line1和line2和第一个map中已存在lines有重叠
+    如果有就继续看第二个，以此类推，直到找到没有重叠的map。如果遍历当前所有map都有
+    重叠，就继续新建一个空map。
+    """
+    # prepare parameters
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    n_pc = 2  # 前N个成分
+    fname = f'MMP-vis3-{Hemi}_center150-line5'
+    fpath = pjoin(work_dir, f'{fname}.pkl')
+    pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    if method == 'std/n_vtx':
+        out_pkl_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.pkl')
+        out_dlabel_file = pjoin(work_dir, f'{fname}_max-std-n_vtx.dlabel.nii')
+    else:
+        out_pkl_file = pjoin(work_dir, f'{fname}_max-{method}.pkl')
+        out_dlabel_file = pjoin(work_dir, f'{fname}_max-{method}.dlabel.nii')
+
+    # loading
+    center_lines = pkl.load(open(fpath, 'rb'))
+
+    pc_reader = CiftiReader(pc_file)
+    pc_maps = pc_reader.get_data(hemi2stru[hemi], True)[:n_pc]
+    pc_names = tuple(pc_reader.map_names()[:n_pc])
+
+    var_func = get_var_func(method)
+
+    # get brain model
+    bm = CiftiReader(s1200_MedialWall).brain_models([hemi2stru[hemi]])[0]
+    bm.index_offset = 0
+
+    # calculating
+    max_lines = []
+    for lines in center_lines:
+        vars = np.zeros((n_pc, len(lines)), np.float64)
+        for line_idx, line in enumerate(lines):
+            vars[:, line_idx] = var_func(pc_maps[:, line], 1)
+        max_indices = np.argmax(vars, 1)
+        max_lines.append([lines[i] for i in max_indices])
+
+    # save out
+    pkl.dump(max_lines, open(out_pkl_file, 'wb'))
+    out_maps = []
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'center', 0, 1, 0, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'PC1', 1, 0, 0, 1)
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'PC2', 0, 0, 1, 1)
+    for lines in max_lines:
+        all_vertices = lines[0] + lines[1]
+        assert lines[0][0] == lines[1][0]
+        found_map = False
+        for out_map in out_maps:
+            if np.all(out_map[all_vertices] == 0):
+                found_map = True
+                break
+        if not found_map:
+            out_map = np.zeros(pc_maps.shape[1], np.uint8)
+            out_maps.append(out_map)
+        out_map[lines[0][0]] = 1
+        out_map[lines[0][1:]] = 2
+        out_map[lines[1][1:]] = 3
+    n_map = len(out_maps)
+    out_maps = np.array(out_maps)
+    lbl_tabs = [lbl_tab] * n_map
+    save2cifti(out_dlabel_file, out_maps, [bm], label_tables=lbl_tabs)
+# 在局部范围内分别找到PC1和PC2的最大变异方向<<<
 
 
 if __name__ == '__main__':
@@ -757,4 +1028,12 @@ if __name__ == '__main__':
     # split_ring_dv()
     # calc_var_ring_bar()
     # prepare_ring_bar(N=6, width=12)
-    calc_var_local()
+    # calc_var_local()
+    # get_center_and_line()
+    get_center_and_radius()
+    # get_max_var_line(method='CV3')
+    # get_max_var_line(method='CV4')
+    # get_max_var_line(method='CV5')
+    # get_max_var_line(method='std')
+    # get_max_var_line(method='std/n_vtx')
+    # get_max_var_line(method='CQV1')
