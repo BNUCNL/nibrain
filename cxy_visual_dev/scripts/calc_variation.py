@@ -534,15 +534,17 @@ def calc_var_ring_bar():
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
-    method = 'CV4'
+    method = 'std_MapStd'
+    # ylim = (0.5, 1.2)
+    ylim = None
     n_pc = 2  # 前N个成分
     bar_file = pjoin(work_dir, f'MMP-vis3_RadialBar-{Hemi}_thr90_N2_width5.dlabel.nii')
-    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5_split-DV.dlabel.nii')
+    ring_file = pjoin(work_dir, f'MMP-vis3_ring-{Hemi}_width5.dlabel.nii')
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
-    out_file1, out_file2, out_file3 = ('go on',) * 3
-    # out_file1 = pjoin(work_dir, 'within_between.jpg')
-    # out_file2 = pjoin(work_dir, 'within.jpg')
-    # out_file3 = pjoin(work_dir, 'between.jpg')
+    # out_file1, out_file2, out_file3 = ('go on',) * 3
+    out_file1 = pjoin(work_dir, 'within_between.jpg')
+    out_file2 = pjoin(work_dir, 'within.jpg')
+    out_file3 = pjoin(work_dir, 'between.jpg')
 
     # loading
     bar_reader = CiftiReader(bar_file)
@@ -558,8 +560,32 @@ def calc_var_ring_bar():
     pc_reader = CiftiReader(pc_file)
     pc_maps = pc_reader.get_data()[:n_pc, mask]
     pc_names = tuple(pc_reader.map_names()[:n_pc])
+    means_abs = np.mean(np.abs(pc_maps), 1)  # 整个map的绝对值的均值
+    abs_means = np.abs(np.mean(pc_maps, 1))  # 整个map的均值的绝对值
+    map_stds = np.std(pc_maps, 1)  # 整个map的标准差
+    print('PC1和PC2 map的绝对值的均值分别是：', means_abs)
+    print('PC1和PC2 map的标准差分别是：', map_stds)
 
-    var_func = get_var_func(method)
+    if method == 'CV3_mean-map':
+        def var_func(arr, axis, ddof=0):
+            # std / 各自map的绝对值的均值
+            var = np.std(arr, axis, ddof=ddof) /\
+                means_abs
+            return var
+    elif method == 'CV4_mean-map':
+        def var_func(arr, axis, ddof=0):
+            # std / 各自map的均值的绝对值
+            var = np.std(arr, axis, ddof=ddof) /\
+                abs_means
+            return var
+    elif method == 'std_MapStd':
+        def var_func(arr, axis, ddof=0):
+            # std / 各自map的std
+            var = np.std(arr, axis, ddof=ddof) /\
+                map_stds
+            return var
+    else:
+        var_func = get_var_func(method)
 
     # calculating
     bar_vars = np.zeros((n_pc, n_bar), np.float64)
@@ -582,7 +608,7 @@ def calc_var_ring_bar():
     plot_bar(y, figsize=(3, 3), yerr=yerr,
              label=('between_layer', 'within_layer'),
              xticklabel=pc_names, ylabel='variation',
-             mode=out_file1, title=method)
+             mode=out_file1, title=method, ylim=ylim)
     plot_bar(ring_vars, figsize=(7, 3), label=pc_names,
              xlabel='layer number', ylabel='variation',
              mode=out_file2, title='within')
@@ -928,7 +954,7 @@ def get_center_and_radius():
     # prepare parameters
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
-    n_ring = 5
+    n_ring = 10
     rois = get_rois(f'MMP-vis3-{Hemi}')
     hemi2geo = {
         'lh': s1200_midthickness_L,
@@ -1029,9 +1055,9 @@ def get_diameter():
     # prepare parameters
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
-    radil_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius5.pkl')
-    out_pkl_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5.pkl')
-    out_dlabel_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5.dlabel.nii')
+    radil_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius10.pkl')
+    out_pkl_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter10.pkl')
+    out_dlabel_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter10.dlabel.nii')
 
     # loading
     radil_list = pkl.load(open(radil_file, 'rb'))
@@ -1088,16 +1114,21 @@ def get_max_var_diameter(method):
 
     存为dlabel文件，中心点为绿色，PC1的line为红色，PC2的line为蓝色，边界为黑色
     用不重叠的圆环叠满一个map
+
+    存一个dscalar文件，两个map，分别是PC1和PC2的最大变异值
     """
     # prepare parameters
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     n_pc = 2  # 前N个成分
+    pc_names = ('C1', 'C2')
     fname = f'MMP-vis3-{Hemi}_diameter5'
     fpath = pjoin(work_dir, f'{fname}.pkl')
     pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
     out_pkl_file = pjoin(work_dir, f'{fname}_max-{method}.pkl')
     out_dlabel_file = pjoin(work_dir, f'{fname}_max-{method}.dlabel.nii')
+    out_dscalar_file = pjoin(work_dir, f'{fname}_max-{method}.dscalar.nii')
+    out_dscalar_file1 = pjoin(work_dir, f'{fname}_max-{method}_1.dscalar.nii')
 
     # loading
     diameters_dict = pkl.load(open(fpath, 'rb'))
@@ -1115,6 +1146,8 @@ def get_max_var_diameter(method):
     lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'ring', 0, 0, 0, 1)
     lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'PC1', 1, 0, 0, 1)
     lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'PC2', 0, 0, 1, 1)
+    out_dscalar = np.ones((n_pc, bm.index_count), np.float64) * np.nan
+    out_dscalar1 = np.ones((n_pc, bm.index_count), np.float64) * np.nan
     for center, diameters in diameters_dict.items():
         vars = np.zeros((n_pc, len(diameters)), np.float64)
         neighbors_Nring = []
@@ -1123,6 +1156,9 @@ def get_max_var_diameter(method):
             neighbors_Nring.append(diameter[0])
             neighbors_Nring.append(diameter[-1])
         max_indices = np.argmax(vars, 1)
+        out_dscalar[:, center] = vars[range(n_pc), max_indices]
+        out_dscalar1[:, center] = vars[range(n_pc), max_indices] /\
+            np.min(vars, 1)
         max_diameters_dict[center] = [diameters[i] for i in max_indices]
 
         if np.all(out_dlabel[0, neighbors_Nring] == 0):
@@ -1132,8 +1168,10 @@ def get_max_var_diameter(method):
             out_dlabel[0, neighbors_Nring] = 2
 
     # save out
-    pkl.dump(max_diameters_dict, open(out_pkl_file, 'wb'))
-    save2cifti(out_dlabel_file, out_dlabel, [bm], label_tables=[lbl_tab])
+    # pkl.dump(max_diameters_dict, open(out_pkl_file, 'wb'))
+    # save2cifti(out_dlabel_file, out_dlabel, [bm], label_tables=[lbl_tab])
+    # save2cifti(out_dscalar_file, out_dscalar, [bm], pc_names)
+    save2cifti(out_dscalar_file1, out_dscalar1, [bm], pc_names)
 
 
 def calc_diameter_angle(method):
@@ -1151,10 +1189,10 @@ def calc_diameter_angle(method):
     # prepare parameters
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
-    max_diameter_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5_max-{method}.pkl')
-    radius_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius5.pkl')
+    max_diameter_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter10_max-{method}.pkl')
+    radius_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-radius10.pkl')
     map_names = ['normal', 'tolerance']
-    out_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter5_max-{method}_angle.dscalar.nii')
+    out_file = pjoin(work_dir, f'MMP-vis3-{Hemi}_diameter10_max-{method}_angle.dscalar.nii')
 
     # loading
     max_diameters_dict = pkl.load(open(max_diameter_file, 'rb'))
@@ -1202,14 +1240,13 @@ def calc_diameter_angle(method):
 
     # save out
     save2cifti(out_file, out_maps, [bm], map_names)
-# 在局部范围内分别找到PC1和PC2的最大变异方向<<<
 
 
 def plot_diameter_angle(method):
     """
     用条形图展示角度的分布
     """
-    fpath = pjoin(work_dir, f'MMP-vis3-R_diameter5_max-{method}_angle.dscalar.nii')
+    fpath = pjoin(work_dir, f'MMP-vis3-R_diameter10_max-{method}_angle.dscalar.nii')
     # out_file = 'go on'
     out_file = pjoin(work_dir, f'plot_diameter_angle_{method}.jpg')
 
@@ -1235,6 +1272,7 @@ def plot_diameter_angle(method):
              rotate_xticklabel=True, ylabel='#vertex', title=map_names, mode=out_file)
     if out_file == 'go on':
         plt.show()
+# 在局部范围内分别找到PC1和PC2的最大变异方向<<<
 
 
 if __name__ == '__main__':
@@ -1256,15 +1294,15 @@ if __name__ == '__main__':
     # get_max_var_line(method='CQV1')
     # get_center_and_radius()
     # get_diameter()
-    # get_max_var_diameter(method='CV3')
-    # get_max_var_diameter(method='CV4')
-    # get_max_var_diameter(method='std')
-    # get_max_var_diameter(method='CQV1')
+    get_max_var_diameter(method='CV3')
+    get_max_var_diameter(method='CV4')
+    get_max_var_diameter(method='std')
+    get_max_var_diameter(method='CQV1')
     # calc_diameter_angle(method='CV3')
     # calc_diameter_angle(method='CV4')
     # calc_diameter_angle(method='std')
     # calc_diameter_angle(method='CQV1')
-    plot_diameter_angle(method='CV3')
-    plot_diameter_angle(method='CV4')
-    plot_diameter_angle(method='std')
-    plot_diameter_angle(method='CQV1')
+    # plot_diameter_angle(method='CV3')
+    # plot_diameter_angle(method='CV4')
+    # plot_diameter_angle(method='std')
+    # plot_diameter_angle(method='CQV1')
