@@ -4,7 +4,6 @@ import glob
 import numpy as np
 import pandas as pd
 import nibabel as nib
-
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import proj_dir
@@ -12,6 +11,73 @@ from nibrain.util.plotfig import auto_bar_width
 from magicbox.algorithm.plot import show_bar_value
 
 work_dir = pjoin(proj_dir, 'data/HCP')
+
+
+def get_subject_info_from_fmriresults01(dataset_name='HCPD'):
+    """Get subject information from fmriresults01.txt
+
+    Args:
+        dataset_name (str, optional): Project name. Defaults to 'HCPD'.
+    """
+    # prepare
+    src_file = f'/nfs/z1/HCP/{dataset_name}/fmriresults01.txt'
+    trg_file = pjoin(work_dir, f'{dataset_name}_SubjInfo.csv')
+
+    # calculate
+    df = pd.read_csv(src_file, sep='\t')
+    df.drop(labels=[0], axis=0, inplace=True)
+    subj_ids = sorted(set(df['src_subject_id']))
+    out_dict = {'subID': subj_ids, 'age in months': [],
+                'age in years': [], 'gender': []}
+    for subj_id in subj_ids:
+        idx_vec = df['src_subject_id'] == subj_id
+        age = list(set(df.loc[idx_vec, 'interview_age']))
+        assert len(age) == 1
+        age = int(age[0])
+        out_dict['age in months'].append(age)
+        age_year = int(age / 12)
+        out_dict['age in years'].append(int(age_year))
+
+        gender = list(set(df.loc[idx_vec, 'sex']))
+        assert len(gender) == 1
+        out_dict['gender'].append(gender[0])
+
+    # save
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
+
+
+def get_subject_info_from_completeness(dataset_name='HCPD'):
+    """Get subject information from HCD_LS_2.0_subject_completeness.csv or
+    HCA_LS_2.0_subject_completeness.csv.
+
+    已证明这个办法得到的信息和get_subject_info_from_fmriresults01得到的是一样的
+
+    Args:
+        dataset_name (str, optional): Project name. Defaults to 'HCPD'.
+    """
+    # prepare
+    name2file = {
+        'HCPD': '/nfs/e1/HCPD/HCD_LS_2.0_subject_completeness.csv',
+        'HCPA': '/nfs/e1/HCPA/HCA_LS_2.0_subject_completeness.csv'}
+    src_file = name2file[dataset_name]
+    trg_file = pjoin(work_dir, f'{dataset_name}_SubjInfo_completeness.csv')
+
+    # calculate
+    df = pd.read_csv(src_file)
+    df.drop(labels=[0], axis=0, inplace=True)
+    assert df['src_subject_id'].to_list() == sorted(df['src_subject_id'])
+    ages_year = [int(int(age) / 12) for age in df['interview_age']]
+    out_dict = {
+        'subID': df['src_subject_id'],
+        'age in months': df['interview_age'],
+        'age in years': ages_year,
+        'gender': df['sex']
+    }
+
+    # save
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(trg_file, index=False)
 
 
 def check_rfMRI_file(subj_par, subj_ids, stem_path, base_path, out_file):
@@ -210,6 +276,13 @@ if __name__ == '__main__':
     # HCPD_rfMRI_file_check.tsv和HCPD_rfMRI_file_check-z1.tsv只是列的顺序不一样
     # check_rfMRI_file<<<
 
-    rfMRI_file_status(pjoin(work_dir, 'HCPD_rfMRI_file_check.tsv'))
-    rfMRI_file_status(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'))
-    rfMRI_file_status(pjoin(work_dir, 'HCPA_rfMRI_file_check.tsv'))
+    # >>>rfMRI_file_status
+    # rfMRI_file_status(pjoin(work_dir, 'HCPD_rfMRI_file_check.tsv'))
+    # rfMRI_file_status(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'))
+    # rfMRI_file_status(pjoin(work_dir, 'HCPA_rfMRI_file_check.tsv'))
+    # rfMRI_file_status<<<
+
+    get_subject_info_from_fmriresults01('HCPD')
+    get_subject_info_from_completeness('HCPD')
+    get_subject_info_from_fmriresults01('HCPA')
+    get_subject_info_from_completeness('HCPA')
