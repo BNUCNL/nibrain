@@ -7,9 +7,8 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.spatial.distance import cdist
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
-    mmp_map_file, dataset_name2dir, dataset_name2info,\
-    All_count_32k, mmp_vis2_name2label
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
+    mmp_map_file, dataset_name2dir, All_count_32k
 from cxy_visual_dev.lib.algo import calc_alff
 
 proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
@@ -322,13 +321,11 @@ def get_HCPY_alff():
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
     """
-    info_df = pd.read_csv(dataset_name2info['HCPY'])
-    check_df = pd.read_csv(pjoin(
-        proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv'
-    ), sep='\t')
-    reader = CiftiReader('/nfs/m1/hcp/alff.dscalar.nii')
+    info_df = pd.read_csv(pjoin(work_dir, 'HCPY_SubjInfo.csv'))
+    check_df = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
+    reader = CiftiReader('/nfs/m1/hcp/falff.dscalar.nii')
     reader_mmp = CiftiReader(mmp_map_file)
-    out_file = pjoin(proj_dir, 'data/HCP/HCPY-alff.dscalar.nii')
+    out_file = pjoin(work_dir, 'HCPY-falff.dscalar.nii')
 
     data_1206 = reader.get_data()
     subj_ids_1206 = check_df['subID'].to_list()
@@ -351,32 +348,32 @@ def get_HCPY_GBC():
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
-    GBC计算的是一个MMP-vis2的顶点和HCP-MMP1_visual-cortex2以外的所有parcel的连接的均值
+    GBC计算的是一个视觉皮层内的顶点和外面的所有parcel的连接的均值
     """
+    vis_name = 'MMP-vis3'
     src_file = '/nfs/m1/hcp/{subj_id}/MNINonLinear/Results/'\
         'rsfc_ColeParcel2Vertex.dscalar.nii'
-    info_df = pd.read_csv(dataset_name2info['HCPY'])
-    check_df = pd.read_csv(pjoin(
-        proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv'), sep='\t')
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
     cap_LabelKey_file = '/nfs/z1/atlas/ColeAnticevicNetPartition/' \
                         'CortexSubcortex_ColeAnticevic_NetPartition_wSubcorGSR_parcels_LR_LabelKey.txt'
-    cap_df = pd.read_csv(cap_LabelKey_file, sep='\t')
-    reader_mmp = CiftiReader(mmp_map_file)
+    out_file = pjoin(proj_dir, f'data/HCP/HCPY-GBC_{vis_name}.dscalar.nii')
 
-    atlas = Atlas('MMP-vis2-LR')
-    mask_map = np.zeros(LR_count_32k, bool)
-    for _, lbl in atlas.roi2label.items():
-        mask_map = np.logical_or(mask_map, atlas.maps[0] == lbl)
+    vis_rois = get_rois(f'{vis_name}-L') + get_rois(f'{vis_name}-R')
+    mask_map = Atlas('HCP-MMP').get_mask(vis_rois)[0]
 
-    out_file = pjoin(proj_dir, 'data/HCP/HCPY-GBC_MMP-vis2.dscalar.nii')
-
+    info_df = pd.read_csv(info_file)
     n_subj = info_df.shape[0]
+
+    check_df = pd.read_csv(check_file, sep='\t')
     subj_ids_1206 = check_df['subID'].to_list()
     ok_idx_vec = np.all(check_df[
         ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
     ] == 'ok=(1200, 91282)', 1)
+
+    cap_df = pd.read_csv(cap_LabelKey_file, sep='\t')
     vis_labels = [cap_df.loc[cap_df['GLASSERLABELNAME'] == f'{i}_ROI', 'LABEL'].item()
-                  for i in mmp_vis2_name2label.keys()]
+                  for i in vis_rois]
 
     data = np.ones((n_subj, LR_count_32k), np.float64) * np.nan
     first_flag = True
@@ -399,8 +396,8 @@ def get_HCPY_GBC():
             data[idx, mask_map] = np.mean(src_data, 0)[mask_map]
         print(f'Finished {idx+1}/{n_subj}, cost: {time.time()-time1} seconds.')
 
-    save2cifti(out_file, data, reader_mmp.brain_models(),
-               [str(i) for i in info_df['subID']])
+    bms = CiftiReader(mmp_map_file).brain_models()
+    save2cifti(out_file, data, bms, [str(i) for i in info_df['subID']])
 
 
 if __name__ == '__main__':
@@ -447,5 +444,5 @@ if __name__ == '__main__':
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
 
-    # get_HCPY_alff()
-    get_HCPY_GBC()
+    get_HCPY_alff()
+    # get_HCPY_GBC()

@@ -15,20 +15,41 @@ if __name__ == '__main__':
     atlas = Atlas('HCP-MMP')
     mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
 
-    mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus_MMP-vis3.dscalar.nii')
-    )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus_MMP-vis3.dscalar.nii')
+    # )
 
-    mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-MT_MMP-vis3.dscalar.nii')
-    )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-MT.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-MT_MMP-vis3.dscalar.nii')
+    # )
 
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole_MMP-vis3.dscalar.nii')
+    # )
+
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-alff_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-alff_mean_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-falff_mean.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-OccipitalPole_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPY-falff_mean_MMP-vis3.dscalar.nii')
     )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-myelin_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-myelin_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-thickness_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
+    # )

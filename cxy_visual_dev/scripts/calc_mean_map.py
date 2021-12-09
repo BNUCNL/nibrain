@@ -22,9 +22,13 @@ if __name__ == '__main__':
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-alff.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPY-alff_mean.dscalar.nii')
     # )
+    make_mean_map(
+        src_file=pjoin(proj_dir, 'data/HCP/HCPY-falff.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPY-falff_mean.dscalar.nii')
+    )
     # make_mean_map(
-    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_MMP-vis2.dscalar.nii'),
-    #     out_file=pjoin(work_dir, 'HCPY-GBC_MMP-vis2_mean.dscalar.nii')
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_MMP-vis3.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'HCPY-GBC_MMP-vis3_mean.dscalar.nii')
     # )
     # make_mean_map(
     #     src_file=s1200_1096_myelin,
@@ -34,19 +38,3 @@ if __name__ == '__main__':
     #     src_file=s1200_1096_thickness,
     #     out_file=pjoin(work_dir, 'HCPY-thickness_mean.dscalar.nii')
     # )
-
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPY-alff_mean.dscalar.nii'),
-        atlas_name='MMP-vis2-LR', roi_names=('L_MMP_vis2', 'R_MMP_vis2'),
-        out_file=pjoin(work_dir, 'HCPY-alff_mean_mask-MMP-vis2-LR.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPY-myelin_mean.dscalar.nii'),
-        atlas_name='MMP-vis2-LR', roi_names=('L_MMP_vis2', 'R_MMP_vis2'),
-        out_file=pjoin(work_dir, 'HCPY-myelin_mean_mask-MMP-vis2-LR.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(work_dir, 'HCPY-thickness_mean.dscalar.nii'),
-        atlas_name='MMP-vis2-LR', roi_names=('L_MMP_vis2', 'R_MMP_vis2'),
-        out_file=pjoin(work_dir, 'HCPY-thickness_mean_mask-MMP-vis2-LR.dscalar.nii')
-    )
