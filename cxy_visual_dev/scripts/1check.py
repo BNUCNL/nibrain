@@ -5,7 +5,7 @@ from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import mmp_map_file, LR_count_32k,\
     L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     s1200_1096_myelin, s1200_1096_thickness, s1200_avg_myelin,\
-    s1200_avg_thickness, dataset_name2info, All_count_32k,\
+    s1200_avg_thickness, All_count_32k,\
     s1200_avg_eccentricity, s1200_avg_angle, proj_dir,\
     s1200_avg_curv, s1200_1096_curv, s1200_1096_va
 
@@ -88,6 +88,7 @@ def check_grayordinates():
     # S1200_7T_Retinotopy Eccentricity
     # S1200_7T_Retinotopy Polar Angle
     # ZhouMing's PC1
+    # S1200_997_tfMRI_ALLTASKS_level2
     fpaths = (
         '/nfs/e1/HCPD/fmriresults01/HCD2133433_V1_MR/'
         'MNINonLinear/Results/rfMRI_REST1_AP/'
@@ -97,7 +98,10 @@ def check_grayordinates():
 
         s1200_avg_angle,
 
-        pjoin(proj_dir, 'data/space/pc1.dtseries.nii')
+        pjoin(proj_dir, 'data/space/pc1.dtseries.nii'),
+
+        '/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
+        'HCP_S1200_997_tfMRI_ALLTASKS_level2_cohensd_hp200_s2_MSMAll.dscalar.nii'
     )
     for fpath in fpaths:
         print(fpath)
@@ -119,7 +123,7 @@ def check_1096_sid():
     S1200 1096 myelin file, S1200 1096 thickness file
     是对的上的
     """
-    df = pd.read_csv(dataset_name2info['HCPY'])
+    df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv'))
     subj_ids = df['subID'].to_list()
 
     fpaths = (
@@ -134,4 +138,4 @@ def check_1096_sid():
 
 if __name__ == '__main__':
     check_grayordinates()
-    # check_1096_sid()
+    check_1096_sid()

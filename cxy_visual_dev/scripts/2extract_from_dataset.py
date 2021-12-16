@@ -5,13 +5,12 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.spatial.distance import cdist
+from scipy.spatial.distance import cdist, pdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
-    mmp_map_file, dataset_name2dir, All_count_32k
+    mmp_map_file, dataset_name2dir, All_count_32k, proj_dir
 from cxy_visual_dev.lib.algo import calc_alff
 
-proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
 work_dir = pjoin(proj_dir, 'data/HCP')
 if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
@@ -316,6 +315,126 @@ def ColeParcel_fc_vtx(subj_par, check_file, stem_path, base_path):
               f'cost {time.time()-time1} seconds')
 
 
+def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size=0):
+
+    # prepare
+    n_subj = df_ck.shape[0]
+    all_runs = df_ck.columns.drop('subID')
+    if 'rfMRI_REST' in all_runs:
+        all_runs = all_runs.drop('rfMRI_REST')
+
+    if mask == 'cortex':
+        n_vtx = LR_count_32k
+    elif mask == 'grayordinate':
+        n_vtx = All_count_32k
+    else:
+        raise ValueError('not supported mask:', mask)
+
+    # start
+    first_flag = True
+    brain_models = None
+    volume = None
+    for subj_idx, idx in enumerate(df_ck.index, 1):
+        time1 = time.time()
+
+        # check valid runs
+        runs = []
+        for run in all_runs:
+            run_status = df_ck.loc[idx, run]
+            if isinstance(run_status, str) and run_status.startswith('ok'):
+                runs.append(run)
+        n_run = len(runs)
+        if n_run == 0:
+            continue
+
+        # prepare path
+        stem_dir = pjoin(subj_par, str(df_ck.loc[idx, 'subID']), stem_path)
+        out_file = pjoin(stem_dir, f'rsfc_strength-{mask}.dscalar.nii')
+
+        # loop all runs
+        fc_strength_sub = np.zeros((1, n_vtx), dtype=np.float64)
+        for run_idx, run in enumerate(runs, 1):
+
+            fpath = pjoin(stem_dir, base_path.format(run=run))
+
+            # get data
+            if first_flag:
+                reader = CiftiReader(fpath)
+                if mask == 'cortex':
+                    brain_models = reader.brain_models()[:2]
+                    data = reader.get_data()[:, :n_vtx]
+                elif mask == 'grayordinate':
+                    brain_models = reader.brain_models()
+                    volume = reader.volume
+                    data = reader.get_data()
+                else:
+                    raise ValueError('not supported mask:', mask)
+                first_flag = False
+            else:
+                if mask == 'cortex':
+                    data = nib.load(fpath).get_fdata()[:, :n_vtx]
+                elif mask == 'grayordinate':
+                    data = nib.load(fpath).get_fdata()
+                else:
+                    raise ValueError('not supported mask:', mask)
+            data = data.T
+            assert data.shape[0] == n_vtx
+
+            # calculate RSFC
+            if batch_size == 0:
+                # 内存可占到30G
+                fcs = 1 - pdist(data, 'correlation')
+                fcs = np.abs(np.arctanh(fcs), dtype=np.float32)
+                triu = np.tri(n_vtx, k=-1, dtype=bool).T
+                arr = np.zeros((n_vtx, n_vtx), np.float32)
+                arr[triu] = fcs
+                del fcs, triu
+                arr += arr.T
+                arr[np.eye(n_vtx, dtype=bool)] = np.nan
+                fc_strength_run = np.nanmean(arr, 0, keepdims=True)
+            elif batch_size == 1:
+                # mask=cortex时，这个办法一个被试需要6天以上
+                fc_strength_run = np.zeros((1, n_vtx), dtype=np.float64)
+                for idx in range(n_vtx):
+                    X1 = data[[idx]]
+                    X2 = np.delete(data, idx, 0)
+                    rs = 1 - cdist(X1, X2, 'correlation')[0]
+                    fc_strength_run[0, idx] = np.mean(np.abs(np.arctanh(rs)))
+            elif batch_size > 1:
+                # mask=cortex，batch_size=6000时，一个被试需要6.67个小时
+                # 内存最高占用到7G
+                fc_strength_run = np.zeros((1, n_vtx), dtype=np.float64)
+                batch_indices = list(range(0, n_vtx, batch_size))
+                n_batch = len(batch_indices)
+                batch_indices.append(n_vtx)
+                for i, batch_idx1 in enumerate(batch_indices[:-1]):
+                    time2 = time.time()
+                    batch_idx2 = batch_indices[i + 1]
+                    batch = data[batch_idx1:batch_idx2]
+                    n_vtx_tmp = batch.shape[0]
+                    rs = 1 - cdist(batch, data, 'correlation')
+                    np.testing.assert_almost_equal(
+                        rs[range(n_vtx_tmp), range(batch_idx1, batch_idx2)], 1)
+                    np.testing.assert_almost_equal(
+                        np.sum(rs[range(n_vtx_tmp), range(batch_idx1, batch_idx2)]), n_vtx_tmp)
+                    rs[range(n_vtx_tmp), range(batch_idx1, batch_idx2)] = np.nan
+                    fc_strength_run[0, batch_idx1:batch_idx2] =\
+                        np.nanmean(np.abs(np.arctanh(rs)), 1)
+                    print(f'Finish subj-{subj_idx}/{n_subj}_run-{run_idx}'
+                          f'/{n_run}_batch-{i+1}/{n_batch}: cost '
+                          f'{time.time() - time2} seconds.')
+            else:
+                raise ValueError('not supported batch size:', batch_size)
+            fc_strength_sub += fc_strength_run
+            print(f'Finish subj-{subj_idx}/{n_subj}_run-{run_idx}/{n_run}')
+        fc_strength_sub /= n_run
+
+        # save out
+        save2cifti(out_file, fc_strength_sub, brain_models, volume=volume)
+        print(f'Finish subj-{subj_idx}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+
+
 def get_HCPY_alff():
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
@@ -444,5 +563,14 @@ if __name__ == '__main__':
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
 
-    get_HCPY_alff()
+    df_ck = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
+    df_ck = df_ck.loc[[2], :]
+    fc_strength(
+        subj_par='/nfs/m1/hcp', mask='cortex',
+        df_ck=df_ck, batch_size=0,
+        stem_path='MNINonLinear/Results',
+        base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    )
+
+    # get_HCPY_alff()
     # get_HCPY_GBC()
