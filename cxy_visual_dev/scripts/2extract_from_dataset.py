@@ -382,7 +382,9 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
 
             # calculate RSFC
             if batch_size == 0:
-                # 内存可占到30G
+                # mask=cortex时，这个办法一个被试需要3.42个小时
+                # 内存可占到30G，而且还损失了精度
+                # 和batch_size=6000那个方法最大差异会在小数点后第7位体现
                 fcs = 1 - pdist(data, 'correlation')
                 fcs = np.abs(np.arctanh(fcs), dtype=np.float32)
                 triu = np.tri(n_vtx, k=-1, dtype=bool).T
@@ -519,6 +521,58 @@ def get_HCPY_GBC():
     save2cifti(out_file, data, bms, [str(i) for i in info_df['subID']])
 
 
+def get_HCPY_GBC1(metric):
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    GBC1计算的是一个顶点和所有parcel的连接的均值
+    FC-strength1计算的是一个顶点和所有parcel的连接经FisherZ转换取绝对值后的平均。
+    """
+    src_file = '/nfs/m1/hcp/{0}/MNINonLinear/Results/'\
+        'rsfc_ColeParcel2Vertex.dscalar.nii'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(work_dir, f'HCPY-{metric}.dscalar.nii')
+
+    info_df = pd.read_csv(info_file)
+    n_subj = info_df.shape[0]
+
+    check_df = pd.read_csv(check_file, sep='\t')
+    subj_ids_1206 = check_df['subID'].to_list()
+    ok_idx_vec = np.all(check_df[
+        ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    ] == 'ok=(1200, 91282)', 1)
+
+    data = np.ones((n_subj, All_count_32k), np.float64) * np.nan
+    bms = None
+    vol = None
+    first_flag = True
+    for idx in info_df.index:
+        time1 = time.time()
+        subj_id = info_df.loc[idx, 'subID']
+        idx_1206 = subj_ids_1206.index(subj_id)
+        if ok_idx_vec[idx_1206]:
+            if first_flag:
+                reader = CiftiReader(src_file.format(subj_id))
+                bms = reader.brain_models()
+                vol = reader.volume
+                src_data = reader.get_data()
+                first_flag = False
+            else:
+                src_data = nib.load(src_file.format(subj_id)).get_fdata()
+
+            if metric == 'GBC1':
+                pass
+            elif metric == 'FC-strength1':
+                src_data = np.abs(np.arctanh(src_data))
+            else:
+                raise ValueError('not supported metric:', metric)
+            data[idx] = np.mean(src_data, 0)
+        print(f'Finished {idx+1}/{n_subj}, cost: {time.time()-time1} seconds.')
+
+    save2cifti(out_file, data, bms, [str(i) for i in info_df['subID']], vol)
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -563,14 +617,15 @@ if __name__ == '__main__':
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
 
-    df_ck = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
-    df_ck = df_ck.loc[[2], :]
-    fc_strength(
-        subj_par='/nfs/m1/hcp', mask='cortex',
-        df_ck=df_ck, batch_size=0,
-        stem_path='MNINonLinear/Results',
-        base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    )
+    # df_ck = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
+    # df_ck = df_ck.loc[[2], :]
+    # fc_strength(
+    #     subj_par='/nfs/m1/hcp', mask='cortex',
+    #     df_ck=df_ck, batch_size=0,
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    # )
 
     # get_HCPY_alff()
     # get_HCPY_GBC()
+    get_HCPY_GBC1('FC-strength1')

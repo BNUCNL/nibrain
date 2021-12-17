@@ -38,11 +38,11 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-alff_mean_MMP-vis3.dscalar.nii')
     # )
-    mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-falff_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-falff_mean_MMP-vis3.dscalar.nii')
-    )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-falff_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-falff_mean_MMP-vis3.dscalar.nii')
+    # )
     # mask_maps(
     #     data_file=pjoin(anal_dir, 'mean_map/HCPY-myelin_mean.dscalar.nii'),
     #     mask=mask,
@@ -53,3 +53,13 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC1_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-GBC1_mean_MMP-vis3.dscalar.nii')
+    # )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength1_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-FC-strength1_mean_MMP-vis3.dscalar.nii')
+    )
