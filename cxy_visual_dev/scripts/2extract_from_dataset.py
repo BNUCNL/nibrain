@@ -528,7 +528,7 @@ def fc_strength_mine(s, e):
         fc_strength_sub[0, mask_indices] = np.mean(fc_strength_mask, 0)
 
         # save out
-        out_file = pjoin(tmp_dir, f'{subj_id}_{hemi}_hebb.dscalar.nii')
+        out_file = pjoin(tmp_dir, f'{subj_id}_{hemi}.dscalar.nii')
         save2cifti(out_file, fc_strength_sub, [bm])
         print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}, '
               f'cost {time.time()-time1} seconds')
@@ -670,6 +670,59 @@ def get_HCPY_GBC1(metric):
     save2cifti(out_file, data, bms, [str(i) for i in info_df['subID']], vol)
 
 
+def get_HCPY_GBC_cortex_subcortex(metric='GBC', part='cortex'):
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    GBC计算的是一个点和(sub)cortex所有parcel的连接的均值
+    FC-strength计算的是一个点和(sub)cortex所有parcel的连接经FisherZ转换取绝对值后的平均。
+    """
+    src_file = '/nfs/m1/hcp/{0}/MNINonLinear/Results/'\
+        'rsfc_ColeParcel2Vertex.dscalar.nii'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(work_dir, f'HCPY-{metric}_{part}.dscalar.nii')
+
+    info_df = pd.read_csv(info_file)
+    n_subj = info_df.shape[0]
+
+    check_df = pd.read_csv(check_file, sep='\t')
+    subj_ids_1206 = check_df['subID'].to_list()
+    ok_idx_vec = np.all(check_df[
+        ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    ] == 'ok=(1200, 91282)', 1)
+
+    data = np.ones((n_subj, All_count_32k), np.float64) * np.nan
+    for idx in info_df.index:
+        time1 = time.time()
+        subj_id = info_df.loc[idx, 'subID']
+        idx_1206 = subj_ids_1206.index(subj_id)
+        if ok_idx_vec[idx_1206]:
+            reader = CiftiReader(src_file.format(subj_id))
+            map_idx_vec = [i.endswith('-Ctx') for i in reader.map_names()]
+            if part == 'cortex':
+                assert np.sum(map_idx_vec) == 360
+            elif part == 'subcortex':
+                map_idx_vec = ~np.array(map_idx_vec)
+                assert np.sum(map_idx_vec) == 358
+            else:
+                raise ValueError('not supported part:', part)
+            src_data = reader.get_data()[map_idx_vec]
+            print(src_data.shape)
+
+            if metric == 'GBC':
+                pass
+            elif metric == 'FC-strength':
+                src_data = np.abs(np.arctanh(src_data))
+            else:
+                raise ValueError('not supported metric:', metric)
+            data[idx] = np.mean(src_data, 0)
+        print(f'Finished {idx+1}/{n_subj}, cost: {time.time()-time1} seconds.')
+
+    save2cifti(out_file, data, reader.brain_models(),
+               [str(i) for i in info_df['subID']], reader.volume)
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -723,7 +776,11 @@ if __name__ == '__main__':
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
 
-    fc_strength_mine(1, 1)
+    # fc_strength_mine(825, 1095)
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')
+    get_HCPY_GBC_cortex_subcortex(metric='GBC', part='cortex')
+    get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='cortex')
+    get_HCPY_GBC_cortex_subcortex(metric='GBC', part='subcortex')
+    get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='subcortex')
