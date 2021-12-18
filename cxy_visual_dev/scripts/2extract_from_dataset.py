@@ -8,7 +8,8 @@ from os.path import join as pjoin
 from scipy.spatial.distance import cdist, pdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
-    mmp_map_file, dataset_name2dir, All_count_32k, proj_dir
+    mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
+    L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru
 from cxy_visual_dev.lib.algo import calc_alff
 
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -315,20 +316,30 @@ def ColeParcel_fc_vtx(subj_par, check_file, stem_path, base_path):
               f'cost {time.time()-time1} seconds')
 
 
-def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size=0):
-
+def fc_strength(subj_par, df_ck, stem_path, base_path, stru='cortex', batch_size=0):
+    """
+    stru=cortex时，计算cortex各顶点和其它所有cortical vertex的相关
+    stru=grayordinate时，计算全grayordinate的点和其它所有grayordinate点的相关
+    一个点和其它点的相关经fisherZ和取绝对值后求平均作为该点的FC strength。
+    对于每个被试，会用上所有check为ok的run，然后求run间平均放到Results目录下。
+    batch_size=0时，直接用所有点构造一个大相关矩阵，最耗内存，可达30G
+    但速度最快，为了适应写代码时的机器内存，把数据降成了单精度节约内存。
+    batch size=1时，逐点计算FC strength，最省内存，但也最慢。
+    batch size>1时，逐batch_size个点计算FC strength，目前设置为6000，最高占用7G内存，
+    速度虽然比0时慢，但是同时开4个进程内存也才28G，这样速度就比0快一倍。
+    """
     # prepare
     n_subj = df_ck.shape[0]
     all_runs = df_ck.columns.drop('subID')
     if 'rfMRI_REST' in all_runs:
         all_runs = all_runs.drop('rfMRI_REST')
 
-    if mask == 'cortex':
+    if stru == 'cortex':
         n_vtx = LR_count_32k
-    elif mask == 'grayordinate':
+    elif stru == 'grayordinate':
         n_vtx = All_count_32k
     else:
-        raise ValueError('not supported mask:', mask)
+        raise ValueError('not supported stru:', stru)
 
     # start
     first_flag = True
@@ -349,7 +360,7 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
 
         # prepare path
         stem_dir = pjoin(subj_par, str(df_ck.loc[idx, 'subID']), stem_path)
-        out_file = pjoin(stem_dir, f'rsfc_strength-{mask}.dscalar.nii')
+        out_file = pjoin(stem_dir, f'rsfc_strength-{stru}.dscalar.nii')
 
         # loop all runs
         fc_strength_sub = np.zeros((1, n_vtx), dtype=np.float64)
@@ -360,29 +371,29 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
             # get data
             if first_flag:
                 reader = CiftiReader(fpath)
-                if mask == 'cortex':
+                if stru == 'cortex':
                     brain_models = reader.brain_models()[:2]
                     data = reader.get_data()[:, :n_vtx]
-                elif mask == 'grayordinate':
+                elif stru == 'grayordinate':
                     brain_models = reader.brain_models()
                     volume = reader.volume
                     data = reader.get_data()
                 else:
-                    raise ValueError('not supported mask:', mask)
+                    raise ValueError('not supported stru:', stru)
                 first_flag = False
             else:
-                if mask == 'cortex':
+                if stru == 'cortex':
                     data = nib.load(fpath).get_fdata()[:, :n_vtx]
-                elif mask == 'grayordinate':
+                elif stru == 'grayordinate':
                     data = nib.load(fpath).get_fdata()
                 else:
-                    raise ValueError('not supported mask:', mask)
+                    raise ValueError('not supported stru:', stru)
             data = data.T
             assert data.shape[0] == n_vtx
 
             # calculate RSFC
             if batch_size == 0:
-                # mask=cortex时，这个办法一个被试需要3.42个小时
+                # stru=cortex时，这个办法一个被试需要3.42个小时
                 # 内存可占到30G，而且还损失了精度
                 # 和batch_size=6000那个方法最大差异会在小数点后第7位体现
                 fcs = 1 - pdist(data, 'correlation')
@@ -395,7 +406,7 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
                 arr[np.eye(n_vtx, dtype=bool)] = np.nan
                 fc_strength_run = np.nanmean(arr, 0, keepdims=True)
             elif batch_size == 1:
-                # mask=cortex时，这个办法一个被试需要6天以上
+                # stru=cortex时，这个办法一个被试需要6天以上
                 fc_strength_run = np.zeros((1, n_vtx), dtype=np.float64)
                 for idx in range(n_vtx):
                     X1 = data[[idx]]
@@ -403,7 +414,7 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
                     rs = 1 - cdist(X1, X2, 'correlation')[0]
                     fc_strength_run[0, idx] = np.mean(np.abs(np.arctanh(rs)))
             elif batch_size > 1:
-                # mask=cortex，batch_size=6000时，一个被试需要6.67个小时
+                # stru=cortex，batch_size=6000时，一个被试需要6.67个小时
                 # 内存最高占用到7G
                 fc_strength_run = np.zeros((1, n_vtx), dtype=np.float64)
                 batch_indices = list(range(0, n_vtx, batch_size))
@@ -434,6 +445,92 @@ def fc_strength(subj_par, df_ck, stem_path, base_path, mask='cortex', batch_size
         # save out
         save2cifti(out_file, fc_strength_sub, brain_models, volume=volume)
         print(f'Finish subj-{subj_idx}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+
+
+def fc_strength_mine(s, e):
+    """
+    改造自fc_strength，只是为了我自己的项目，只计算视觉皮层的FC strength (cortex内)。
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    其它都一样。
+    """
+    # prepare
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    vis_name = f'MMP-vis3-{Hemi}'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    tmp_dir = pjoin(work_dir, 'FC_strength_mine')
+    if not os.path.isdir(tmp_dir):
+        os.makedirs(tmp_dir)
+
+    # loading
+    offset, count = hemi2offset_count[hemi]
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    mask = mask[offset:offset+count]
+    mask_indices = np.where(mask)[0]
+    mask_indices_LR = mask_indices + offset
+    n_vtx = len(mask_indices)
+    df = pd.read_csv(info_file)
+    subj_ids = df.loc[s:e, 'subID'].to_list()
+    n_subj = len(subj_ids)
+    df_ck = pd.read_csv(check_file, sep='\t')
+    subj_ids_1206 = df_ck['subID'].to_list()
+    ok_idx_vec = np.all(df_ck[runs] == 'ok=(1200, 91282)', 1)
+    n_run = len(runs)
+
+    # start
+    first_flag = True
+    bm = None
+    for subj_idx, subj_id in enumerate(subj_ids, 1):
+        time1 = time.time()
+
+        # check valid runs
+        subj_idx_1206 = subj_ids_1206.index(subj_id)
+        if not ok_idx_vec[subj_idx_1206]:
+            continue
+
+        # loop all runs
+        fc_strength_sub = np.ones((1, count), dtype=np.float64) * np.nan
+        fc_strength_mask = np.zeros((n_run, n_vtx), dtype=np.float64)
+        for run_idx, run in enumerate(runs):
+            time2 = time.time()
+            # get data
+            run_file = run_files.format(subj_id, run)
+            if first_flag:
+                reader = CiftiReader(run_file)
+                bm = reader.brain_models([hemi2stru[hemi]])[0]
+                bm.index_offset = 0
+                data = reader.get_data()
+                first_flag = False
+            else:
+                data = nib.load(run_file).get_fdata()
+            data = data[:, :LR_count_32k].T
+            X1 = data[mask_indices_LR, :]
+            rs = 1 - cdist(X1, data, 'correlation')
+            np.testing.assert_almost_equal(
+                rs[range(n_vtx), mask_indices_LR], 1)
+            np.testing.assert_almost_equal(
+                np.sum(rs[range(n_vtx), mask_indices_LR]), n_vtx)
+            rs[range(n_vtx), mask_indices_LR] = np.nan
+            fc_strength_mask[run_idx] =\
+                np.nanmean(np.abs(np.arctanh(rs)), 1)
+            print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}_run-{run_idx+1}/{n_run}, '
+                  f'cost {time.time() - time2} seconds.')
+        fc_strength_sub[0, mask_indices] = np.mean(fc_strength_mask, 0)
+
+        # save out
+        out_file = pjoin(tmp_dir, f'{subj_id}_{hemi}_hebb.dscalar.nii')
+        save2cifti(out_file, fc_strength_sub, [bm])
+        print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}, '
               f'cost {time.time()-time1} seconds')
 
 
@@ -626,6 +723,7 @@ if __name__ == '__main__':
     #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     # )
 
+    fc_strength_mine(1, 1)
     # get_HCPY_alff()
     # get_HCPY_GBC()
-    get_HCPY_GBC1('FC-strength1')
+    # get_HCPY_GBC1('FC-strength1')
