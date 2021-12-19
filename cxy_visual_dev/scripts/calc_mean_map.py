@@ -45,19 +45,23 @@ if __name__ == '__main__':
     #     src_file=s1200_1096_thickness,
     #     out_file=pjoin(work_dir, 'HCPY-thickness_mean.dscalar.nii')
     # )
+    # make_mean_map(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_cortex.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean.dscalar.nii')
+    # )
+    # make_mean_map(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_cortex.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'HCPY-FC-strength_cortex_mean.dscalar.nii')
+    # )
+    # make_mean_map(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_subcortex.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'HCPY-GBC_subcortex_mean.dscalar.nii')
+    # )
+    # make_mean_map(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_subcortex.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean.dscalar.nii')
+    # )
     make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_cortex.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean.dscalar.nii')
-    )
-    make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_cortex.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-FC-strength_cortex_mean.dscalar.nii')
-    )
-    make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_subcortex.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-GBC_subcortex_mean.dscalar.nii')
-    )
-    make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_subcortex.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean.dscalar.nii')
+        src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_R.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
     )

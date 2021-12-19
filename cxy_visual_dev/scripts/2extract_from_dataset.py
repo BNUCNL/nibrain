@@ -534,6 +534,30 @@ def fc_strength_mine(s, e):
               f'cost {time.time()-time1} seconds')
 
 
+def fc_strength_mine_merge():
+    """
+    把fc_strength_mine产生的结果合并到单个文件里
+    """
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+    hemi2count = {'lh': L_count_32k, 'rh': R_count_32k}
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'HCPY-FC-strength_{Hemi}.dscalar.nii')
+
+    df = pd.read_csv(info_file)
+    subj_ids = [str(i) for i in df['subID']]
+    data = np.ones((len(subj_ids), hemi2count[hemi]), np.float64) * np.nan
+
+    for subj_idx, subj_id in enumerate(subj_ids):
+        fpath = pjoin(
+            work_dir, f'FC_strength_mine/{subj_id}_{hemi}.dscalar.nii')
+        if not os.path.exists(fpath):
+            continue
+        reader = CiftiReader(fpath)
+        data[subj_idx] = reader.get_data()[0]
+    save2cifti(out_file, data, reader.brain_models(), subj_ids)
+
+
 def get_HCPY_alff():
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
@@ -777,10 +801,11 @@ if __name__ == '__main__':
     # )
 
     # fc_strength_mine(825, 1095)
+    fc_strength_mine_merge()
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')
-    get_HCPY_GBC_cortex_subcortex(metric='GBC', part='cortex')
-    get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='cortex')
-    get_HCPY_GBC_cortex_subcortex(metric='GBC', part='subcortex')
-    get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='subcortex')
+    # get_HCPY_GBC_cortex_subcortex(metric='GBC', part='cortex')
+    # get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='cortex')
+    # get_HCPY_GBC_cortex_subcortex(metric='GBC', part='subcortex')
+    # get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='subcortex')
