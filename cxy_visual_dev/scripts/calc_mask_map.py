@@ -58,8 +58,28 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-GBC1_mean_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength1_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-FC-strength1_mean_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength1_mean.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_cortex_mean.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-FC-strength1_mean_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_cortex_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-FC-strength_cortex_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_subcortex_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-GBC_subcortex_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_subcortex_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean_MMP-vis3.dscalar.nii')
     )
