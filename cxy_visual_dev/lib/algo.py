@@ -184,60 +184,6 @@ def concate_map(data_files, out_file):
     save2cifti(out_file, maps, reader.brain_models(), map_names)
 
 
-def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
-    """
-    为每个被试每个ROI求scalar value
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, n_vtx)
-        atlas_name (str): include ROIs' labels and mask map
-        rois (None | sequence): ROI names
-            If is None, use all ROIs of the atlas.
-        metric (str): mean, var, sem
-        out_file (str): end with .csv
-        out_index (None | str | sequence):
-            If None, don't save index to out_file.
-            If str, must be 'map name' that means using map names as indices.
-            If sequence, its length is equal to n_map.
-    """
-    # prepare
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, maps.shape[1])
-    if rois is None:
-        rois = atlas.roi2label.keys()
-
-    out_df = pd.DataFrame()
-
-    # calculate
-    for roi in rois:
-        lbl = atlas.roi2label[roi]
-        data = maps[:, atlas.maps[0] == lbl]
-        if metric == 'mean':
-            vec = np.mean(data, 1)
-        elif metric == 'var':
-            vec = np.var(data, 1)
-        elif metric == 'sem':
-            vec = sem(data, 1)
-        else:
-            raise ValueError('not supported metric')
-        out_df[roi] = vec
-
-    # save
-    if out_index is None:
-        out_df.to_csv(out_file, index=False)
-    elif out_index == 'map name':
-        out_df.index = reader.map_names()
-        out_df.to_csv(out_file, index=True)
-    else:
-        assert len(out_index) == maps.shape[0]
-        out_df.index = out_index
-        out_df.to_csv(out_file, index=True)
-
-
 def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
     """
     对n_subj x n_vtx形状的矩阵进行PCA降维

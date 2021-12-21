@@ -3,11 +3,11 @@ from os.path import join as pjoin
 from cxy_visual_dev.lib.predefine import proj_dir,\
     dataset_name2info, s1200_1096_thickness, s1200_1096_myelin,\
     s1200_avg_thickness, s1200_avg_myelin, get_rois
-from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
-    ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
+from cxy_visual_dev.lib.algo import ROI_analysis_on_PC,\
+    make_age_maps, calc_map_corr,\
     mask_maps, vtx_corr_col, polyfit, row_corr_row,\
     col_operate_col, map_operate_map, zscore_map, concate_map,\
-    zscore_map_subj, ROI_scalar
+    zscore_map_subj
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -34,34 +34,6 @@ if __name__ == '__main__':
     # zscore_map_subj(
     #     data_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj.dscalar.nii')
-    # )
-
-    # ROI_scalar(
-    #     data_file=pjoin(work_dir,
-    #                     'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-    #     atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='mean',
-    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-mean.csv'),
-    #     out_index='map name'
-    # )
-    # ROI_scalar(
-    #     data_file=pjoin(work_dir,
-    #                     'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
-    #     atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='sem',
-    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-sem.csv'),
-    #     out_index='map name'
-    # )
-
-    # pca(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-    #     n_component=20, axis='vertex',
-    #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-vtx')
-    # )
-    # pca(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual',
-    #     n_component=20, axis='subject',
-    #     out_name=pjoin(work_dir, 'HCPD_thickness_4mm_R_cole_visual_PCA-subj')
     # )
 
     # ROI_analysis_on_PC(
