@@ -184,45 +184,8 @@ def concate_map(data_files, out_file):
     save2cifti(out_file, maps, reader.brain_models(), map_names)
 
 
-def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
-    """
-    为每个被试每个ROI求均值
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        out_file (str): output path
-        zscore_flag (bool, optional): Defaults to False.
-            If True, do zscore within each hemisphere.
-    """
-    # prepare
-    meas_maps = nib.load(data_file).get_fdata()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    out_df = pd.DataFrame()
-
-    # calculate
-    if zscore_flag:
-        meas_maps_L = meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)]
-        meas_maps_R = meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)]
-        meas_maps_L = zscore(meas_maps_L, 1)
-        meas_maps_R = zscore(meas_maps_R, 1)
-        meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)] = meas_maps_L
-        meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)] = meas_maps_R
-        del meas_maps_L, meas_maps_R
-
-    for roi, lbl in atlas.roi2label.items():
-        meas_vec = np.mean(meas_maps[:, atlas.maps[0] == lbl], 1)
-        out_df[roi] = meas_vec
-
-    # save
-    out_df.to_csv(out_file, index=False)
-
-
 def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
     """
-    Upgrade for "ROI_analysis"
     为每个被试每个ROI求scalar value
 
     Args:
@@ -575,41 +538,6 @@ def make_age_maps(data_file, info_file, out_name):
                reader.brain_models(), map_names)
     save2cifti(f'{out_name}-sem.dscalar.nii', sem_maps,
                reader.brain_models(), map_names)
-
-
-def merge_by_age(data_file, info_file, out_name):
-    """
-    对每个column，计算跨同一年龄被试的平均和sem，分别保存在
-    out_name-mean.csv, out_name-sem.csv中
-
-    Args:
-        data_file (str): end with .csv
-            shape=(n_subj, n_col)
-        info_file (str): subject info file
-        out_name (str): filename to save
-    """
-    # prepare
-    df = pd.read_csv(data_file)
-    n_col = df.shape[1]
-
-    info_df = pd.read_csv(info_file)
-    ages = np.array(info_df['age in years'])
-    ages_uniq = np.unique(ages)
-    n_age = len(ages_uniq)
-
-    # calculate
-    means = np.zeros((n_age, n_col), np.float64)
-    sems = np.zeros((n_age, n_col), np.float64)
-    for age_idx, age in enumerate(ages_uniq):
-        data = np.array(df.loc[ages == age])
-        means[age_idx] = np.mean(data, 0)
-        sems[age_idx] = sem(data, 0)
-
-    # save
-    mean_df = pd.DataFrame(means, ages_uniq, df.columns)
-    mean_df.to_csv(f'{out_name}-mean.csv')
-    sem_df = pd.DataFrame(sems, ages_uniq, df.columns)
-    sem_df.to_csv(f'{out_name}-sem.csv')
 
 
 def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,

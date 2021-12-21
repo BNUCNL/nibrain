@@ -5,7 +5,7 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     s1200_avg_thickness, s1200_avg_myelin, get_rois
 from cxy_visual_dev.lib.algo import ROI_analysis, pca,\
     ROI_analysis_on_PC, make_age_maps, calc_map_corr,\
-    mask_maps, merge_by_age, vtx_corr_col, polyfit, row_corr_row,\
+    mask_maps, vtx_corr_col, polyfit, row_corr_row,\
     col_operate_col, map_operate_map, zscore_map, concate_map,\
     zscore_map_subj, ROI_scalar
 
@@ -36,32 +36,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj.dscalar.nii')
     # )
 
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPA_thickness.dscalar.nii'),
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPA_thickness_HCP_MMP1.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-    #     atlas_name='HCP_MMP1', zscore_flag=True,
-    #     out_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_zscore.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=s1200_1096_thickness,
-    #     atlas_name='Cole_visual_LR',
-    #     out_file=pjoin(work_dir, 'HCPY_thickness_Cole_visual_LR.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=s1200_avg_myelin,
-    #     atlas_name='FFA',
-    #     out_file=pjoin(work_dir, 'HCPY_myelin-avg_FFA.csv')
-    # )
-    # ROI_analysis(
-    #     data_file=s1200_avg_thickness,
-    #     atlas_name='HCP_MMP1',
-    #     out_file=pjoin(work_dir, 'HCPY_thickness-avg_HCP_MMP1.csv')
-    # )
-
     # ROI_scalar(
     #     data_file=pjoin(work_dir,
     #                     'HCPD-myelin+thickness_mask-L_cole_visual1+R_cole_visual_zscore1-split_PCA-subj.dscalar.nii'),
@@ -75,12 +49,6 @@ if __name__ == '__main__':
     #     atlas_name='HCP_MMP1', rois=get_rois('Cole_visual_ROI-L1R'), metric='sem',
     #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_mask-Cole_visual_L1R_zscore1-split_PCA-subj_ROI-sem.csv'),
     #     out_index='map name'
-    # )
-
-    # merge_by_age(
-    #     data_file=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1.csv'),
-    #     info_file=dataset_name2info['HCPD'],
-    #     out_name=pjoin(work_dir, 'HCPD_thickness_HCP_MMP1_merge-age')
     # )
 
     # pca(
