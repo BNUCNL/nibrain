@@ -21,7 +21,11 @@ def calc_mann_kendall_csv(src_file, info_file, out_file):
     df = pd.read_csv(src_file)
     info_df = pd.read_csv(info_file)
     ages = np.array(info_df['age in years'])
-    age_uniq = np.unique(ages)
+    age_uniq = np.unique(ages).tolist()
+    print(age_uniq)
+    for i in [5, 6, 7]:
+        age_uniq.remove(i)
+    print(age_uniq)
 
     # calculate
     out_df = pd.DataFrame(index=('tau', 'p'), columns=df.columns)
@@ -63,26 +67,86 @@ def kendall2cifti(src_file, rois, atlas_name, out_file):
                ['tau', '-lg(p)'])
 
 
+def calc_mann_kendall_cii(src_file, vtx_mask, ages, out_file):
+    """
+    基于age maps，为每个点计算kendall tau
+    """
+    reader = CiftiReader(src_file)
+    ages_all = reader.map_names()
+    row_indices = [ages_all.index(i) for i in ages]
+    print(row_indices)
+    src_maps = reader.get_data()[row_indices, :]
+    print(src_maps.shape)
+    n_vtx = src_maps.shape[1]
+
+    out_maps = np.ones((2, n_vtx), np.float64) * np.nan
+    for idx in range(n_vtx):
+        if vtx_mask[idx]:
+            y = src_maps[:, idx]
+            mk_test = mk.original_test(y, 0.05)
+            out_maps[0, idx] = mk_test.Tau
+            out_maps[1, idx] = -np.log10(mk_test.p)
+
+    save2cifti(out_file, out_maps, reader.brain_models(),
+               ['tau', '-lg(p)'], reader.volume)
+
+
+def diff_between_age_cii(src_file, age1, age2):
+    fname = os.path.basename(src_file)
+    fname = fname.split('.')[0]
+    out_file = pjoin(work_dir, f'{fname}_{age1}-{age2}.dscalar.nii')
+    reader = CiftiReader(src_file)
+    src_maps = reader.get_data()
+    ages_all = reader.map_names()
+    age1_idx = ages_all.index(age1)
+    age2_idx = ages_all.index(age2)
+    diff_map = src_maps[[age1_idx]] - src_maps[[age2_idx]]
+    save2cifti(out_file, diff_map, reader.brain_models(),
+               volume=reader.volume)
+
+
 if __name__ == '__main__':
-    calc_mann_kendall_csv(
-        src_file=pjoin(anal_dir, 'ROI_scalar/HCPD-myelin_HCP-MMP.csv'),
-        info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
-        out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP_kendall.csv')
+    # calc_mann_kendall_csv(
+    #     src_file=pjoin(anal_dir, 'ROI_scalar/HCPD-myelin_HCP-MMP.csv'),
+    #     info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP_kendall.csv')
+    # )
+    # kendall2cifti(
+    #     src_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP_kendall.csv'),
+    #     rois=get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'),
+    #     atlas_name='HCP-MMP',
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_MMP-vis3-ROI_kendall.dscalar.nii')
+    # )
+    # calc_mann_kendall_csv(
+    #     src_file=pjoin(anal_dir, 'ROI_scalar/HCPD-thickness_HCP-MMP.csv'),
+    #     info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_HCP-MMP_kendall.csv')
+    # )
+    # kendall2cifti(
+    #     src_file=pjoin(work_dir, 'HCPD-thickness_HCP-MMP_kendall.csv'),
+    #     rois=get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'),
+    #     atlas_name='HCP-MMP',
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_MMP-vis3-ROI_kendall.dscalar.nii')
+    # )
+
+    # calc_mann_kendall_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
+    #     vtx_mask=Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'))[0],
+    #     ages=[str(i) for i in range(8, 22)],
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_MMP-vis3_kendall.dscalar.nii')
+    # )
+    # calc_mann_kendall_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
+    #     vtx_mask=Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'))[0],
+    #     ages=[str(i) for i in range(8, 22)],
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_MMP-vis3_kendall.dscalar.nii')
+    # )
+
+    diff_between_age_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
+        age1='21', age2='8'
     )
-    kendall2cifti(
-        src_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP_kendall.csv'),
-        rois=get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'),
-        atlas_name='HCP-MMP',
-        out_file=pjoin(work_dir, 'HCPD-myelin_MMP-vis3-ROI_kendall.dscalar.nii')
-    )
-    calc_mann_kendall_csv(
-        src_file=pjoin(anal_dir, 'ROI_scalar/HCPD-thickness_HCP-MMP.csv'),
-        info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
-        out_file=pjoin(work_dir, 'HCPD-thickness_HCP-MMP_kendall.csv')
-    )
-    kendall2cifti(
-        src_file=pjoin(work_dir, 'HCPD-thickness_HCP-MMP_kendall.csv'),
-        rois=get_rois('MMP-vis3-L')+get_rois('MMP-vis3-R'),
-        atlas_name='HCP-MMP',
-        out_file=pjoin(work_dir, 'HCPD-thickness_MMP-vis3-ROI_kendall.dscalar.nii')
+    diff_between_age_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
+        age1='21', age2='8'
     )

@@ -127,9 +127,15 @@ if __name__ == '__main__':
     #     age_name='age in years', metric='mean',
     #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean.dscalar.nii')
     # )
+    # make_age_maps(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+    #     info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
+    #     age_name='age in years', metric='sem',
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-sem.dscalar.nii')
+    # )
     make_age_maps(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
         info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
-        age_name='age in years', metric='sem',
-        out_file=pjoin(work_dir, 'HCPD-thickness_age-map-sem.dscalar.nii')
+        age_name='age in years', metric='mean',
+        out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean.dscalar.nii')
     )

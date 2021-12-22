@@ -63,23 +63,43 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength1_mean_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_cortex_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_cortex_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-FC-strength_cortex_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_subcortex_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-GBC_subcortex_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_subcortex_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'dev_trend/HCPD-myelin_age-map-mean_21-8.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean_21-8_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'dev_trend/HCPD-thickness_age-map-mean_21-8.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean_21-8_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_cortex_mean.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean_MMP-vis3.dscalar.nii')
     )
     mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_cortex_mean.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-FC-strength_cortex_mean_MMP-vis3.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-GBC_subcortex_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-GBC_subcortex_mean_MMP-vis3.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(anal_dir, 'mean_map/HCPY-FC-strength_subcortex_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean_MMP-vis3.dscalar.nii')
     )
