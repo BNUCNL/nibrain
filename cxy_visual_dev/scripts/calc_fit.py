@@ -117,6 +117,43 @@ def HCPDA_fit_PC12():
         out_file=out_file, standard_scale=True)
 
 
+def mean_tau_diff_fit_PC12():
+    """
+    用某岁的平均map+tau+diff预测成人PC map
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    src_files = [
+        pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
+        pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
+        # pjoin(anal_dir, 'dev_trend/HCPD-myelin_MMP-vis3_kendall.dscalar.nii'),
+        # pjoin(anal_dir, 'dev_trend/HCPD-thickness_MMP-vis3_kendall.dscalar.nii'),
+        # pjoin(anal_dir, 'dev_trend/HCPD-myelin_age-map-mean_21-8.dscalar.nii'),
+        # pjoin(anal_dir, 'dev_trend/HCPD-thickness_age-map-mean_21-8.dscalar.nii')
+    ]
+    # feat_names = ['myelin-8', 'thickness-8', 'myelin-tau', 'thickness-tau',
+    #               'myelin-diff', 'thickness-diff']
+    # map_indices = [3, 3, 0, 0, 0, 0]
+    # out_file = pjoin(work_dir, 'Mean8+Tau+Diff=C1C2.csv')
+    feat_names = ['myelin-8', 'thickness-8']
+    map_indices = [3, 3]
+    out_file = pjoin(work_dir, 'Mean8=C1C2.csv')
+
+    C1C2_maps = nib.load(pc_file).get_fdata()[:2]
+    X_list = []
+    for i, src_file in enumerate(src_files):
+        data = nib.load(src_file).get_fdata()[map_indices[i], mask]
+        X_list.append(np.expand_dims(data, 1))
+    Y = C1C2_maps[:, mask].T
+    linear_fit1(
+        X_list=X_list, feat_names=feat_names,
+        Y=Y, trg_names=['C1', 'C2'], score_metric='R2',
+        out_file=out_file, standard_scale=True)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
-    HCPDA_fit_PC12()
+    # HCPDA_fit_PC12()
+    mean_tau_diff_fit_PC12()
