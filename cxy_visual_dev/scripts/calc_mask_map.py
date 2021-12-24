@@ -32,7 +32,6 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole_MMP-vis3.dscalar.nii')
     # )
-
     # mask_maps(
     #     data_file=pjoin(anal_dir, 'mean_map/HCPY-alff_mean.dscalar.nii'),
     #     mask=mask,
@@ -93,13 +92,18 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean_21-8_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'summary_map/HCPD-myelin_age-map-mean.dscalar.nii'),
+        data_file='/nfs/m1/hcp/ACF-decay.dscalar.nii',
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean_MMP-vis3.dscalar.nii')
-    )
-    mask_maps(
-        data_file=pjoin(anal_dir, 'summary_map/HCPD-thickness_age-map-mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPD-thickness_age-map-mean_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPY-ACF-decay_MMP-vis3.dscalar.nii')
     )

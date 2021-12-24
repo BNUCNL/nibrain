@@ -116,10 +116,10 @@ if __name__ == '__main__':
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_subcortex.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength_subcortex_mean.dscalar.nii')
     # )
-    # make_mean_map(
-    #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_R.dscalar.nii'),
-    #     out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
-    # )
+    make_mean_map(
+        src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_R.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
+    )
 
     # make_age_maps(
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
@@ -133,9 +133,9 @@ if __name__ == '__main__':
     #     age_name='age in years', metric='sem',
     #     out_file=pjoin(work_dir, 'HCPD-thickness_age-map-sem.dscalar.nii')
     # )
-    make_age_maps(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
-        age_name='age in years', metric='mean',
-        out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean.dscalar.nii')
-    )
+    # make_age_maps(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #     info_file=pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'),
+    #     age_name='age in years', metric='mean',
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_age-map-mean.dscalar.nii')
+    # )
