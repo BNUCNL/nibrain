@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
-from scipy.stats import zscore, sem
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
 from scipy.fft import fft, fftfreq
@@ -14,8 +14,7 @@ from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
-    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file, All_count_32k
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -694,30 +693,6 @@ def map_operate_map(data_file1, data_file2, operation_method, out_file):
 
     # save
     save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
-
-
-def mask_maps(data_file, mask, out_file):
-    """
-    把data map在指定mask以外的部分全赋值为nan
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        mask (1D index array)
-        out_file (str):
-    """
-    # prepare
-    reader1 = CiftiReader(mmp_map_file)
-    reader2 = CiftiReader(data_file)
-    data = reader2.get_data()
-    if data.shape[1] == All_count_32k:
-        data = data[:, :LR_count_32k]
-
-    # calculate
-    data[:, ~mask] = np.nan
-
-    # save
-    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
 
 
 def polyfit(data_file, info_file, deg, out_file):
