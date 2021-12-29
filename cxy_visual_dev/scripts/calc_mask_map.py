@@ -1,6 +1,8 @@
 import os
 import numpy as np
+import nibabel as nib
 from os.path import join as pjoin
+from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
@@ -40,11 +42,58 @@ def mask_maps(data_file, mask, out_file):
     save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
 
 
+def make_mask1():
+    """
+    将HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj的PC1和PC2分段
+    以值排序，然后切割成N段顶点数量基本相同的片段
+    """
+    N = 10
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
+    map_names = ['C1', 'C2']
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii')
+
+    n_vtx = np.sum(mask)
+    step = int(np.ceil(n_vtx / N))
+    bounds = np.arange(0, n_vtx, step)
+    bounds = np.r_[bounds, n_vtx]
+    print(bounds)
+
+    n_map = len(map_names)
+    reader = CiftiReader(src_file)
+    src_maps = reader.get_data()[:n_map]
+    assert map_names == reader.map_names()[:n_map]
+
+    lbl_tabs = []
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, N)
+    out_maps = np.zeros_like(src_maps, np.uint8)
+    for map_idx in range(n_map):
+        data = src_maps[map_idx, mask]
+        vtx_indices = np.argsort(data)
+        lbl_tab = nib.cifti2.Cifti2LabelTable()
+        for s_idx, s_bound in enumerate(bounds[:-1]):
+            e_idx = s_idx + 1
+            e_bound = bounds[e_idx]
+            batch = vtx_indices[s_bound:e_bound]
+            data[batch] = e_idx
+            lbl = nib.cifti2.Cifti2Label(e_idx, f'{s_bound}~{e_bound}',
+                                         *cmap(color_indices[s_idx]))
+            lbl_tab[e_idx] = lbl
+        out_maps[map_idx, mask] = data
+        lbl_tabs.append(lbl_tab)
+
+    save2cifti(out_file, out_maps, reader.brain_models(), map_names,
+               reader.volume, lbl_tabs)
+
+
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
-    mask_maps(
-        data_file='/nfs/m1/hcp/ACF-decay.dscalar.nii',
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-ACF-decay_MMP-vis3.dscalar.nii')
-    )
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    # mask_maps(
+    #     data_file='/nfs/m1/hcp/ACF-decay.dscalar.nii',
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-ACF-decay_MMP-vis3.dscalar.nii')
+    # )
+
+    make_mask1()

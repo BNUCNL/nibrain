@@ -6,7 +6,6 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import variation, sem
 from matplotlib import pyplot as plt
-from scipy.stats.stats import mode
 from cxy_visual_dev.lib.predefine import LR_count_32k, proj_dir, get_rois,\
     Atlas, mmp_map_file, s1200_midthickness_R, s1200_midthickness_L,\
     MedialWall, hemi2stru, mmp_name2label, L_offset_32k, L_count_32k,\

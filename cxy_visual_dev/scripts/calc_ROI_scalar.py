@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 from os.path import join as pjoin
 from magicbox.algorithm.array import summary_across_col_by_mask
@@ -47,10 +48,23 @@ def ROI_scalar(src_file, mask, values, metric, out_file, rois=None, out_index=No
 
 
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    ROI_scalar(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        mask=atlas.maps[0], values=list(atlas.roi2label.values()),
-        metric='mean', rois=list(atlas.roi2label.keys()),
-        out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP.csv')
-    )
+    # atlas = Atlas('HCP-MMP')
+    # ROI_scalar(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #     mask=atlas.maps[0], values=list(atlas.roi2label.values()),
+    #     metric='mean', rois=list(atlas.roi2label.keys()),
+    #     out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP.csv')
+    # )
+
+    Ns = (3, 10)
+    for N in Ns:
+        reader = CiftiReader(pjoin(
+            anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
+        ))
+        mask_maps = reader.get_data()
+        for i, name in enumerate(reader.map_names()):
+            ROI_scalar(
+                src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+                mask=mask_maps[i], values=np.arange(1, N+1), metric='mean',
+                out_file=pjoin(work_dir, f'HCPD-myelin_N{N}-{name}.csv')
+            )
