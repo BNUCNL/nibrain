@@ -47,11 +47,11 @@ def make_mask1():
     将HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj的PC1和PC2分段
     以值排序，然后切割成N段顶点数量基本相同的片段
     """
-    N = 10
+    N = 3
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
     map_names = ['C1', 'C2']
     mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
-    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii')
+    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}_new.dlabel.nii')
 
     n_vtx = np.sum(mask)
     step = int(np.ceil(n_vtx / N))
@@ -72,6 +72,7 @@ def make_mask1():
         data = src_maps[map_idx, mask]
         vtx_indices = np.argsort(data)
         lbl_tab = nib.cifti2.Cifti2LabelTable()
+        lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
         for s_idx, s_bound in enumerate(bounds[:-1]):
             e_idx = s_idx + 1
             e_bound = bounds[e_idx]
@@ -87,6 +88,38 @@ def make_mask1():
                reader.volume, lbl_tabs)
 
 
+def make_mask2():
+    """
+    将make_mask1得到的PC1的N段和PC2的N段相交得到N*N个region。
+    PC1第i段中依照PC2的N段分的区域编号为(i-1)N+1~iN
+    """
+    N = 3
+    src_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii')
+    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_mask2-N{N}.dlabel.nii')
+
+    reader = CiftiReader(src_file)
+    src_maps = reader.get_data()
+    names = reader.map_names()
+
+    out_map = np.zeros((1, src_maps.shape[1]), np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, N*N)
+    for i in range(1, N+1):
+        idx_map1 = src_maps[0] == i
+        for j in range(1, N+1):
+            idx_map2 = src_maps[1] == j
+            idx_map = np.logical_and(idx_map1, idx_map2)
+            k = (i-1)*N + j
+            lbl = f'{names[0]}-{i} & {names[1]}-{j}'
+            out_map[0, idx_map] = k
+            lbl_tab[k] = nib.cifti2.Cifti2Label(k, lbl, *cmap(color_indices[k-1]))
+
+    save2cifti(out_file, out_map, reader.brain_models(), volume=reader.volume,
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
@@ -96,4 +129,5 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPY-ACF-decay_MMP-vis3.dscalar.nii')
     # )
 
-    make_mask1()
+    # make_mask1()
+    make_mask2()

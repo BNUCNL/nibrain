@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import nibabel as nib
 from os.path import join as pjoin
 from magicbox.algorithm.array import summary_across_col_by_mask
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas
@@ -56,15 +57,26 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP.csv')
     # )
 
-    Ns = (3, 10)
-    for N in Ns:
-        reader = CiftiReader(pjoin(
-            anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
-        ))
-        mask_maps = reader.get_data()
-        for i, name in enumerate(reader.map_names()):
-            ROI_scalar(
-                src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-                mask=mask_maps[i], values=np.arange(1, N+1), metric='mean',
-                out_file=pjoin(work_dir, f'HCPD-myelin_N{N}-{name}.csv')
-            )
+    # Ns = (3, 10)
+    # for N in Ns:
+    #     reader = CiftiReader(pjoin(
+    #         anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
+    #     ))
+    #     mask_maps = reader.get_data()
+    #     for i, name in enumerate(reader.map_names()):
+    #         ROI_scalar(
+    #             src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #             mask=mask_maps[i], values=np.arange(1, N+1), metric='mean',
+    #             out_file=pjoin(work_dir, f'HCPD-myelin_N{N}-{name}.csv')
+    #         )
+
+    N = 3
+    mask_map = nib.load(pjoin(
+        anal_dir, 'mask_map/'
+        f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_mask2-N{N}.dlabel.nii'
+    )).get_fdata()[0]
+    ROI_scalar(
+        src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
+        mask=mask_map, values=np.arange(1, N**2+1), metric='mean',
+        out_file=pjoin(work_dir, f'HCPD-thickness_mask2-N{N}.csv')
+    )
