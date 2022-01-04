@@ -120,6 +120,64 @@ def make_mask2():
                label_tables=[lbl_tab])
 
 
+def make_mask3():
+    """
+    依据HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj的PC1的大小排序分成N等分
+    然后在PC1的各层级内，按照PC2的大小排序分成N等分
+    """
+    N = 3
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
+    map_names = ['C1', 'C2']
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_{N}x{N}.dlabel.nii')
+
+    n_map = len(map_names)
+    reader = CiftiReader(src_file)
+    src_maps = reader.get_data()[:n_map]
+    assert map_names == reader.map_names()[:n_map]
+    pc_data1 = src_maps[0, mask]
+    pc_indices1 = np.argsort(pc_data1)
+    pc_data2 = src_maps[1, mask]
+
+    n_vtx1 = np.sum(mask)
+    step1 = int(np.ceil(n_vtx1 / N))
+    bounds1 = np.arange(0, n_vtx1, step1)
+    bounds1 = np.r_[bounds1, n_vtx1]
+    print(bounds1)
+
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, N*N)
+    out_map = np.zeros((1, src_maps.shape[1]), np.uint8)
+    k = 1
+    for s_idx1, s_bound1 in enumerate(bounds1[:-1]):
+        e_idx1 = s_idx1 + 1
+        e_bound1 = bounds1[e_idx1]
+        batch1 = pc_indices1[s_bound1:e_bound1]
+        pc_data2_tmp = pc_data2[batch1]
+        pc_indices2 = np.argsort(pc_data2_tmp)
+        n_vtx2 = len(batch1)
+        step2 = int(np.ceil(n_vtx2 / N))
+        bounds2 = np.arange(0, n_vtx2, step2)
+        bounds2 = np.r_[bounds2, n_vtx2]
+        print(bounds2)
+        for s_idx2, s_bound2 in enumerate(bounds2[:-1]):
+            e_idx2 = s_idx2 + 1
+            e_bound2 = bounds2[e_idx2]
+            batch2 = pc_indices2[s_bound2:e_bound2]
+            pc_data2_tmp[batch2] = k
+            lbl = nib.cifti2.Cifti2Label(k, f'PC1-{e_idx1}+PC2-{e_idx2}',
+                                         *cmap(color_indices[k-1]))
+            lbl_tab[k] = lbl
+            k += 1
+        pc_data1[batch1] = pc_data2_tmp
+    out_map[0, mask] = pc_data1
+
+    save2cifti(out_file, out_map, reader.brain_models(),
+               volume=reader.volume, label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
@@ -130,4 +188,5 @@ if __name__ == '__main__':
     # )
 
     # make_mask1()
-    make_mask2()
+    # make_mask2()
+    make_mask3()

@@ -73,10 +73,10 @@ if __name__ == '__main__':
     N = 3
     mask_map = nib.load(pjoin(
         anal_dir, 'mask_map/'
-        f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_mask2-N{N}.dlabel.nii'
+        f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_{N}x{N}.dlabel.nii'
     )).get_fdata()[0]
     ROI_scalar(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-        mask=mask_map, values=np.arange(1, N**2+1), metric='mean',
-        out_file=pjoin(work_dir, f'HCPD-thickness_mask2-N{N}.csv')
+        src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+        mask=mask_map, values=np.arange(1, N*N+1), metric='mean',
+        out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     )
