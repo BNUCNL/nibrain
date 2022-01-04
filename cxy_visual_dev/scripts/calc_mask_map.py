@@ -51,7 +51,7 @@ def make_mask1():
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
     map_names = ['C1', 'C2']
     mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
-    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}_new.dlabel.nii')
+    out_file = pjoin(work_dir, f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii')
 
     n_vtx = np.sum(mask)
     step = int(np.ceil(n_vtx / N))

@@ -799,7 +799,9 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
         Y (2D array): target array
         trg_names (strings): target names
         score_metric (str): 目前只支持R2
-        out_file (str): .csv file
+        out_file (str):
+            If 'df', return df
+            If ends with '.csv', save to CSV file
         standard_scale (bool, optional):
             是否在线性回归之前做特征内的标准化
     """
@@ -849,4 +851,10 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
         for feat_idx, feat_name in enumerate(feat_names):
             df[f'coef_{trg_name}_{feat_name}'] = coefs[:, trg_idx, feat_idx]
         df[f'score_{trg_name}'] = scores[:, trg_idx]
-    df.to_csv(out_file, index=False)
+        df[f'intercept_{trg_name}'] = intercepts[:, trg_idx]
+    if out_file == 'df':
+        return df
+    elif out_file.endswith('.csv'):
+        df.to_csv(out_file, index=False)
+    else:
+        raise ValueError('not supported out_file')

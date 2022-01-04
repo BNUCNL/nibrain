@@ -1,11 +1,13 @@
 import os
 import numpy as np
+import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     get_rois, hemi2Hemi
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1
+from magicbox.io.io import CiftiReader
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'fit')
@@ -153,7 +155,53 @@ def mean_tau_diff_fit_PC12():
         out_file=out_file, standard_scale=True)
 
 
+def HCPDA_fit_PC12_local():
+    """
+    用HCPD/A每个被试的myelin和thickness map去局部拟合C1C2（半脑）
+    """
+    data_name = 'HCPD'
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    mask_local_file = pjoin(anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj_N3.dlabel.nii')
+    mask_local_lbls = np.arange(1, 4)
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+
+    src_files = [
+            pjoin(proj_dir, f'data/HCP/{data_name}_myelin.dscalar.nii'),
+            pjoin(proj_dir, f'data/HCP/{data_name}_thickness.dscalar.nii')]
+    feat_names = ['Myelination', 'Thickness']
+    out_file = pjoin(work_dir, f'{data_name}-M+T=C1C2_local-mask1-N3-{Hemi}.csv')
+
+    mask_locals = nib.load(mask_local_file).get_fdata()[:, mask]
+    pc_names = ['C1', 'C2']
+    n_pc = len(pc_names)
+    reader = CiftiReader(pc_file)
+    pc_maps = reader.get_data()[:n_pc, mask].T
+    assert pc_names == reader.map_names()[:n_pc]
+
+    feat_maps_list = []
+    for src_file in src_files:
+        data = nib.load(src_file).get_fdata()[:, mask]
+        feat_maps_list.append(data.T)
+
+    dfs = []
+    for pc_idx in range(n_pc):
+        for mask_local_lbl in mask_local_lbls:
+            mask_local = mask_locals[pc_idx] == mask_local_lbl
+            X_list = [i[mask_local] for i in feat_maps_list]
+            Y = np.expand_dims(pc_maps[mask_local, pc_idx], 1)
+            df = linear_fit1(
+                X_list=X_list, feat_names=feat_names,
+                Y=Y, trg_names=[f'{pc_names[pc_idx]}-{mask_local_lbl}'], score_metric='R2',
+                out_file='df', standard_scale=True)
+            dfs.append(df)
+    df = pd.concat(dfs, axis=1)
+    df.to_csv(out_file, index=False)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # HCPDA_fit_PC12()
-    mean_tau_diff_fit_PC12()
+    # mean_tau_diff_fit_PC12()
+    HCPDA_fit_PC12_local()
