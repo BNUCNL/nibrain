@@ -13,7 +13,8 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def ROI_scalar(src_file, mask, values, metric, out_file, rois=None, out_index=None):
+def ROI_scalar(src_file, mask, values, metric, out_file, zscore_flag=False,
+               rois=None, out_index=None):
     """
     为每个被试每个ROI求scalar value
 
@@ -34,7 +35,14 @@ def ROI_scalar(src_file, mask, values, metric, out_file, rois=None, out_index=No
     src_maps = reader.get_data()
     columns = values if rois is None else rois
 
-    out_data = summary_across_col_by_mask(src_maps, mask, values, metric)
+    mask_all = np.zeros_like(mask, bool)
+    for i in values:
+        mask_all = np.logical_or(mask_all, mask == i)
+    src_maps = src_maps[:, mask_all]
+    mask = mask[mask_all]
+
+    out_data = summary_across_col_by_mask(src_maps, mask, values, metric,
+                                          zscore_flag=zscore_flag)
     out_df = pd.DataFrame(out_data, columns=columns)
 
     if out_index is None:
@@ -70,13 +78,27 @@ if __name__ == '__main__':
     #             out_file=pjoin(work_dir, f'HCPD-myelin_N{N}-{name}.csv')
     #         )
 
+    # N = 3
+    # mask_map = nib.load(pjoin(
+    #     anal_dir, 'mask_map/'
+    #     f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_{N}x{N}.dlabel.nii'
+    # )).get_fdata()[0]
+    # ROI_scalar(
+    #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
+    #     mask=mask_map, values=np.arange(1, N*N+1), metric='mean',
+    #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
+    # )
+
     N = 3
+    vis_name = 'MMP-vis3-R'
+    data_name = 'HCPD'
+    meas = 'thickness'
     mask_map = nib.load(pjoin(
         anal_dir, 'mask_map/'
-        f'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_{N}x{N}.dlabel.nii'
+        f'HCPY-M+T_{vis_name}_zscore1_PCA-subj_{N}x{N}.dlabel.nii'
     )).get_fdata()[0]
     ROI_scalar(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPD_myelin.dscalar.nii'),
-        mask=mask_map, values=np.arange(1, N*N+1), metric='mean',
-        out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
+        src_file=pjoin(proj_dir, f'data/HCP/{data_name}_{meas}.dscalar.nii'),
+        mask=mask_map, values=np.arange(1, N*N+1), metric='mean', zscore_flag=True,
+        out_file=pjoin(work_dir, f'{data_name}-{meas}_zscore-{vis_name}_{N}x{N}.csv')
     )
