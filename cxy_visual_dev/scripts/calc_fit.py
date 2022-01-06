@@ -200,8 +200,53 @@ def HCPDA_fit_PC12_local():
     df.to_csv(out_file, index=False)
 
 
+def age_linearFit_col():
+    """
+    用年龄线性拟合csv文件中的各列
+    """
+    # data_name = 'HCPD'
+    # age_name = 'age in years'
+    # src_file = pjoin(work_dir, f'{data_name}-M+T=C1C2_local-mask1-N3-R.csv')
+    # info_file = pjoin(proj_dir, f'data/HCP/{data_name}_SubjInfo.csv')
+    # out_file = pjoin(work_dir, f'{data_name}-M+T=C1C2_local-mask1-N3-R_AgeFitCol1.csv')
+
+    data_name = 'HCPD'
+    age_name = 'age in years'
+    src_file = pjoin(anal_dir, f'ROI_scalar/{data_name}-thickness_N3-C1.csv')
+    info_file = pjoin(proj_dir, f'data/HCP/{data_name}_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'{data_name}-thickness_N3-C1_AgeFitCol1.csv')
+
+    df = pd.read_csv(src_file)
+    info_df = pd.read_csv(info_file)
+    ages = np.array(info_df[age_name])
+    if data_name == 'HCPD':
+        print('remove 5/6/7')
+        idx_vec = np.zeros_like(ages, bool)
+        for i in (5, 6, 7):
+            idx_vec = np.logical_or(ages == i, idx_vec)
+        idx_vec = ~idx_vec
+        ages = ages[idx_vec]
+        df = df.loc[idx_vec]
+
+    X_list = [np.expand_dims(ages, 1)]
+    out_df = []
+    for col in df.columns:
+        Y = np.expand_dims(np.array(df[col]), 1)
+        df_tmp = linear_fit1(
+            X_list=X_list, feat_names=[''], Y=Y, trg_names=[''],
+            score_metric='R2', out_file='df', standard_scale=False)
+        out_df.append(df_tmp)
+
+    out_df = pd.concat(out_df, axis=0)
+    print(out_df.columns)
+    out_df.columns = [i.rstrip('_') for i in out_df.columns]
+    out_df.index = df.columns
+    out_df.to_csv(out_file, index=True)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # HCPDA_fit_PC12()
     # mean_tau_diff_fit_PC12()
-    HCPDA_fit_PC12_local()
+    # HCPDA_fit_PC12_local()
+    age_linearFit_col()
