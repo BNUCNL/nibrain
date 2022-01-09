@@ -3,6 +3,10 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     get_rois, hemi2Hemi
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
@@ -272,10 +276,51 @@ def PC12_fit_func():
         out_file=out_file, standard_scale=True)
 
 
+def PC12_fit_func1():
+    """
+    用HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    线性拟合功能map（逐被试）
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    feat_names = ['C1', 'C2']
+    func_file = pjoin(proj_dir, 'data/HCP/HCPY-falff.dscalar.nii')
+    out_file = pjoin(work_dir, 'PC1+2=fALFF_ind.csv')
+
+    X = nib.load(pc_file).get_fdata()[:2, mask].T
+    print(X.shape)
+    func_maps = nib.load(func_file).get_fdata()[:, mask]
+    nan_arr = np.isnan(func_maps)
+    nan_vec = np.any(nan_arr, 1)
+    assert np.all(nan_vec == np.all(nan_arr, 1))
+    non_nan_vec = ~nan_vec
+    Y = func_maps[non_nan_vec].T
+    n_trg = Y.shape[1]
+    print(Y.shape)
+
+    model = Pipeline([('preprocesser', StandardScaler()),
+                      ('regressor', LinearRegression())])
+    model.fit(X, Y)
+    coefs = model.named_steps['regressor'].coef_
+    coef_names = [f'coef_{i}' for i in feat_names]
+    intercepts = np.expand_dims(model.named_steps['regressor'].intercept_, 1)
+    Y_pred = model.predict(X)
+    scores = np.zeros((n_trg, 1), np.float64)
+    for trg_idx in range(n_trg):
+        scores[trg_idx, 0] = r2_score(Y[:, trg_idx], Y_pred[:, trg_idx])
+    out_data = np.c_[coefs, intercepts, scores]
+
+    out_df = pd.DataFrame(out_data, columns=coef_names+['intercept', 'score'])
+    out_df.to_csv(out_file, index=False)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # HCPDA_fit_PC12()
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # age_linearFit_col()
-    PC12_fit_func()
+    # PC12_fit_func()
+    PC12_fit_func1()
