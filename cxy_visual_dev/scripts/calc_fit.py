@@ -244,9 +244,38 @@ def age_linearFit_col():
     out_df.to_csv(out_file, index=True)
 
 
+def PC12_fit_func():
+    """
+    用HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    线性拟合功能map
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    feat_names = ['C1']
+    func_file = pjoin(anal_dir, 'summary_map/HCPY-falff_mean.dscalar.nii')
+    trg_names = ['fALFF']
+    out_file = pjoin(work_dir, 'PC1=fALFF.csv')
+
+    # pc_maps = nib.load(pc_file).get_fdata()[:2, mask]
+    # X_list = [pc_maps[[0]].T, pc_maps[[1]].T]
+    pc1_map = nib.load(pc_file).get_fdata()[0, mask]
+    print(pc1_map.shape)
+    X_list = [np.expand_dims(pc1_map, 1)]
+    func_map = nib.load(func_file).get_fdata()[0, mask]
+    Y = np.expand_dims(func_map, 1)
+    print(Y.shape)
+    linear_fit1(
+        X_list=X_list, feat_names=feat_names,
+        Y=Y, trg_names=trg_names, score_metric='R2',
+        out_file=out_file, standard_scale=True)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # HCPDA_fit_PC12()
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
-    age_linearFit_col()
+    # age_linearFit_col()
+    PC12_fit_func()

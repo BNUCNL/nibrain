@@ -65,7 +65,7 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD-myelin_HCP-MMP.csv')
     # )
 
-    # Ns = (3, 10)
+    # Ns = (3,)
     # for N in Ns:
     #     reader = CiftiReader(pjoin(
     #         anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
@@ -88,17 +88,3 @@ if __name__ == '__main__':
     #     mask=mask_map, values=np.arange(1, N*N+1), metric='mean',
     #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     # )
-
-    N = 3
-    vis_name = 'MMP-vis3-R'
-    data_name = 'HCPD'
-    meas = 'thickness'
-    mask_map = nib.load(pjoin(
-        anal_dir, 'mask_map/'
-        f'HCPY-M+T_{vis_name}_zscore1_PCA-subj_{N}x{N}.dlabel.nii'
-    )).get_fdata()[0]
-    ROI_scalar(
-        src_file=pjoin(proj_dir, f'data/HCP/{data_name}_{meas}.dscalar.nii'),
-        mask=mask_map, values=np.arange(1, N*N+1), metric='mean', zscore_flag=True,
-        out_file=pjoin(work_dir, f'{data_name}-{meas}_zscore-{vis_name}_{N}x{N}.csv')
-    )
