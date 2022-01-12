@@ -46,12 +46,12 @@ def PC12_predict_ROI1():
          'classifier__solver': ['saga', 'sag', 'lbfgs', 'newton-cg']},
         {'classifier': [LogisticRegression(penalty='l1')],
          'classifier__solver': ['saga', 'liblinear'],
-         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100]},
+         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]},
         {'classifier': [LogisticRegression(penalty='l2')],
          'classifier__solver': ['sag', 'saga', 'liblinear', 'lbfgs', 'newton-cg'],
-         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100]},
+         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]},
         {'classifier': [SVC(kernel='linear')],
-         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100]}
+         'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
     ]
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
     grid = GridSearchCV(pipe, param_grid, cv=cv, scoring='accuracy')
