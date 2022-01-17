@@ -1,17 +1,19 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.stats import pearsonr
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
-    get_rois, hemi2Hemi
+    get_rois, hemi2Hemi, mmp_map_file
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1
-from magicbox.io.io import CiftiReader
+from magicbox.io.io import CiftiReader, save2cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'fit')
@@ -257,23 +259,41 @@ def PC12_fit_func():
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
     pc_file = pjoin(
         anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
-    feat_names = ['C1']
+    feat_names = ['C1', 'C2']
     func_file = pjoin(anal_dir, 'summary_map/HCPY-falff_mean.dscalar.nii')
-    trg_names = ['fALFF']
-    out_file = pjoin(work_dir, 'PC1=fALFF.csv')
+    trg_name = 'fALFF'
+    out_file1 = pjoin(work_dir, 'PC1+2=fALFF.csv')
+    out_file2 = pjoin(work_dir, 'PC1+2=fALFF.pkl')
+    out_file3 = pjoin(work_dir, 'PC1+2=fALFF.dscalar.nii')
 
-    # pc_maps = nib.load(pc_file).get_fdata()[:2, mask]
-    # X_list = [pc_maps[[0]].T, pc_maps[[1]].T]
-    pc1_map = nib.load(pc_file).get_fdata()[0, mask]
-    print(pc1_map.shape)
-    X_list = [np.expand_dims(pc1_map, 1)]
-    func_map = nib.load(func_file).get_fdata()[0, mask]
-    Y = np.expand_dims(func_map, 1)
-    print(Y.shape)
-    linear_fit1(
-        X_list=X_list, feat_names=feat_names,
-        Y=Y, trg_names=trg_names, score_metric='R2',
-        out_file=out_file, standard_scale=True)
+    X = nib.load(pc_file).get_fdata()[:2, mask].T
+    y = nib.load(func_file).get_fdata()[0, mask]
+    model = Pipeline([('preprocesser', StandardScaler()),
+                      ('regressor', LinearRegression())])
+    model.fit(X, y)
+    y_pred = model.predict(X)
+    print('true corr pred:', pearsonr(y, y_pred))
+    print('PC1 corr fALFF:', pearsonr(X[:, 0], y))
+    print('PC2 corr fALFF:', pearsonr(X[:, 1], y))
+
+    # save parameters
+    df = pd.DataFrame()
+    for feat_idx, feat_name in enumerate(feat_names):
+        df[f'coef_{trg_name}_{feat_name}'] = \
+            [model.named_steps['regressor'].coef_[feat_idx]]
+    df[f'score_{trg_name}'] = [r2_score(y, y_pred)]
+    df[f'intercept_{trg_name}'] = \
+        [model.named_steps['regressor'].intercept_]
+    df.to_csv(out_file1, index=False)
+
+    # save model
+    pkl.dump(model, open(out_file2, 'wb'))
+
+    # save fitted map
+    reader = CiftiReader(mmp_map_file)
+    out_map = np.ones((1, mask.shape[0]), np.float64) * np.nan
+    out_map[0, mask] = y_pred
+    save2cifti(out_file3, out_map, reader.brain_models())
 
 
 def PC12_fit_func1():
@@ -322,5 +342,5 @@ if __name__ == '__main__':
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # age_linearFit_col()
-    # PC12_fit_func()
-    PC12_fit_func1()
+    PC12_fit_func()
+    # PC12_fit_func1()
