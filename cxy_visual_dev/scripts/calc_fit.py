@@ -13,7 +13,7 @@ from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
-from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
+from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
     get_rois, hemi2Hemi, mmp_map_file
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1
@@ -264,21 +264,28 @@ def PC12_fit_func():
     pc_file = pjoin(
         anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
     feat_names = ['C1', 'C2']
-    func_file = pjoin(anal_dir, 'summary_map/HCPY-falff_mean.dscalar.nii')
-    trg_name = 'fALFF'
-    out_file1 = pjoin(work_dir, 'PC1+2=fALFF.csv')
-    out_file2 = pjoin(work_dir, 'PC1+2=fALFF.pkl')
-    out_file3 = pjoin(work_dir, 'PC1+2=fALFF.dscalar.nii')
+    func_file = pjoin(anal_dir, 'summary_map/HCPY-face_mean.dscalar.nii')
+    trg_name = 'face'
+    out_file1 = pjoin(work_dir, f'PC1+2={trg_name}.csv')
+    out_file2 = pjoin(work_dir, f'PC1+2={trg_name}.pkl')
+    out_file3 = pjoin(work_dir, f'PC1+2={trg_name}.dscalar.nii')
 
+    func_data = nib.load(func_file).get_fdata()[0]
+    if func_data.shape[0] == All_count_32k:
+        func_data = func_data[:LR_count_32k]
+    elif func_data.shape[0] == LR_count_32k:
+        pass
+    else:
+        raise ValueError
     X = nib.load(pc_file).get_fdata()[:2, mask].T
-    y = nib.load(func_file).get_fdata()[0, mask]
+    y = func_data[mask]
     model = Pipeline([('preprocesser', StandardScaler()),
                       ('regressor', LinearRegression())])
     model.fit(X, y)
     y_pred = model.predict(X)
     print('true corr pred:', pearsonr(y, y_pred))
-    print('PC1 corr fALFF:', pearsonr(X[:, 0], y))
-    print('PC2 corr fALFF:', pearsonr(X[:, 1], y))
+    print(f'PC1 corr {trg_name}:', pearsonr(X[:, 0], y))
+    print(f'PC2 corr {trg_name}:', pearsonr(X[:, 1], y))
 
     # save parameters
     df = pd.DataFrame()
@@ -415,6 +422,6 @@ if __name__ == '__main__':
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # age_linearFit_col()
-    # PC12_fit_func()
+    PC12_fit_func()
     # PC12_fit_func1()
-    PC12_fit_func2()
+    # PC12_fit_func2()
