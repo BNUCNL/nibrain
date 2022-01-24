@@ -47,7 +47,7 @@ def make_mask1():
     将HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj的PC1和PC2分段
     以值排序，然后切割成N段顶点数量基本相同的片段
     """
-    N = 3
+    N = 2
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
     map_names = ['C1', 'C2']
     mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
@@ -182,11 +182,11 @@ if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
-    #     data_file='/nfs/m1/hcp/ACF-decay.dscalar.nii',
+    #     data_file=pjoin(anal_dir, 'summary_map/HCPY-face_mean.dscalar.nii'),
     #     mask=mask,
-    #     out_file=pjoin(work_dir, 'HCPY-ACF-decay_MMP-vis3.dscalar.nii')
+    #     out_file=pjoin(work_dir, 'HCPY-face_mean_MMP-vis3.dscalar.nii')
     # )
 
-    # make_mask1()
+    make_mask1()
     # make_mask2()
-    make_mask3()
+    # make_mask3()

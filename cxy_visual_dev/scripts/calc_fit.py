@@ -259,16 +259,31 @@ def PC12_fit_func():
     用HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
     线性拟合功能map
     """
+    # Hemi = 'R'
+    # mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    # pc_file = pjoin(
+    #     anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    # feat_names = ['C1', 'C2']
+    # func_file = pjoin(anal_dir, 'summary_map/HCPY-face_mean.dscalar.nii')
+    # trg_name = 'face'
+    # out_file1 = pjoin(work_dir, f'PC1+2={trg_name}.csv')
+    # out_file2 = pjoin(work_dir, f'PC1+2={trg_name}.pkl')
+    # out_file3 = pjoin(work_dir, f'PC1+2={trg_name}.dscalar.nii')
+
     Hemi = 'R'
-    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    lbl = 2
+    mask = nib.load(pjoin(
+        anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj_N2.dlabel.nii'
+    )).get_fdata()[0] == lbl
     pc_file = pjoin(
         anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
     feat_names = ['C1', 'C2']
     func_file = pjoin(anal_dir, 'summary_map/HCPY-face_mean.dscalar.nii')
     trg_name = 'face'
-    out_file1 = pjoin(work_dir, f'PC1+2={trg_name}.csv')
-    out_file2 = pjoin(work_dir, f'PC1+2={trg_name}.pkl')
-    out_file3 = pjoin(work_dir, f'PC1+2={trg_name}.dscalar.nii')
+    fname = f'PC1+2={trg_name}_mask-PC1-N2-{lbl}'
+    out_file1 = pjoin(work_dir, f'{fname}.csv')
+    out_file2 = pjoin(work_dir, f'{fname}.pkl')
+    out_file3 = pjoin(work_dir, f'{fname}.dscalar.nii')
 
     func_data = nib.load(func_file).get_fdata()[0]
     if func_data.shape[0] == All_count_32k:
