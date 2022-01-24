@@ -202,12 +202,6 @@ dataset_name2dir = {
     'HCPY': '/nfs/m1/hcp',
     'HCPA': '/nfs/e1/HCPA'
 }
-dataset_name2info = {
-    'HCPD': pjoin(dataset_name2dir['HCPD'], 'HCPD_SubjInfo.csv'),
-    'HCPY': pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv'),
-    'HCPA': pjoin(dataset_name2dir['HCPA'], 'HCPA_SubjInfo.csv'),
-    'HCPD_merge-6-7': pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo_merge-6-7.csv')
-}
 # datatset<<<
 
 

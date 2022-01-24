@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
-from scipy.stats import zscore, sem
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
 from scipy.fft import fft, fftfreq
@@ -14,8 +14,7 @@ from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
-    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file, All_count_32k
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -182,97 +181,6 @@ def concate_map(data_files, out_file):
         maps = np.r_[maps, maps_tmp]
         map_names.extend(reader_tmp.map_names())
     save2cifti(out_file, maps, reader.brain_models(), map_names)
-
-
-def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
-    """
-    为每个被试每个ROI求均值
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        out_file (str): output path
-        zscore_flag (bool, optional): Defaults to False.
-            If True, do zscore within each hemisphere.
-    """
-    # prepare
-    meas_maps = nib.load(data_file).get_fdata()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    out_df = pd.DataFrame()
-
-    # calculate
-    if zscore_flag:
-        meas_maps_L = meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)]
-        meas_maps_R = meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)]
-        meas_maps_L = zscore(meas_maps_L, 1)
-        meas_maps_R = zscore(meas_maps_R, 1)
-        meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)] = meas_maps_L
-        meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)] = meas_maps_R
-        del meas_maps_L, meas_maps_R
-
-    for roi, lbl in atlas.roi2label.items():
-        meas_vec = np.mean(meas_maps[:, atlas.maps[0] == lbl], 1)
-        out_df[roi] = meas_vec
-
-    # save
-    out_df.to_csv(out_file, index=False)
-
-
-def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
-    """
-    Upgrade for "ROI_analysis"
-    为每个被试每个ROI求scalar value
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, n_vtx)
-        atlas_name (str): include ROIs' labels and mask map
-        rois (None | sequence): ROI names
-            If is None, use all ROIs of the atlas.
-        metric (str): mean, var, sem
-        out_file (str): end with .csv
-        out_index (None | str | sequence):
-            If None, don't save index to out_file.
-            If str, must be 'map name' that means using map names as indices.
-            If sequence, its length is equal to n_map.
-    """
-    # prepare
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, maps.shape[1])
-    if rois is None:
-        rois = atlas.roi2label.keys()
-
-    out_df = pd.DataFrame()
-
-    # calculate
-    for roi in rois:
-        lbl = atlas.roi2label[roi]
-        data = maps[:, atlas.maps[0] == lbl]
-        if metric == 'mean':
-            vec = np.mean(data, 1)
-        elif metric == 'var':
-            vec = np.var(data, 1)
-        elif metric == 'sem':
-            vec = sem(data, 1)
-        else:
-            raise ValueError('not supported metric')
-        out_df[roi] = vec
-
-    # save
-    if out_index is None:
-        out_df.to_csv(out_file, index=False)
-    elif out_index == 'map name':
-        out_df.index = reader.map_names()
-        out_df.to_csv(out_file, index=True)
-    else:
-        assert len(out_index) == maps.shape[0]
-        out_df.index = out_index
-        out_df.to_csv(out_file, index=True)
 
 
 def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
@@ -542,76 +450,6 @@ def ROI_analysis_on_PC(data_file, pca_file, pc_num,
     out_df.to_csv(out_file, index=False)
 
 
-def make_age_maps(data_file, info_file, out_name):
-    """
-    对每个顶点，计算跨同一年龄被试的平均和sem，分别保存在
-    out_name-mean.dscalar.nii, out_name-sem.dscalar.nii中
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        info_file (str): subject info file
-        out_name (str): filename to save
-    """
-    # prepare
-    data_maps = nib.load(data_file).get_fdata()
-    info_df = pd.read_csv(info_file)
-    ages = np.array(info_df['age in years'])
-    ages_uniq = np.unique(ages)
-    n_age = len(ages_uniq)
-
-    # calculate
-    mean_maps = np.ones((n_age, LR_count_32k)) * np.nan
-    sem_maps = np.ones((n_age, LR_count_32k)) * np.nan
-    for age_idx, age in enumerate(ages_uniq):
-        data = data_maps[ages == age]
-        mean_maps[age_idx] = np.mean(data, 0)
-        sem_maps[age_idx] = sem(data, 0)
-
-    # save
-    map_names = [str(i) for i in ages_uniq]
-    reader = CiftiReader(mmp_map_file)
-    save2cifti(f'{out_name}-mean.dscalar.nii', mean_maps,
-               reader.brain_models(), map_names)
-    save2cifti(f'{out_name}-sem.dscalar.nii', sem_maps,
-               reader.brain_models(), map_names)
-
-
-def merge_by_age(data_file, info_file, out_name):
-    """
-    对每个column，计算跨同一年龄被试的平均和sem，分别保存在
-    out_name-mean.csv, out_name-sem.csv中
-
-    Args:
-        data_file (str): end with .csv
-            shape=(n_subj, n_col)
-        info_file (str): subject info file
-        out_name (str): filename to save
-    """
-    # prepare
-    df = pd.read_csv(data_file)
-    n_col = df.shape[1]
-
-    info_df = pd.read_csv(info_file)
-    ages = np.array(info_df['age in years'])
-    ages_uniq = np.unique(ages)
-    n_age = len(ages_uniq)
-
-    # calculate
-    means = np.zeros((n_age, n_col), np.float64)
-    sems = np.zeros((n_age, n_col), np.float64)
-    for age_idx, age in enumerate(ages_uniq):
-        data = np.array(df.loc[ages == age])
-        means[age_idx] = np.mean(data, 0)
-        sems[age_idx] = sem(data, 0)
-
-    # save
-    mean_df = pd.DataFrame(means, ages_uniq, df.columns)
-    mean_df.to_csv(f'{out_name}-mean.csv')
-    sem_df = pd.DataFrame(sems, ages_uniq, df.columns)
-    sem_df.to_csv(f'{out_name}-sem.csv')
-
-
 def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
                   map_names1=None, map_names2=None, index=False):
     """
@@ -857,30 +695,6 @@ def map_operate_map(data_file1, data_file2, operation_method, out_file):
     save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
 
 
-def mask_maps(data_file, mask, out_file):
-    """
-    把data map在指定mask以外的部分全赋值为nan
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        mask (1D index array)
-        out_file (str):
-    """
-    # prepare
-    reader1 = CiftiReader(mmp_map_file)
-    reader2 = CiftiReader(data_file)
-    data = reader2.get_data()
-    if data.shape[1] == All_count_32k:
-        data = data[:, :LR_count_32k]
-
-    # calculate
-    data[:, ~mask] = np.nan
-
-    # save
-    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
-
-
 def polyfit(data_file, info_file, deg, out_file):
     """
     对时间序列进行多项式拟合
@@ -985,7 +799,9 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
         Y (2D array): target array
         trg_names (strings): target names
         score_metric (str): 目前只支持R2
-        out_file (str): .csv file
+        out_file (str):
+            If 'df', return df
+            If ends with '.csv', save to CSV file
         standard_scale (bool, optional):
             是否在线性回归之前做特征内的标准化
     """
@@ -1035,4 +851,10 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
         for feat_idx, feat_name in enumerate(feat_names):
             df[f'coef_{trg_name}_{feat_name}'] = coefs[:, trg_idx, feat_idx]
         df[f'score_{trg_name}'] = scores[:, trg_idx]
-    df.to_csv(out_file, index=False)
+        df[f'intercept_{trg_name}'] = intercepts[:, trg_idx]
+    if out_file == 'df':
+        return df
+    elif out_file.endswith('.csv'):
+        df.to_csv(out_file, index=False)
+    else:
+        raise ValueError('not supported out_file')
