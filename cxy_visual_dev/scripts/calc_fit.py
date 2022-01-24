@@ -1,14 +1,18 @@
 import os
+import time
+import math
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
+from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     get_rois, hemi2Hemi, mmp_map_file
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
@@ -336,11 +340,81 @@ def PC12_fit_func1():
     out_df.to_csv(out_file, index=False)
 
 
+def PC12_fit_func2():
+    """
+    用HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    的线性组合，和功能map做指数拟合
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    func_file = pjoin(anal_dir, 'summary_map/HCPY-falff_mean.dscalar.nii')
+    out_file = pjoin(work_dir, 'PC1+2=log(fALFF).dscalar.nii')
+    out_fig = pjoin(work_dir, 'PC1+2=log(fALFF).jpg')
+
+    X = nib.load(pc_file).get_fdata()[:2, mask]
+    y = nib.load(func_file).get_fdata()[0, mask]
+    y_min, y_max = np.min(y), np.max(y)
+    # def f(x, n, a1, a2, b, v1, v2):
+    #     return (np.power(n, a1*x[0]+a2*x[1]+b) - v1) / (v2 - v1) * (y_max - y_min) + y_min
+    # def f(x, n, a1, a2, b, k, c):
+    #     return (k*np.power(n, a1*x[0]+a2*x[1]+b) + c) * (y_max - y_min) + y_min
+    # def f(x, n, a1, a2, b, k, c):
+    #     tmp = a1*x[0] + a2*x[1] + b
+    #     tmp = tmp - np.min(tmp) + 2
+    #     tmp = np.array([math.log(i, n) for i in tmp])
+    #     return k * tmp + c
+    # def f(x, a1, a2, b1, b2, k):
+    #     return k * np.power(10, a1*x[0]+a2*x[1]+b1) + b2
+    # def f(x, a1, a2, b1, b2, c):
+    #     return b1*np.power(10, a1*x[0]) + b2*np.power(10, a2*x[1]) + c
+
+    # def f(x, n, a1, a2, b):
+    #     return np.power(n, a1*x[0]+a2*x[1]+b)
+    # bounds = (-np.inf, np.inf)
+    # bounds = ([1.5] + [-np.inf]*5, np.inf)
+    bounds = (
+        [1, -0.02, -0.02, -np.inf, -np.inf],
+        [np.inf, 0.02, 0.02, np.inf, np.inf])
+    def f(x, n, a1, a2, k, c):
+        return k * np.power(n, a1*x[0]+a2*x[1]) + c
+    time1 = time.time()
+    popt, pcov = curve_fit(f, X, y, maxfev=1000000, ftol=1e-16, bounds=bounds)
+    print(time.time() - time1, 'seconds')
+    print(popt)
+    y_pred = f(X, *popt)
+    print('true corr pred:', pearsonr(y, y_pred))
+
+    # save fitted map
+    reader = CiftiReader(mmp_map_file)
+    out_map = np.ones((1, mask.shape[0]), np.float64) * np.nan
+    out_map[0, mask] = y_pred
+    save2cifti(out_file, out_map, reader.brain_models())
+
+    n, a1, a2, k, c = popt
+    x_plot = (y - c) / k
+    y_plot = a1*X[0] + a2*X[1]
+    x_plot_min, x_plot_max = np.min(x_plot), np.max(x_plot)
+    x_plot_tmp = np.linspace(x_plot_min, x_plot_max, 100)
+    y_plot_tmp = [math.log(i, n) for i in x_plot_tmp]
+    fig, ax = plt.subplots()
+    ax.scatter(x_plot, y_plot, 1)
+    ax.plot(x_plot_tmp, y_plot_tmp)
+    ax.set_xlabel('True fALFF')
+    ax.set_ylabel('Pred fALFF')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_fig)
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # HCPDA_fit_PC12()
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # age_linearFit_col()
-    PC12_fit_func()
+    # PC12_fit_func()
     # PC12_fit_func1()
+    PC12_fit_func2()
