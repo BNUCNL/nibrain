@@ -1,4 +1,3 @@
-from aifc import Error
 import os
 import time
 import subprocess

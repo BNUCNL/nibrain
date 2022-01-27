@@ -1,4 +1,5 @@
 import os
+import subprocess
 import numpy as np
 import pickle as pkl
 import nibabel as nib
@@ -41,6 +42,36 @@ def get_msp_from_FFA_proj():
         nib.save(gii2, out_file2.format(layer_idx, layer_idx+1, hemi))
 
 
+def smooth_msp():
+    """
+    对各msp map进行平滑
+    """
+    sigma = '2'
+    hemi = 'rh'
+    n_layer = 6
+    surf_file = '/nfs/s2/userhome/chenxiayu/workingdir/test/bigbrain/'\
+        'bigbrain.loris.ca/BigBrainRelease.2015/Surface_Parcellations/'\
+        f'BigBrain_space/Surfaces/{hemi}.white.anat.surf.gii'
+    msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}.func.gii')
+    out_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}_s{3}.func.gii')
+    out_file2 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s{3}.func.gii')
+
+    for lyr_idx in range(n_layer):
+        cmd = ['wb_command', '-metric-smoothing', surf_file]
+        cmd.append(msp_file.format(lyr_idx, lyr_idx+1, hemi))
+        cmd.append(sigma)
+        cmd.append(out_file1.format(lyr_idx, lyr_idx+1, hemi, sigma))
+        print('Running: ' + ' '.join(cmd) + '\n')
+        subprocess.run(cmd)
+        gii1 = nib.load(out_file1.format(lyr_idx, lyr_idx+1, hemi, sigma))
+        data = []
+        for i in gii1.darrays:
+            data.append(i.data)
+        print(len(data))
+        gii2 = GiftiImage(darrays=[GiftiDataArray(np.mean(data, 0))])
+        nib.save(gii2, out_file2.format(lyr_idx, lyr_idx+1, hemi, sigma))
+
+
 def mask_msp():
     """
     把各层平均map在PC1中属于nan的部分的值设置为nan
@@ -49,11 +80,11 @@ def mask_msp():
     Hemi = hemi2Hemi[hemi]
     n_layer = 6
     resample_way = '164fsLR2bigbrain'
-    msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}.func.gii')
+    msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2.func.gii')
     pc_file = pjoin(anal_dir,
                     'decomposition/HCPY-M+T_MMP-vis3-'
                     f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
-    out_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_mask.func.gii')
+    out_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2_mask.func.gii')
 
     pc_map = nib.load(pc_file).darrays[0].data
     nan_vec = np.isnan(pc_map)
@@ -76,13 +107,13 @@ def PC12_corr_msp():
     n_interbedded = 10
     resample_way = '164fsLR2bigbrain'
     # resample_way = 'fsavg2bigbrain'
-    msp_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}.func.gii')
-    msp_file2 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}.func.gii')
+    msp_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}_s2.func.gii')
+    msp_file2 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2.func.gii')
     pc_file = pjoin(anal_dir,
                     'decomposition/HCPY-M+T_MMP-vis3-'
                     f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
     pc_names = ('C1', 'C2')
-    out_file = pjoin(work_dir, f'{resample_way}_{Hemi}.pkl')
+    out_file = pjoin(work_dir, f'{resample_way}_{Hemi}_s2.pkl')
 
     pc_gii = nib.load(pc_file)
     non_nan_vec = None
@@ -121,5 +152,6 @@ def PC12_corr_msp():
 
 if __name__ == '__main__':
     # get_msp_from_FFA_proj()
-    mask_msp()
-    # PC12_corr_msp()
+    # smooth_msp()
+    # mask_msp()
+    PC12_corr_msp()
