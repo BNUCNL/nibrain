@@ -185,38 +185,6 @@ if __name__ == '__main__':
     # )
     # HCP-MMP-visual2早期及其它视觉mask<<<
 
-    # >>>MMP-vis3-R早期2及其它视觉mask
-    # rois_early2_R = ['R_V1', 'R_V2', 'R_V3']
-    # atlas = Atlas('HCP-MMP')
-    # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-    # mask = atlas.get_mask(rois_early2_R)[0]
-    # src_file = pjoin(
-    #     anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    # )
-
-    # calc_RSM1(
-    #     src_file=src_file, mask=mask,
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R-early2.pkl')
-    # )
-    # calc_RSM1(
-    #     src_file=src_file, mask=np.logical_and(R2_mask, mask),
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R-early2_R2.pkl')
-    # )
-
-    # rois_later2_R = get_rois('MMP-vis3-R')
-    # for roi in rois_early2_R:
-    #     rois_later2_R.remove(roi)
-    # mask_later2_LR = atlas.get_mask(rois_later2_R)[0]
-    # calc_RSM1(
-    #     src_file=src_file, mask=mask_later2_LR,
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R-later2.pkl')
-    # )
-    # calc_RSM1(
-    #     src_file=src_file, mask=np.logical_and(R2_mask, mask_later2_LR),
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R-later2_R2.pkl')
-    # )
-    # MMP-vis3-R早期2及其它视觉mask<<<
-
     # >>>HCP-MMP-visual2 3+16+17+18 groups (dorsal)
     # rois_dorsal = get_rois('MMP-vis2-G3') + get_rois('MMP-vis2-G16') +\
     #     get_rois('MMP-vis2-G17') + get_rois('MMP-vis2-G18')
