@@ -338,6 +338,57 @@ def compare_gdist():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
+def compare_gdist1():
+    import numpy as np
+    import pandas as pd
+    from scipy.stats.stats import ttest_ind
+
+    gid = 2
+    items = ('pFus-mFus',)
+    data_file = pjoin(work_dir, 'gdist_min1.csv')
+    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
+
+    gid_df = pd.read_csv(gid_file)
+    gid_idx_lh = np.array(gid_df['lh']) == gid
+    gid_idx_rh = np.array(gid_df['rh']) == gid
+
+    df = pd.read_csv(data_file)
+    for item in items:
+        col1 = 'lh_' + item
+        col2 = 'rh_' + item
+        data1 = np.array(df[col1])[gid_idx_lh]
+        data2 = np.array(df[col2])[gid_idx_rh]
+        print(np.mean(data1), np.mean(data2))
+        print(f'{col1} vs {col2}:', ttest_ind(data1, data2))
+
+
+def pre_ANOVA_gdist_peak():
+    import pandas as pd
+
+    hemis = ('lh', 'rh')
+    gids = (1, 2)
+    data_file = pjoin(work_dir, 'gdist_peak.csv')
+    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
+    out_file = pjoin(work_dir, 'gdist_peak_preANOVA.csv')
+
+    df = pd.read_csv(data_file)
+    gid_df = pd.read_csv(gid_file)
+
+    out_dict = {'hemi': [], 'gid': [], 'meas': []}
+    for hemi in hemis:
+        for gid in gids:
+            gid_vec_idx = gid_df[hemi] == gid
+            meas_vec = df[f'{hemi}_pFus-mFus'][gid_vec_idx]
+            meas_vec.dropna(inplace=True)
+            n_valid = len(meas_vec)
+            out_dict['hemi'].extend([hemi] * n_valid)
+            out_dict['gid'].extend([gid] * n_valid)
+            out_dict['meas'].extend(meas_vec)
+            print(f'#{hemi}_pFus-mFus:', n_valid)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(out_file, index=False)
+
+
 def calc_prob_map(hemi='lh'):
     import numpy as np
     import nibabel as nib
@@ -513,9 +564,11 @@ if __name__ == '__main__':
     # calc_gdist(method='AP_gap-y')
     # calc_gdist(method='AP_gap-geo')
     # calc_gdist(method='min1')
-    calc_gdist(method='max')
+    # calc_gdist(method='max')
     # plot_gdist()
     # compare_gdist()
+    # compare_gdist1()
+    pre_ANOVA_gdist_peak()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
