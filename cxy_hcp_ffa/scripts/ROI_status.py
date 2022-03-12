@@ -615,8 +615,28 @@ def neaten_FFA_indiv():
 
 def resave_FFA_indiv():
     """
-    
+    转存一下HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii，把单精度改成uint8
+    以及为每个map清除多余的label信息
+    核对过后会将新文件改成与原文件同名，即会删除原文件。
     """
+    src_file = pjoin(work_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii')
+    out_file = pjoin(work_dir, 'HCP-YA_FFA-indiv_new.164k_fsavg_LR.dlabel.nii')
+
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = reader.map_names()
+    data = reader.get_data().astype(np.uint8)
+
+    label_tables = []
+    for row in data:
+        lbl_tb = nib.cifti2.Cifti2LabelTable()
+        for key in np.unique(row):
+            key = int(key)
+            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key],
+                                                 *key2rgba[key])
+        label_tables.append(lbl_tb)
+
+    save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
 def neaten_FFA_mpm(thr=0.25):
@@ -789,7 +809,8 @@ if __name__ == '__main__':
     # get_mpm(hemi='rh')
     # roi2cifti(roi_type='FFA')
     # roi2cifti(roi_type='FSR')
-    neaten_FFA_indiv()
+    # neaten_FFA_indiv()
+    resave_FFA_indiv()
     # neaten_FFA_mpm()
     # neaten_FFA_prob()
     # split_FFC()
