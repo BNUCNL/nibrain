@@ -1,7 +1,10 @@
+import numpy as np
+import nibabel as nib
 from os.path import join as pjoin
+from magicbox.io.io import CiftiReader, save2cifti
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_hcp_ffa.lib.tools import bfs
-from cxy_hcp_ffa.lib.predefine import proj_dir
+from cxy_hcp_ffa.lib.predefine import proj_dir, mmp_map_file
 
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 
@@ -556,29 +559,37 @@ def roi2cifti(roi_type):
     save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
-def neaten_FFA_ind():
+# ===整理需要发布的数据===
+key2name = {0: '???', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
+            3: 'L_pFus-faces', 4: 'L_mFus-faces'}
+key2rgba = {
+    0: (1.0, 1.0, 1.0, 0.0),
+    1: (0.0, 1.0, 0.0, 1.0),
+    2: (0.0, 0.0, 1.0, 1.0),
+    3: (0.0, 1.0, 0.0, 1.0),
+    4: (0.0, 0.0, 1.0, 1.0)
+}
+
+def neaten_FFA_indiv():
     """
-    把自己手动定的个体FFA整理成可以发表的样子
+    把自己手动定的个体FFA整理成CIFTI格式
+    包含1080名被试的个体FFA，被试ID；各FFA的名称(label)与值(key)
     """
-    import numpy as np
-    import nibabel as nib
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_hcp_ffa.lib.predefine import mmp_map_file
+    subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    data_lh_file = pjoin(work_dir, 'rois_v3_lh.nii.gz')
+    data_rh_file = pjoin(work_dir, 'rois_v3_rh.nii.gz')
+    out_file = pjoin(work_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
 
     bms = CiftiReader(mmp_map_file).brain_models()
     idx2vtx_lh = list(bms[0].vertex_indices)
     idx2vtx_rh = list(bms[1].vertex_indices)
 
-    map_names = open(pjoin(proj_dir,
-                           'analysis/s2/subject_id')).read().splitlines()
+    map_names = open(subj_file).read().splitlines()
 
-    data_lh = nib.load(pjoin(work_dir,
-                             'rois_v3_lh.nii.gz')).get_fdata().squeeze().T
-    data_rh = nib.load(pjoin(work_dir,
-                             'rois_v3_rh.nii.gz')).get_fdata().squeeze().T
+    data_lh = nib.load(data_lh_file).get_fdata().squeeze().T
+    data_rh = nib.load(data_rh_file).get_fdata().squeeze().T
     data_lh = data_lh.astype(np.uint8)
     data_rh = data_rh.astype(np.uint8)
-    out_file = pjoin(work_dir, 'HCP-YA_FFA-individual.dlabel.nii')
 
     data_rh[data_rh == 1] = 0
     data_rh[data_rh == 2] = 1
@@ -586,15 +597,6 @@ def neaten_FFA_ind():
     data_lh[data_lh == 1] = 0
     data_lh[data_lh == 3] = 4
     data_lh[data_lh == 2] = 3
-    key2label = {0: 'None', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
-                 3: 'L_pFus-faces', 4: 'L_mFus-faces'}
-    key2color = {
-        0: (1.0, 1.0, 1.0, 0.0),
-        1: (0.0, 1.0, 0.0, 1.0),
-        2: (0.0, 0.0, 1.0, 1.0),
-        3: (0.0, 1.0, 0.0, 1.0),
-        4: (0.0, 0.0, 1.0, 1.0)
-    }
     data_lh = data_lh[:, idx2vtx_lh]
     data_rh = data_rh[:, idx2vtx_rh]
     data = np.concatenate((data_lh, data_rh), axis=1, dtype=np.uint8)
@@ -604,16 +606,24 @@ def neaten_FFA_ind():
         lbl_tb = nib.cifti2.Cifti2LabelTable()
         for key in np.unique(row):
             key = int(key)
-            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2label[key],
-                                                 *key2color[key])
+            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key],
+                                                 *key2rgba[key])
         label_tables.append(lbl_tb)
 
     save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
-def neaten_FFA_mpm():
+def resave_FFA_indiv():
+    """
+    
+    """
+
+
+def neaten_FFA_mpm(thr=0.25):
     """
     把自己手动定的MPM FFA整理成可以发表的样子
+    包含各FFA的最大概率图
+    将概率图中概率大于thr的那些顶点分配给具有较大概率的FFA
     """
     import numpy as np
     import nibabel as nib
@@ -625,9 +635,9 @@ def neaten_FFA_mpm():
     idx2vtx_rh = list(bms[1].vertex_indices)
 
     data_lh = nib.load(pjoin(work_dir,
-                             'MPM_v3_lh_0.25_FFA.nii.gz')).get_fdata()[..., 0].T
+                             f'MPM_v3_lh_{thr}_FFA.nii.gz')).get_fdata()[..., 0].T
     data_rh = nib.load(pjoin(work_dir,
-                             'MPM_v3_rh_0.25_FFA.nii.gz')).get_fdata()[..., 0].T
+                             f'MPM_v3_rh_{thr}_FFA.nii.gz')).get_fdata()[..., 0].T
     data_lh = data_lh.astype(np.uint8)
     data_rh = data_rh.astype(np.uint8) 
     out_file = pjoin(work_dir, 'HCP-YA_FFA-MPM.dlabel.nii')
@@ -660,6 +670,9 @@ def neaten_FFA_mpm():
 def neaten_FFA_prob():
     """
     把自己手动定的FFA概率图整理成可以发表的样子
+    包含各FFA基于所有被试得到的概率图
+    每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
+    每个顶点的值代表该顶点属于对应FFA的概率（隐晦表达）
     """
     import numpy as np
     import nibabel as nib
@@ -688,6 +701,8 @@ def neaten_FFA_prob():
 def split_FFC():
     """
     根据pFus和mFus概率图，把FFC中的顶点分配为概率高的一方。
+    包含通过拆分HCP FFC得到的FFA；各FFA的名称(label)与值(key)，同个体FFA。
+    将HCP FFC的顶点分配给具有较大概率的FFA
     """
     import numpy as np
     import nibabel as nib
@@ -712,8 +727,8 @@ def split_FFC():
     data = np.concatenate((data_lh, data_rh), axis=1)
 
     # prepare label table
-    key2label = {0: 'None', 1: 'R_FFC-1', 2: 'R_FFC-2',
-                 3: 'L_FFC-1', 4: 'L_FFC-2'}
+    key2label = {0: 'None', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
+                 3: 'L_pFus-faces', 4: 'L_mFus-faces'}
     key2color = {
         0: (1.0, 1.0, 1.0, 0.0),
         1: (0.0, 1.0, 0.0, 1.0),
@@ -751,7 +766,7 @@ def split_FFC():
     
     
     # save out
-    out_file = pjoin(work_dir, 'HCP-YA_FFC-split.dlabel.nii')
+    out_file = pjoin(work_dir, 'HCP-YA_FFA-split.dlabel.nii')
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tb])
 
 
@@ -774,7 +789,7 @@ if __name__ == '__main__':
     # get_mpm(hemi='rh')
     # roi2cifti(roi_type='FFA')
     # roi2cifti(roi_type='FSR')
-    # neaten_FFA_ind()
+    neaten_FFA_indiv()
     # neaten_FFA_mpm()
     # neaten_FFA_prob()
-    split_FFC()
+    # split_FFC()
