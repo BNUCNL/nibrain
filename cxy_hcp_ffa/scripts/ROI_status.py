@@ -721,75 +721,55 @@ def create_FFA_mpm(space='32k_fs_LR', thr=0.25):
     save2cifti(out_file, out_data, bms, label_tables=[lbl_tb])
 
 
-def split_FFC():
+def split_FFC(space='32k_fs_LR'):
     """
     根据pFus和mFus概率图，把FFC中的顶点分配为概率高的一方。
-    包含通过拆分HCP FFC得到的FFA；各FFA的名称(label)与值(key)，同个体FFA。
+    包含通过拆分HCP FFC得到的FFA；各FFA的名称(name)与值(key)，以及对应的颜色(rgba) 。
     将HCP FFC的顶点分配给具有较大概率的FFA
+
+    Args:
+        space (str, optional): Defaults to '32k_fs_LR'.
+            surface mesh
     """
-    import numpy as np
-    import nibabel as nib
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_hcp_ffa.lib.predefine import mmp_map_file
+    Hemi2FFC_key = {'L': 198, 'R': 18}
+    src_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(work_dir, f'HCP-YA_FFA-split.{space}.dlabel.nii')
+    if space == '32k_fs_LR':
+        mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+    elif space == '164k_fsavg_LR':
+        mmp_map_L = nib.load('/nfs/z1/atlas/multimodal_glasser/surface/'
+                             'fsaverage.label.L.164k_fsavg_L.label.gii')
+        mmp_map_R = nib.load('/nfs/z1/atlas/multimodal_glasser/surface/'
+                             'fsaverage.label.R.164k_fsavg_R.label.gii')
+        mmp_map = np.r_[mmp_map_L.darrays[0].data, mmp_map_R.darrays[0].data]
 
     # prepare CIFTI info
-    reader = CiftiReader(mmp_map_file)
-    mmp_map = reader.get_data()[0]
+    reader = CiftiReader(src_file)
     bms = reader.brain_models()
-    idx2vtx_lh = list(bms[0].vertex_indices)
-    idx2vtx_rh = list(bms[1].vertex_indices)
-
-    # prepare probability maps
-    data_lh = nib.load(pjoin(work_dir,
-                             'prob_maps_v3_lh.nii.gz')).get_fdata().squeeze().T
-    data_rh = nib.load(pjoin(work_dir,
-                             'prob_maps_v3_rh.nii.gz')).get_fdata().squeeze().T
-    map_indices = [1, 2]  # ('pFus-faces', 'mFus-faces')
-    data_lh = data_lh[map_indices][:, idx2vtx_lh]
-    data_rh = data_rh[map_indices][:, idx2vtx_rh]
-    data = np.concatenate((data_lh, data_rh), axis=1)
-
-    # prepare label table
-    key2label = {0: 'None', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
-                 3: 'L_pFus-faces', 4: 'L_mFus-faces'}
-    key2color = {
-        0: (1.0, 1.0, 1.0, 0.0),
-        1: (0.0, 1.0, 0.0, 1.0),
-        2: (0.0, 0.0, 1.0, 1.0),
-        3: (0.0, 1.0, 0.0, 1.0),
-        4: (0.0, 0.0, 1.0, 1.0)
-    }
-    lbl_tb = nib.cifti2.Cifti2LabelTable()
-    for key, lbl in key2label.items():
-        lbl_tb[key] = nib.cifti2.Cifti2Label(key, lbl, *key2color[key])
+    map_names = reader.map_names()
+    data = reader.get_data()
 
     # assignment
     out_map = np.zeros((1, len(mmp_map)), np.uint8)
-    L_FFC_vertices = np.where(mmp_map == 198)[0]
-    for vtx in L_FFC_vertices:
-        prob_pfus = data[0][vtx]
-        prob_mfus = data[1][vtx]
-        if prob_pfus > prob_mfus:
-            out_map[0, vtx] = 3
-        elif prob_pfus < prob_mfus:
-            out_map[0, vtx] = 4
-        else:
-            raise ValueError("There is no such case.")
+    for Hemi, FFC_key in Hemi2FFC_key.items():
+        FFC_vertices = np.where(mmp_map == FFC_key)[0]
+        for vtx in FFC_vertices:
+            prob0 = data[0][vtx]
+            prob1 = data[1][vtx]
+            if prob0 > prob1:
+                out_map[0, vtx] = name2key[f'{Hemi}_{map_names[0]}']
+            elif prob0 < prob1:
+                out_map[0, vtx] = name2key[f'{Hemi}_{map_names[1]}']
+            else:
+                raise ValueError("There is no such case.")
 
-    R_FFC_vertices = np.where(mmp_map == 18)[0]
-    for vtx in R_FFC_vertices:
-        prob_pfus = data[0][vtx]
-        prob_mfus = data[1][vtx]
-        if prob_pfus > prob_mfus:
-            out_map[0, vtx] = 1
-        elif prob_pfus < prob_mfus:
-            out_map[0, vtx] = 2
-        else:
-            raise ValueError("There is no such case.")
-    
-    
+    # prepare label table
+    lbl_tb = nib.cifti2.Cifti2LabelTable()
+    for key in np.unique(out_map):
+        key = int(key)
+        lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key], *key2rgba[key])
+
     # save out
-    out_file = pjoin(work_dir, 'HCP-YA_FFA-split.dlabel.nii')
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tb])
 
 
@@ -818,14 +798,13 @@ if __name__ == '__main__':
     # resave_FFA_indiv()
     # create_FFA_prob(space='32k_fs_LR')
     # create_FFA_prob(space='164k_fsavg_LR')
-    create_FFA_mpm(space='32k_fs_LR', thr=0)
-    create_FFA_mpm(space='32k_fs_LR', thr=0.1)
+    # create_FFA_mpm(space='32k_fs_LR', thr=0)
+    # create_FFA_mpm(space='32k_fs_LR', thr=0.1)
     # create_FFA_mpm(space='32k_fs_LR', thr=0.25)
-    create_FFA_mpm(space='32k_fs_LR', thr=0.50)
-    create_FFA_mpm(space='164k_fsavg_LR', thr=0)
-    create_FFA_mpm(space='164k_fsavg_LR', thr=0.1)
-    create_FFA_mpm(space='164k_fsavg_LR', thr=0.25)
-    create_FFA_mpm(space='164k_fsavg_LR', thr=0.50)
-    # neaten_FFA_mpm()
-    # neaten_FFA_prob()
-    # split_FFC()
+    # create_FFA_mpm(space='32k_fs_LR', thr=0.50)
+    # create_FFA_mpm(space='164k_fsavg_LR', thr=0)
+    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.1)
+    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.25)
+    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.50)
+    split_FFC(space='32k_fs_LR')
+    split_FFC(space='164k_fsavg_LR')
