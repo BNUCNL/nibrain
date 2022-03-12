@@ -569,11 +569,14 @@ key2rgba = {
     3: (0.0, 1.0, 0.0, 1.0),
     4: (0.0, 0.0, 1.0, 1.0)
 }
+name2key = {}
+for k, n in key2name.items():
+    name2key[n] = k
 
 def neaten_FFA_indiv():
     """
     把自己手动定的个体FFA整理成CIFTI格式
-    包含1080名被试的个体FFA，被试ID；各FFA的名称(label)与值(key)
+    包含1080名被试的个体FFA，被试ID；各FFA的名称(name)与值(key)
     """
     subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
     data_lh_file = pjoin(work_dir, 'rois_v3_lh.nii.gz')
@@ -644,6 +647,10 @@ def create_FFA_prob(space='32k_fs_LR'):
     基于CIFTI文件中的个体FFA，为各FFA计算基于所有被试的概率图
     每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
     和calc_prob_map算出来的是一样的
+
+    Args:
+        space (str, optional): Defaults to '32k_fs_LR'.
+            surface mesh
     """
     src_file = pjoin(work_dir, f'HCP-YA_FFA-indiv.{space}.dlabel.nii')
     out_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
@@ -669,52 +676,49 @@ def create_FFA_prob(space='32k_fs_LR'):
     save2cifti(out_file, out_data, bms, map_names)
 
 
-def neaten_FFA_mpm(thr=0.25):
+def create_FFA_mpm(space='32k_fs_LR', thr=0.25):
     """
-    把自己手动定的MPM FFA整理成可以发表的样子
-    包含各FFA的最大概率图
-    将概率图中概率大于thr的那些顶点分配给具有较大概率的FFA
+    基于CIFTI文件中的概率图，为各FFA计算最大概率图。
+    包含各FFA的名称(name)与值(key)，以及对应的颜色(rgba)。
+    将概率图中概率大于thr的那些顶点分配给具有较大概率的FFA。
+    和get_mpm算出来是一样的
+
+    Args:
+        space (str, optional): Defaults to '32k_fs_LR'.
+            surface mesh
+        thr (float, optional): Defaults to 0.25.
+            threshold of probability
     """
-    import numpy as np
-    import nibabel as nib
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_hcp_ffa.lib.predefine import mmp_map_file
+    Hemi2stru = {
+        'L': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'R': 'CIFTI_STRUCTURE_CORTEX_RIGHT'}
+    src_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(work_dir, f'HCP-YA_FFA-MPM_thr-{int(thr*100)}.{space}.dlabel.nii')
 
-    bms = CiftiReader(mmp_map_file).brain_models()
-    idx2vtx_lh = list(bms[0].vertex_indices)
-    idx2vtx_rh = list(bms[1].vertex_indices)
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = reader.map_names()
 
-    data_lh = nib.load(pjoin(work_dir,
-                             f'MPM_v3_lh_{thr}_FFA.nii.gz')).get_fdata()[..., 0].T
-    data_rh = nib.load(pjoin(work_dir,
-                             f'MPM_v3_rh_{thr}_FFA.nii.gz')).get_fdata()[..., 0].T
-    data_lh = data_lh.astype(np.uint8)
-    data_rh = data_rh.astype(np.uint8) 
-    out_file = pjoin(work_dir, 'HCP-YA_FFA-MPM.dlabel.nii')
+    out_dict = {}
+    for Hemi, stru in Hemi2stru.items():
+        data, _, _ = reader.get_data(stru)
+        assert data.shape[0] == 2
+        out_dict[Hemi] = np.zeros((1, data.shape[1]), np.uint8)
+        idx_vec = np.any(data > thr, 0)
+        data = data[:, idx_vec]
+        assert np.all(data[0] != data[1])
+        mpm_tmp = np.zeros(data.shape[1], np.uint8)
+        mpm_tmp[data[0] > data[1]] = name2key[f'{Hemi}_{map_names[0]}']
+        mpm_tmp[data[0] < data[1]] = name2key[f'{Hemi}_{map_names[1]}']
+        out_dict[Hemi][0, idx_vec] = mpm_tmp
 
-    data_rh[data_rh == 2] = 1
-    data_rh[data_rh == 3] = 2
-    data_lh[data_lh == 3] = 4
-    data_lh[data_lh == 2] = 3
-    key2label = {0: 'None', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
-                 3: 'L_pFus-faces', 4: 'L_mFus-faces'}
-    key2color = {
-        0: (1.0, 1.0, 1.0, 0.0),
-        1: (0.0, 1.0, 0.0, 1.0),
-        2: (0.0, 0.0, 1.0, 1.0),
-        3: (0.0, 1.0, 0.0, 1.0),
-        4: (0.0, 0.0, 1.0, 1.0)
-    }
-    data_lh = data_lh[:, idx2vtx_lh]
-    data_rh = data_rh[:, idx2vtx_rh]
-    data = np.concatenate((data_lh, data_rh), axis=1, dtype=np.uint8)
-
-    assert data.shape[0] == 1
+    out_data = np.c_[out_dict['L'], out_dict['R']]
     lbl_tb = nib.cifti2.Cifti2LabelTable()
-    for key, lbl in key2label.items():
-        lbl_tb[key] = nib.cifti2.Cifti2Label(key, lbl, *key2color[key])
+    for key in np.unique(out_data):
+        key = int(key)
+        lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key], *key2rgba[key])
 
-    save2cifti(out_file, data, bms, label_tables=[lbl_tb])
+    save2cifti(out_file, out_data, bms, label_tables=[lbl_tb])
 
 
 def split_FFC():
@@ -808,10 +812,20 @@ if __name__ == '__main__':
     # get_mpm(hemi='rh')
     # roi2cifti(roi_type='FFA')
     # roi2cifti(roi_type='FSR')
+
+    # ===整理需要发布的数据===
     # neaten_FFA_indiv()
     # resave_FFA_indiv()
     # create_FFA_prob(space='32k_fs_LR')
-    create_FFA_prob(space='164k_fsavg_LR')
+    # create_FFA_prob(space='164k_fsavg_LR')
+    create_FFA_mpm(space='32k_fs_LR', thr=0)
+    create_FFA_mpm(space='32k_fs_LR', thr=0.1)
+    # create_FFA_mpm(space='32k_fs_LR', thr=0.25)
+    create_FFA_mpm(space='32k_fs_LR', thr=0.50)
+    create_FFA_mpm(space='164k_fsavg_LR', thr=0)
+    create_FFA_mpm(space='164k_fsavg_LR', thr=0.1)
+    create_FFA_mpm(space='164k_fsavg_LR', thr=0.25)
+    create_FFA_mpm(space='164k_fsavg_LR', thr=0.50)
     # neaten_FFA_mpm()
     # neaten_FFA_prob()
     # split_FFC()
