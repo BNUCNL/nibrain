@@ -639,6 +639,36 @@ def resave_FFA_indiv():
     save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
+def create_FFA_prob(space='32k_fs_LR'):
+    """
+    基于CIFTI文件中的个体FFA，为各FFA计算基于所有被试的概率图
+    每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
+    和calc_prob_map算出来的是一样的
+    """
+    src_file = pjoin(work_dir, f'HCP-YA_FFA-indiv.{space}.dlabel.nii')
+    out_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = ('pFus-faces', 'mFus-faces')
+    data = reader.get_data()
+
+    out_dict = {}
+    for key, name in key2name.items():
+        if key == 0:
+            continue
+        idx_arr = data == key
+        idx_vec = np.any(idx_arr, 1)
+        idx_arr = idx_arr[idx_vec]
+        out_dict[name] = np.mean(idx_arr, 0)
+
+    out_data = np.zeros((2, data.shape[1]), np.float64)
+    for map_idx, map_name in enumerate(map_names):
+        out_data[map_idx] = out_dict[f'L_{map_name}'] + out_dict[f'R_{map_name}']
+
+    save2cifti(out_file, out_data, bms, map_names)
+
+
 def neaten_FFA_mpm(thr=0.25):
     """
     把自己手动定的MPM FFA整理成可以发表的样子
@@ -685,37 +715,6 @@ def neaten_FFA_mpm(thr=0.25):
         lbl_tb[key] = nib.cifti2.Cifti2Label(key, lbl, *key2color[key])
 
     save2cifti(out_file, data, bms, label_tables=[lbl_tb])
-
-
-def neaten_FFA_prob():
-    """
-    把自己手动定的FFA概率图整理成可以发表的样子
-    包含各FFA基于所有被试得到的概率图
-    每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
-    每个顶点的值代表该顶点属于对应FFA的概率（隐晦表达）
-    """
-    import numpy as np
-    import nibabel as nib
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_hcp_ffa.lib.predefine import mmp_map_file
-
-    bms = CiftiReader(mmp_map_file).brain_models()
-    idx2vtx_lh = list(bms[0].vertex_indices)
-    idx2vtx_rh = list(bms[1].vertex_indices)
-
-    data_lh = nib.load(pjoin(work_dir,
-                             'prob_maps_v3_lh.nii.gz')).get_fdata().squeeze().T
-    data_rh = nib.load(pjoin(work_dir,
-                             'prob_maps_v3_rh.nii.gz')).get_fdata().squeeze().T 
-    out_file = pjoin(work_dir, 'HCP-YA_FFA-prob.dscalar.nii')
-
-    map_indices = [1, 2]
-    map_names = ('pFus-faces', 'mFus-faces')
-    data_lh = data_lh[map_indices][:, idx2vtx_lh]
-    data_rh = data_rh[map_indices][:, idx2vtx_rh]
-    data = np.concatenate((data_lh, data_rh), axis=1)
-
-    save2cifti(out_file, data, bms, map_names)
 
 
 def split_FFC():
@@ -810,7 +809,9 @@ if __name__ == '__main__':
     # roi2cifti(roi_type='FFA')
     # roi2cifti(roi_type='FSR')
     # neaten_FFA_indiv()
-    resave_FFA_indiv()
+    # resave_FFA_indiv()
+    # create_FFA_prob(space='32k_fs_LR')
+    create_FFA_prob(space='164k_fsavg_LR')
     # neaten_FFA_mpm()
     # neaten_FFA_prob()
     # split_FFC()
