@@ -56,9 +56,9 @@ def count_subject():
         print(f"{gid2name[gid]} ({'/'.join(hemis)}): {'/'.join(n_subjs)}")
 
 
-# ---old---
 def roi_stats(gid=1, hemi='lh'):
     import numpy as np
+    import pandas as pd
     import nibabel as nib
     import pickle as pkl
     from cxy_hcp_ffa.lib.predefine import roi2label
@@ -66,7 +66,7 @@ def roi_stats(gid=1, hemi='lh'):
 
     # inputs
     rois = ('IOG-face', 'pFus-face', 'mFus-face')
-    gid_file = pjoin(work_dir, f'group_id_{hemi}.npy')
+    gid_file = pjoin(work_dir, 'group_id_v2_012.csv')
     roi_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
                                f'rois_v3_{hemi}.nii.gz')
 
@@ -75,7 +75,8 @@ def roi_stats(gid=1, hemi='lh'):
     prob_maps_file = pjoin(work_dir, f'prob_maps_{gid}_{hemi}.nii.gz')
 
     # load
-    gid_idx_vec = np.load(gid_file) == gid
+    df = pd.read_csv(gid_file)
+    gid_idx_vec = np.array(df[hemi]) == gid
     roi_maps = nib.load(roi_file).get_data().squeeze().T[gid_idx_vec]
 
     # prepare
@@ -256,11 +257,11 @@ def plot_prob_map_similarity():
 if __name__ == '__main__':
     # merge_group()
     # count_subject()
-    npy2csv(
-        lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),
-        rh_file=pjoin(work_dir, 'old_group_id_rh.npy'),
-        out_file=pjoin(work_dir, 'old_group_id.csv')
-    )
+    # npy2csv(
+    #     lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),
+    #     rh_file=pjoin(work_dir, 'old_group_id_rh.npy'),
+    #     out_file=pjoin(work_dir, 'old_group_id.csv')
+    # )
     # npy2csv(
     #     lh_file=pjoin(work_dir, 'group_id_lh_v2.npy'),
     #     rh_file=pjoin(work_dir, 'group_id_rh_v2.npy'),
@@ -272,7 +273,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'group_id_v2_merged.csv')
     # )
 
-    # old
     # roi_stats(gid=0, hemi='lh')
     # roi_stats(gid=0, hemi='rh')
     # roi_stats(gid=1, hemi='lh')
@@ -285,5 +285,5 @@ if __name__ == '__main__':
     # plot_roi_info(gid=1, hemi='rh')
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
-    # calc_prob_map_similarity()
-    # plot_prob_map_similarity()
+    calc_prob_map_similarity()
+    plot_prob_map_similarity()

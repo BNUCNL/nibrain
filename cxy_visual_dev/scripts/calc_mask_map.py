@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
-    mmp_map_file
+    mmp_map_file, s1200_avg_RFsize, s1200_avg_R2
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -182,11 +182,21 @@ if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
-    #     data_file=pjoin(anal_dir, 'summary_map/HCPY-face_mean.dscalar.nii'),
+    #     data_file=s1200_avg_RFsize,
     #     mask=mask,
-    #     out_file=pjoin(work_dir, 'HCPY-face_mean_MMP-vis3.dscalar.nii')
+    #     out_file=pjoin(work_dir, 'S1200-avg-RFsize_MMP-vis3.dscalar.nii')
     # )
 
-    make_mask1()
+    # make_mask1()
     # make_mask2()
     # make_mask3()
+
+    atlas = Atlas('HCP-MMP')
+    R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+    mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    mask_maps(
+        data_file=pjoin(anal_dir,
+                        'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+        mask=np.logical_and(R2_mask, mask),
+        out_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_R2.dscalar.nii')
+    )

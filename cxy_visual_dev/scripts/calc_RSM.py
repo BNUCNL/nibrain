@@ -8,7 +8,7 @@ from scipy.stats import pearsonr
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, dataset_name2info
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
 from cxy_visual_dev.lib.algo import cat_data_from_cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -54,18 +54,16 @@ def calc_pearson_r_p(data1, data2, nan_mode=False):
     return r_arr, p_arr
 
 
-def calc_RSM1(mask, out_file):
+def calc_RSM1(src_file, mask, out_file):
     """
     计算PCA的C1, C2; distFromCalcSulc; Curvature; VertexArea;
     Eccentricity; PolarAngle; RFsize; 以及
     周明的PC1~4之间的相关矩阵。
     """
-    map_PCA = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_PCA-subj.dscalar.nii'
-    )).get_fdata()[:2, mask]
+    map_PCA = nib.load(src_file).get_fdata()[:2, mask]
 
     map_dist = nib.load(pjoin(
-        anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
+        anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
 
     reader = CiftiReader(s1200_avg_curv)
@@ -89,7 +87,7 @@ def calc_RSM1(mask, out_file):
     maps = np.concatenate([map_PCA, map_dist, map_curv, map_va,
                            map_ecc, map_ang, map_rfs, map_zm], 0)
     map_names = (
-        'PCA-C1', 'PCA-C2', 'distFromCalcSulc', 'Curvature', 'VertexArea',
+        'PCA-C1', 'PCA-C2', 'distFromOP', 'Curvature', 'VertexArea',
         'Eccentricity', 'Angle', 'RFsize', 'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
 
     data = {'row_name': map_names, 'col_name': map_names}
@@ -136,19 +134,27 @@ if __name__ == '__main__':
     # rois_R = get_rois('MMP-vis2-R')
     # rois_LR = rois_L + rois_R
 
-    # >>>HCP-MMP-visual2 mask
-    # mask_LR = atlas.get_mask(rois_LR)[0]
-    # calc_RSM1(
-    #     mask=mask_LR,
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-LR.pkl')
+    # >>>MMP-vis3-R mask
+    # atlas = Atlas('HCP-MMP')
+    # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+    # mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    # src_file = pjoin(
+    #     anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
     # )
     # calc_RSM1(
-    #     mask=np.logical_and(R2_mask, mask_LR),
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-LR_R2.pkl')
+    #     src_file=src_file, mask=mask,
+    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R.pkl')
     # )
-    # HCP-MMP-visual2 mask<<<
+    # calc_RSM1(
+    #     src_file=src_file, mask=np.logical_and(R2_mask, mask),
+    #     out_file=pjoin(work_dir, 'RSM_MMP-vis3-R_R2.pkl')
+    # )
+    # MMP-vis3-R mask<<<
 
     # >>>HCP-MMP-visual2早期及其它视觉mask
+    # src_file = pjoin(
+    #     anal_dir, 'decomposition/HCPY-M+T_MMP-vis2-LR_zscore1-split_PCA-subj.dscalar.nii'
+    # )
     # rois_early = get_rois('MMP-vis2-G1') + get_rois('MMP-vis2-G2')
     # print('rois_early:', rois_early)
     # rois_early_L = [f'L_{roi}' for roi in rois_early]
@@ -178,35 +184,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-later-LR_R2.pkl')
     # )
     # HCP-MMP-visual2早期及其它视觉mask<<<
-
-    # >>>HCP-MMP-visual2早期2及其它视觉mask
-    # rois_early2_L = ['L_V1', 'L_V2', 'L_V3']
-    # rois_early2_R = ['R_V1', 'R_V2', 'R_V3']
-    # rois_early2_LR = rois_early2_L + rois_early2_R
-
-    # mask_early2_LR = atlas.get_mask(rois_early2_LR)[0]
-    # calc_RSM1(
-    #     mask=mask_early2_LR,
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-early2-LR.pkl')
-    # )
-    # calc_RSM1(
-    #     mask=np.logical_and(R2_mask, mask_early2_LR),
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-early2-LR_R2.pkl')
-    # )
-
-    # rois_later2_LR = rois_LR.copy()
-    # for roi in rois_early2_LR:
-    #     rois_later2_LR.remove(roi)
-    # mask_later2_LR = atlas.get_mask(rois_later2_LR)[0]
-    # calc_RSM1(
-    #     mask=mask_later2_LR,
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-later2-LR.pkl')
-    # )
-    # calc_RSM1(
-    #     mask=np.logical_and(R2_mask, mask_later2_LR),
-    #     out_file=pjoin(work_dir, 'RSM_MMP-vis2-later2-LR_R2.pkl')
-    # )
-    # HCP-MMP-visual2早期2及其它视觉mask<<<
 
     # >>>HCP-MMP-visual2 3+16+17+18 groups (dorsal)
     # rois_dorsal = get_rois('MMP-vis2-G3') + get_rois('MMP-vis2-G16') +\
@@ -264,4 +241,26 @@ if __name__ == '__main__':
     # )
     # HCP-MMP-visual2's No.5 group (middle)<<<
 
-    calc_RSM2()
+    # >>>MMP-vis3-R PC1层级mask
+    N = 2
+    R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+    pc1_mask = nib.load(pjoin(
+        anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
+    )).get_fdata()[0]
+    src_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )
+
+    for n in range(1, N+1):
+        mask = pc1_mask == n
+        calc_RSM1(
+            src_file=src_file, mask=mask,
+            out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}.pkl')
+        )
+        calc_RSM1(
+            src_file=src_file, mask=np.logical_and(R2_mask, mask),
+            out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}_R2.pkl')
+        )
+    # MMP-vis3-R PC1层级mask<<<
+
+    # calc_RSM2()
