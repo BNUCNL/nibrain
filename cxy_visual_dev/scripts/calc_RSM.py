@@ -5,6 +5,7 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
+from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
@@ -127,6 +128,57 @@ def calc_RSM2():
         pkl.dump(out_dict, open(out_file.format(meas_name, age), 'wb'))
 
 
+def calc_RSM3():
+    """
+    计算PC1和PC2的权重和HCPYA所有类型为数值的行为数据的相关
+    """
+    pc_weight_abs = True  # 在求相关之前，先把权重取绝对值，这个值越大可以，对梯度贡献越大（无论正负贡献）
+    pc_names = ('C1', 'C2')
+    weight_m_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'
+    )
+    weight_t_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv'
+    )
+    beh_file1 = '/nfs/m1/hcp/S1200_behavior.csv'
+    beh_file2 = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    if pc_weight_abs:
+        out_file = pjoin(work_dir, 'HCPY_PC12-abs-corr-beh.pkl')
+    else:
+        out_file = pjoin(work_dir, 'HCPY_PC12-corr-beh.pkl')
+
+    # get all numeric data
+    beh_df1 = pd.read_csv(beh_file1)
+    beh_df2 = pd.read_csv(beh_file2)
+    assert np.all(beh_df1['Subject'] == beh_df2['Subject'])
+    cols1 = [i for i in beh_df1.columns if is_numeric_dtype(beh_df1[i])]
+    cols2 = [i for i in beh_df2.columns if is_numeric_dtype(beh_df2[i])]
+    cols2.remove('Subject')
+    beh_arr = np.c_[np.array(beh_df1[cols1], np.float64),
+                    np.array(beh_df2[cols2], np.float64)]
+    cols = cols1 + cols2
+
+    # limited in 1096 subjects
+    subj_ids_beh = beh_df1['Subject'].to_list()
+    info_df = pd.read_csv(info_file)
+    subj_indices = [subj_ids_beh.index(i) for i in info_df['subID']]
+    beh_arr = beh_arr[subj_indices].T
+
+    # get pc1 and pc2
+    weight_m_df = pd.read_csv(weight_m_file, usecols=pc_names)
+    weight_t_df = pd.read_csv(weight_t_file, usecols=pc_names)
+    weight_arr = np.c_[np.array(weight_m_df), np.array(weight_t_df)].T
+    if pc_weight_abs:
+        weight_arr = np.abs(weight_arr)
+    rows = [f'{i}_M' for i in pc_names] + [f'{i}_T' for i in pc_names]
+
+    # calculate correlation
+    data = {'row_name': rows, 'col_name': cols}
+    data['r'], data['p'] = calc_pearson_r_p(weight_arr, beh_arr, True)
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
@@ -242,25 +294,26 @@ if __name__ == '__main__':
     # HCP-MMP-visual2's No.5 group (middle)<<<
 
     # >>>MMP-vis3-R PC1层级mask
-    N = 2
-    R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-    pc1_mask = nib.load(pjoin(
-        anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
-    )).get_fdata()[0]
-    src_file = pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )
+    # N = 2
+    # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+    # pc1_mask = nib.load(pjoin(
+    #     anal_dir, f'mask_map/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_N{N}.dlabel.nii'
+    # )).get_fdata()[0]
+    # src_file = pjoin(
+    #     anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    # )
 
-    for n in range(1, N+1):
-        mask = pc1_mask == n
-        calc_RSM1(
-            src_file=src_file, mask=mask,
-            out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}.pkl')
-        )
-        calc_RSM1(
-            src_file=src_file, mask=np.logical_and(R2_mask, mask),
-            out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}_R2.pkl')
-        )
+    # for n in range(1, N+1):
+    #     mask = pc1_mask == n
+    #     calc_RSM1(
+    #         src_file=src_file, mask=mask,
+    #         out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}.pkl')
+    #     )
+    #     calc_RSM1(
+    #         src_file=src_file, mask=np.logical_and(R2_mask, mask),
+    #         out_file=pjoin(work_dir, f'RSM_MMP-vis3-R_PC1-N{N}-{n}_R2.pkl')
+    #     )
     # MMP-vis3-R PC1层级mask<<<
 
     # calc_RSM2()
+    calc_RSM3()
