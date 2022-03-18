@@ -179,24 +179,34 @@ def make_mask3():
 
 
 if __name__ == '__main__':
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'S1200-avg-RFsize_MMP-vis3.dscalar.nii')
     # )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'AFF/HCPY-aff.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-aff_MMP-vis3.dscalar.nii')
+    )
+    mask_maps(
+        data_file=pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
+    )
 
     # make_mask1()
     # make_mask2()
     # make_mask3()
 
-    atlas = Atlas('HCP-MMP')
-    R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-    mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
-    mask_maps(
-        data_file=pjoin(anal_dir,
-                        'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        mask=np.logical_and(R2_mask, mask),
-        out_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_R2.dscalar.nii')
-    )
+    # atlas = Atlas('HCP-MMP')
+    # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+    # mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    # mask_maps(
+    #     data_file=pjoin(anal_dir,
+    #                     'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     mask=np.logical_and(R2_mask, mask),
+    #     out_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_R2.dscalar.nii')
+    # )
