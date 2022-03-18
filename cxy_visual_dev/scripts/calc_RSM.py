@@ -179,6 +179,30 @@ def calc_RSM3():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM4(a_type='aff'):
+    """
+    计算PC1,PC2，和各频段震荡幅度map的相关
+    """
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    pc_names = ('C1', 'C2')
+    pc_file = pjoin(
+        anal_dir,
+        'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )
+    aff_file = pjoin(anal_dir, f'AFF/HCPY-{a_type}.dscalar.nii')
+    out_file = pjoin(work_dir, f'HCPY_PC12-corr-{a_type}.pkl')
+
+    map_PCA = nib.load(pc_file).get_fdata()[:2, mask]
+    reader = CiftiReader(aff_file)
+    map_aff = reader.get_data()[:, :LR_count_32k][:, mask]
+
+    # calculate correlation
+    data = {'row_name': pc_names, 'col_name': reader.map_names()}
+    data['r'], data['p'] = calc_pearson_r_p(map_PCA, map_aff)
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
@@ -316,4 +340,6 @@ if __name__ == '__main__':
     # MMP-vis3-R PC1层级mask<<<
 
     # calc_RSM2()
-    calc_RSM3()
+    # calc_RSM3()
+    calc_RSM4(a_type='aff')
+    calc_RSM4(a_type='faff')
