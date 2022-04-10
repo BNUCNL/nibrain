@@ -190,45 +190,71 @@ if __name__ == '__main__':
     #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
     # )
 
-    # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）
-    info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
-    ages = np.array(info_df['age in years'])
-    map_mask = np.ones_like(ages, bool)
-    for age in [5, 6, 7]:
-        idx_vec = ages == age
-        print(np.sum(idx_vec))
-        map_mask[idx_vec] = False
+    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
+    # 分别对myelin做空间PCA
     atlas = Atlas('HCP-MMP')
     decompose(
-        fpaths=[pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii')],
-        cat_shape=(1, 1), method='PCA', axis=1,
-        csv_files=[pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.csv')],
-        cii_files=[pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.dscalar.nii')],
-        pkl_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.pkl'),
-        vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]], zscore0='split',
-        map_mask=map_mask, n_component=20, random_state=7
+        fpaths=[s1200_1096_myelin], cat_shape=(1, 1),
+        method='PCA', axis=0,
+        csv_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.csv')],
+        cii_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+        pkl_file=pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+        vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
     )
+
+    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
+    # 分别对thickness做空间PCA
+    atlas = Atlas('HCP-MMP')
+    decompose(
+        fpaths=[s1200_1096_thickness], cat_shape=(1, 1),
+        method='PCA', axis=0,
+        csv_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.csv')],
+        cii_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+        pkl_file=pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+        vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    )
+
+    # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）
+    # info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
+    # ages = np.array(info_df['age in years'])
+    # map_mask = np.ones_like(ages, bool)
+    # for age in [5, 6, 7]:
+    #     idx_vec = ages == age
+    #     print(np.sum(idx_vec))
+    #     map_mask[idx_vec] = False
+    # atlas = Atlas('HCP-MMP')
+    # decompose(
+    #     fpaths=[pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii')],
+    #     cat_shape=(1, 1), method='PCA', axis=1,
+    #     csv_files=[pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.csv')],
+    #     cii_files=[pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-vtx.pkl'),
+    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]], zscore0='split',
+    #     map_mask=map_mask, n_component=20, random_state=7
+    # )
     # 在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）<<<
 
     # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的ROI降维（分模态）
-    info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
-    ages = np.array(info_df['age in years'])
-    row_mask = np.ones_like(ages, bool)
-    for age in [5, 6, 7]:
-        idx_vec = ages == age
-        print(np.sum(idx_vec))
-        row_mask[idx_vec] = False
-    pca_csv(
-        fpath=pjoin(anal_dir, 'ROI_scalar/HCPD-thickness_HCP-MMP.csv'),
-        out_csv1=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_Y.csv'),
-        out_csv2=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.csv'),
-        out_pkl=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI.pkl'),
-        columns=get_rois('MMP-vis3-R'), row_mask=row_mask, zscore0=True,
-        n_component=20, random_state=7
-    )
-    csv2cifti(
-        src_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.csv'),
-        rois='all', atlas_name='HCP-MMP',
-        out_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.dscalar.nii')
-    )
+    # info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
+    # ages = np.array(info_df['age in years'])
+    # row_mask = np.ones_like(ages, bool)
+    # for age in [5, 6, 7]:
+    #     idx_vec = ages == age
+    #     print(np.sum(idx_vec))
+    #     row_mask[idx_vec] = False
+    # pca_csv(
+    #     fpath=pjoin(anal_dir, 'ROI_scalar/HCPD-thickness_HCP-MMP.csv'),
+    #     out_csv1=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_Y.csv'),
+    #     out_csv2=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.csv'),
+    #     out_pkl=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI.pkl'),
+    #     columns=get_rois('MMP-vis3-R'), row_mask=row_mask, zscore0=True,
+    #     n_component=20, random_state=7
+    # )
+    # csv2cifti(
+    #     src_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.csv'),
+    #     rois='all', atlas_name='HCP-MMP',
+    #     out_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.dscalar.nii')
+    # )
     # 在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的ROI降维（分模态）<<<
