@@ -392,11 +392,42 @@ def calc_RSM4(a_type='aff'):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM5():
+    """
+    计算PC1, PC2和eccentricity在每个视觉区域内的相关
+    """
+    n_pc = 2
+    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
+    map_pcs = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:n_pc]
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+    out_file = pjoin(work_dir, 'RSM5_PC12-corr-ECC_area.pkl')
+
+    atlas = Atlas('HCP-MMP')
+    rois_vis = get_rois('MMP-vis3-R')
+    n_roi = len(rois_vis)
+
+    rs = np.zeros((n_pc, n_roi))
+    ps = np.zeros((n_pc, n_roi))
+    for pc_idx in range(n_pc):
+        for roi_idx, roi in enumerate(rois_vis):
+            mask = atlas.get_mask(roi)[0]
+            roi_pc = map_pcs[pc_idx, mask]
+            roi_ecc = map_ecc[mask]
+            r, p = pearsonr(roi_pc, roi_ecc)
+            rs[pc_idx, roi_idx] = r
+            ps[pc_idx, roi_idx] = p
+
+    data = {'row_name': pc_names, 'col_name': rois_vis, 'r': rs, 'p': ps}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
-    calc_RSM1_main(mask_name='MMP-vis3-R-early+later')
-    calc_RSM1_main(mask_name='MMP-vis3-R-early2+later2')
-    calc_RSM1_main(mask_name='MMP-vis3-R-V1/2/3/4')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-early+later')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-early2+later2')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-V1/2/3/4')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -424,3 +455,4 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM4(a_type='aff')
     # calc_RSM4(a_type='faff')
+    calc_RSM5()
