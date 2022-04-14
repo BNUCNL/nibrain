@@ -423,6 +423,56 @@ def calc_RSM5():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM6():
+    """
+    计算PC1, PC2和eccentricity在视觉区域间的相关
+    all: 使用所有的视觉区域
+    ex(V1~3): 除V1~3以外的视觉区域
+    ex(V1~4): 除V1~4以外的视觉区域
+    ex(V1~4+V3A): 除V1~4以及V3A以外的视觉区域
+    """
+    n_pc = 2
+    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
+    map_pcs = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:n_pc]
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+    out_file = pjoin(work_dir, 'RSM6_PC12-corr-ECC_area-between.pkl')
+
+    atlas = Atlas('HCP-MMP')
+    rois_vis = get_rois('MMP-vis3-R')
+    col_names = ['all', 'ex(V1~3)', 'ex(V1~4)', 'ex(V1~4+V3A)']
+    col2exROIs = {
+        'ex(V1~3)': ['R_V1', 'R_V2', 'R_V3'],
+        'ex(V1~4)': ['R_V1', 'R_V2', 'R_V3', 'R_V4'],
+        'ex(V1~4+V3A)': ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V3A']
+    }
+    n_col = len(col_names)
+
+    rs = np.zeros((n_pc, n_col))
+    ps = np.zeros((n_pc, n_col))
+    for pc_idx in range(n_pc):
+        for col_idx, col in enumerate(col_names):
+            if col == 'all':
+                rois = rois_vis
+            else:
+                rois = [i for i in rois_vis if i not in col2exROIs[col]]
+            n_roi = len(rois)
+            print('n_roi:', n_roi)
+            pc_vec = np.zeros(n_roi)
+            ecc_vec = np.zeros(n_roi)
+            for roi_idx, roi in enumerate(rois):
+                mask = atlas.get_mask(roi)[0]
+                pc_vec[roi_idx] = np.mean(map_pcs[pc_idx, mask])
+                ecc_vec[roi_idx] = np.mean(map_ecc[mask])
+            r, p = pearsonr(pc_vec, ecc_vec)
+            rs[pc_idx, col_idx] = r
+            ps[pc_idx, col_idx] = p
+
+    data = {'row_name': pc_names, 'col_name': col_names, 'r': rs, 'p': ps}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_RSM1_main(mask_name='MMP-vis3-R')
     # calc_RSM1_main(mask_name='MMP-vis3-R-early+later')
@@ -455,4 +505,5 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM4(a_type='aff')
     # calc_RSM4(a_type='faff')
-    calc_RSM5()
+    # calc_RSM5()
+    calc_RSM6()
