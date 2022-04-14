@@ -57,7 +57,7 @@ def calc_pearson_r_p(data1, data2, nan_mode=False):
 
 def calc_RSM1(src_file, mask, out_file):
     """
-    计算PCA的C1, C2; distFromCS; distFromOP; distFromMT;
+    计算PCA的C1, C2; distFromCS; distFromCS-split; distFromOP; distFromMT;
     Curvature; VertexArea; Eccentricity; PolarAngle; RFsize;
     以及周明的PC1~4之间的相关矩阵。
     """
@@ -65,6 +65,9 @@ def calc_RSM1(src_file, mask, out_file):
 
     map_dist_cs = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_cs1 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
     map_dist_op = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'
@@ -92,10 +95,10 @@ def calc_RSM1(src_file, mask, out_file):
     map_zm = nib.load(pjoin(proj_dir, 'data/space/zm_PCs.dscalar.nii')).get_fdata()[:, mask]
 
     maps = np.concatenate([
-        map_PCA, map_dist_cs, map_dist_op, map_dist_mt,
+        map_PCA, map_dist_cs, map_dist_cs1, map_dist_op, map_dist_mt,
         map_curv, map_va, map_ecc, map_ang, map_rfs, map_zm], 0)
     map_names = (
-        'PCA-C1', 'PCA-C2', 'distFromCS', 'distFromOP', 'distFromMT',
+        'PCA-C1', 'PCA-C2', 'distFromCS', 'distFromCS-split', 'distFromOP', 'distFromMT',
         'Curvature', 'VertexArea', 'Eccentricity', 'Angle', 'RFsize',
         'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
 
@@ -474,7 +477,7 @@ def calc_RSM6():
 
 
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
     # calc_RSM1_main(mask_name='MMP-vis3-R-early+later')
     # calc_RSM1_main(mask_name='MMP-vis3-R-early2+later2')
     # calc_RSM1_main(mask_name='MMP-vis3-R-V1/2/3/4')
@@ -506,4 +509,4 @@ if __name__ == '__main__':
     # calc_RSM4(a_type='aff')
     # calc_RSM4(a_type='faff')
     # calc_RSM5()
-    calc_RSM6()
+    # calc_RSM6()
