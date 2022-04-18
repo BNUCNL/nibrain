@@ -70,11 +70,11 @@ if __name__ == '__main__':
     #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus.label')),
     #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii')
     # )
-    calc_gdist_map_from_src(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus_split.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus_split.label')),
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus-split.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus_split.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_CalcarineSulcus_split.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus-split.dscalar.nii')
+    # )
 
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_MT.label')),
@@ -89,18 +89,18 @@ if __name__ == '__main__':
     # )
 
     # 计算每条radial line的测地距离map
-    # fpath = pjoin(anal_dir, 'variation/MMP-vis3_RadialLine-R.pkl')
-    # out_file = pjoin(work_dir, 'gdist_src-MMP-vis3_RadialLine-R.dscalar.nii')
+    fpath = pjoin(anal_dir, 'variation/MMP-vis3_RadialLine1-CS2_R.pkl')
+    out_file = pjoin(work_dir, 'gdist_src-MMP-vis3_RadialLine1-CS2_R.dscalar.nii')
 
-    # lines = pkl.load(open(fpath, 'rb'))
-    # n_line = len(lines)
-    # out_maps = np.zeros((n_line, LR_count_32k), np.float64)
-    # map_names = []
-    # for idx, line in enumerate(lines):
-    #     time1 = time.time()
-    #     out_maps[idx] = calc_gdist_map_from_src(
-    #         src_lh=None, src_rh=line)
-    #     map_names.append(str(line[-1]))
-    #     print(f'Finished {idx+1}/{n_line}: cost {time.time() - time1} seconds')
-    # save2cifti(out_file, out_maps,
-    #            CiftiReader(mmp_map_file).brain_models(), map_names)
+    lines = pkl.load(open(fpath, 'rb'))
+    n_line = len(lines)
+    out_maps = np.zeros((n_line, LR_count_32k), np.float64)
+    map_names = []
+    for idx, line in enumerate(lines):
+        time1 = time.time()
+        out_maps[idx] = calc_gdist_map_from_src(
+            src_lh=None, src_rh=line)
+        map_names.append(str(line[-1]))
+        print(f'Finished {idx+1}/{n_line}: cost {time.time() - time1} seconds')
+    save2cifti(out_file, out_maps,
+               CiftiReader(mmp_map_file).brain_models(), map_names)
