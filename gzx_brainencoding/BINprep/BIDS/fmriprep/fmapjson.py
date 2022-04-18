@@ -15,20 +15,29 @@ see like: https://neurostars.org/t/how-to-best-insert-intendedfor-field-in-jsons
 @author: gongzhengxin
 """
 
-import os
+import os, argparse
 from os.path import join as pjoin
 import json
 
+
+# argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("fold", type=str, help="path fetch subjects data")
+parser.add_argument("--subject", type=str, nargs="+", help="subjects")
+args = parser.parse_args()
 # !!!======manually set======
 # baisc infomation about dataset
 bids_fold = '/nfs/m1/BrainImageNet/fMRIData/rawdata'
 #subjects = ['core{:02d}'.format(i+1) for i in range(10)]
-subjects = ['core02']
+if args.subject:
+    subjects = args.subject
+else:
+    subjects = [_.replace("sub", "") for _ in os.listdir(args.fold) if "sub-" in _]
 
 # ===========================
 
 # %% []
-# load fold info
+# initial fold info
 sessions = {name:[] for name in (subjects)} # {sub : [session]}
 jsonfiles = {name:{sesname:[] for sesname in sessions[name]} for name in (subjects)} # {sub:{session:[files]}}
 intendedfornii = {name:{sesname:[] for sesname in sessions[name]} for name in (subjects)} # {sub:{session:[files]}}
@@ -65,5 +74,5 @@ for sub, ses_fold in jsonfiles.items():
             # save out
             with open(file_path ,'w') as datafile:
                 json.dump(data,datafile)
-    print('%s done' % sub)
+    print('[news] fill up json for %s ... done!' % sub)
 
