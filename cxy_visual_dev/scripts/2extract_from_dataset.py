@@ -3,8 +3,10 @@ import time
 import subprocess
 import numpy as np
 import pandas as pd
+import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.stats.stats import zscore
 from scipy.spatial.distance import cdist, pdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
@@ -558,6 +560,79 @@ def fc_strength_mine_merge():
     save2cifti(out_file, data, reader.brain_models(), subj_ids)
 
 
+def get_HCPY_rsfc_mat(hemi='rh'):
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
+    每个被试的4个run都先沿时间轴做zscore然后拼接在一起，来做
+    视觉皮层内的顶点与所有cortex顶点的连接矩阵。
+    最后得到跨被试平均的连接矩阵。
+    """
+    # prepare
+    Hemi = hemi2Hemi[hemi]
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    vis_name = f'MMP-vis3-{Hemi}'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_file = pjoin(work_dir, f'RSFC_{vis_name}2cortex.pkl')
+
+    # loading
+    offset, count = hemi2offset_count[hemi]
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    mask = mask[offset:offset+count]
+    mask_indices = np.where(mask)[0]
+    mask_indices_LR = mask_indices + offset
+    n_vtx = len(mask_indices)
+    df = pd.read_csv(info_file)
+    subj_ids = df['subID'].to_list()[:2]
+    n_subj = len(subj_ids)
+    df_ck = pd.read_csv(check_file, sep='\t')
+    subj_ids_1206 = df_ck['subID'].to_list()
+    ok_idx_vec = np.all(df_ck[runs] == 'ok=(1200, 91282)', 1)
+    n_tp = 1200
+    n_run = len(runs)
+
+    # start
+    rs = np.zeros((n_vtx, LR_count_32k))
+    n_subj_valid = 0
+    for subj_idx, subj_id in enumerate(subj_ids, 1):
+        time1 = time.time()
+
+        # check valid runs
+        subj_idx_1206 = subj_ids_1206.index(subj_id)
+        if not ok_idx_vec[subj_idx_1206]:
+            continue
+
+        # loop all runs
+        t_series_sub = np.zeros((LR_count_32k, n_run*n_tp))
+        for run_idx, run in enumerate(runs):
+            run_file = run_files.format(subj_id, run)
+            t_series_run = nib.load(run_file).get_fdata()
+            t_series_run = t_series_run[:, :LR_count_32k].T
+            t_series_run = zscore(t_series_run, 1)
+            s_idx = run_idx * n_tp
+            e_idx = (run_idx + 1) * n_tp
+            t_series_sub[:, s_idx:e_idx] = t_series_run
+        X1 = t_series_sub[mask_indices_LR, :]
+        rs_sub = 1 - cdist(X1, t_series_sub, 'correlation')
+        np.testing.assert_almost_equal(rs_sub[range(n_vtx), mask_indices_LR], 1)
+        np.testing.assert_almost_equal(np.sum(rs_sub[range(n_vtx), mask_indices_LR]), n_vtx)
+
+        rs = rs + rs_sub
+        n_subj_valid += 1
+        print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+
+    data = {'matrix': rs / n_subj_valid, 'row-idx_to_32k-fs-LR-idx': mask_indices_LR}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 def get_HCPY_alff():
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
@@ -852,4 +927,5 @@ if __name__ == '__main__':
     # get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='cortex')
     # get_HCPY_GBC_cortex_subcortex(metric='GBC', part='subcortex')
     # get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='subcortex')
-    get_HCPY_face()
+    # get_HCPY_face()
+    get_HCPY_rsfc_mat(hemi='rh')

@@ -107,6 +107,51 @@ def csv2cifti(src_file, rois, atlas_name, out_file):
                df.index.to_list())
 
 
+def pca_rsfc(
+    fpath, out_comp_file, out_weight_file, out_model_file,
+    zscore0=False, n_component=None, random_state=None
+):
+    """
+    Args:
+        fpath (str): a pickle file
+        out_comp_file (str): a .dscalar.nii file
+            shape=(n_component, LR_count_32k)
+        out_weight_file (str): a .dscalar.nii file
+            shape=(n_component, LR_count_32k)
+        out_model_file (str): a pkl file
+            fitted model
+        zscore0 (bool, optional): Default is False
+            If True, do zscore for each column
+        n_component (int, optional): the number of components
+        random_state (int, optional):
+    """
+    # prepare
+    data = pkl.load(open(fpath, 'rb'))
+    X = data['matrix']
+    if zscore0:
+        X = zscore(X, 0)
+    bms = CiftiReader(mmp_map_file).brain_models()
+
+    # calculate
+    transformer = PCA(n_components=n_component, random_state=random_state)
+    transformer.fit(X)
+    Y = transformer.transform(X)
+    if n_component is None:
+        n_component = Y.shape[1]
+    else:
+        assert n_component == Y.shape[1]
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
+
+    out_data1 = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+    out_data1[:, data['row-idx_to_32k-fs-LR-idx']] = Y.T
+    out_data2 = transformer.components_
+
+    # save
+    save2cifti(out_comp_file, out_data1, bms, component_names)
+    save2cifti(out_weight_file, out_data2, bms, component_names)
+    pkl.dump(transformer, open(out_model_file, 'wb'))
+
+
 if __name__ == '__main__':
     # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===
     # atlas = Atlas('HCP-MMP')
@@ -192,29 +237,29 @@ if __name__ == '__main__':
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 分别对myelin做空间PCA
-    atlas = Atlas('HCP-MMP')
-    decompose(
-        fpaths=[s1200_1096_myelin], cat_shape=(1, 1),
-        method='PCA', axis=0,
-        csv_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.csv')],
-        cii_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-        pkl_file=pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-        vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    )
+    # atlas = Atlas('HCP-MMP')
+    # decompose(
+    #     fpaths=[s1200_1096_myelin], cat_shape=(1, 1),
+    #     method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.csv')],
+    #     cii_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    # )
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 分别对thickness做空间PCA
-    atlas = Atlas('HCP-MMP')
-    decompose(
-        fpaths=[s1200_1096_thickness], cat_shape=(1, 1),
-        method='PCA', axis=0,
-        csv_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.csv')],
-        cii_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-        pkl_file=pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-        vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    )
+    # atlas = Atlas('HCP-MMP')
+    # decompose(
+    #     fpaths=[s1200_1096_thickness], cat_shape=(1, 1),
+    #     method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.csv')],
+    #     cii_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    # )
 
     # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）
     # info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
@@ -258,3 +303,18 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPD-T_MMP-vis3-R_zscore0_PCA-ROI_W.dscalar.nii')
     # )
     # 在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的ROI降维（分模态）<<<
+
+    # pca_rsfc(
+    # fpath=pjoin(proj_dir, 'data/HCP/RSFC_MMP-vis3-R2cortex.pkl'),
+    # out_comp_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_PCA-comp.dscalar.nii'),
+    # out_weight_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_PCA-weight.dscalar.nii'),
+    # out_model_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_PCA.pkl'),
+    # zscore0=False, n_component=20, random_state=7
+    # )
+    pca_rsfc(
+    fpath=pjoin(proj_dir, 'data/HCP/RSFC_MMP-vis3-R2cortex.pkl'),
+    out_comp_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-comp.dscalar.nii'),
+    out_weight_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-weight.dscalar.nii'),
+    out_model_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA.pkl'),
+    zscore0=True, n_component=20, random_state=7
+    )

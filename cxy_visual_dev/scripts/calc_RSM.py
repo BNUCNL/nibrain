@@ -58,8 +58,10 @@ def calc_pearson_r_p(data1, data2, nan_mode=False):
 def calc_RSM1(src_file, mask, out_file):
     """
     计算PCA的C1, C2; distFromCS; distFromCS-split; distFromOP; distFromMT;
-    Curvature; VertexArea; Eccentricity; PolarAngle; RFsize;
-    以及周明的PC1~4之间的相关矩阵。
+    Curvature; VertexArea; Eccentricity; PolarAngle; RFsize; 周明的PC1~4;
+    RSFC_MMP-vis3-R2cortex_PCA-comp和RSFC_MMP-vis3-R2cortex_PCA-weight的PC1~6;
+    RSFC_MMP-vis3-R2cortex_zscore_PCA-comp和RSFC_MMP-vis3-R2cortex_zscore_PCA-weight的PC1~6
+    之间的相关矩阵。
     """
     map_PCA = nib.load(src_file).get_fdata()[:2, mask]
 
@@ -93,14 +95,31 @@ def calc_RSM1(src_file, mask, out_file):
     map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_rfs = nib.load(s1200_avg_RFsize).get_fdata()[0, :LR_count_32k][mask][None, :]
     map_zm = nib.load(pjoin(proj_dir, 'data/space/zm_PCs.dscalar.nii')).get_fdata()[:, mask]
+    map_rsfc_comp = nib.load(pjoin(
+        anal_dir, 'decomposition/RSFC_MMP-vis3-R2cortex_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, mask]
+    map_rsfc_weight = nib.load(pjoin(
+        anal_dir, 'decomposition/RSFC_MMP-vis3-R2cortex_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, mask]
+    map_rsfc_zscore_comp = nib.load(pjoin(
+        anal_dir, 'decomposition/RSFC_MMP-vis3-R2cortex_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, mask]
+    map_rsfc_zscore_weight = nib.load(pjoin(
+        anal_dir, 'decomposition/RSFC_MMP-vis3-R2cortex_zscore_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, mask]
 
     maps = np.concatenate([
         map_PCA, map_dist_cs, map_dist_cs1, map_dist_op, map_dist_mt,
-        map_curv, map_va, map_ecc, map_ang, map_rfs, map_zm], 0)
+        map_curv, map_va, map_ecc, map_ang, map_rfs, map_zm, map_rsfc_comp,
+        map_rsfc_weight, map_rsfc_zscore_comp, map_rsfc_zscore_weight], 0)
     map_names = (
         'PCA-C1', 'PCA-C2', 'distFromCS', 'distFromCS-split', 'distFromOP', 'distFromMT',
         'Curvature', 'VertexArea', 'Eccentricity', 'Angle', 'RFsize',
         'ZM-PC1', 'ZM-PC2', 'ZM-PC3', 'ZM-PC4')
+    map_names = map_names + tuple(f'RSFC-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'RSFC-W{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'RSFC-zscore-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'RSFC-zscore-W{i}' for i in range(1, 7))
 
     data = {'row_name': map_names, 'col_name': map_names}
     data['r'], data['p'] = calc_pearson_r_p(maps, maps, True)
