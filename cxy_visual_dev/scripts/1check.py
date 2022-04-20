@@ -85,12 +85,18 @@ def check_grayordinates():
         assert brain_models[1].index_count == R_count_32k
 
     # HCPD rfMRI
+    # HCPA rfMRI
     # S1200_7T_Retinotopy Eccentricity
     # S1200_7T_Retinotopy Polar Angle
     # ZhouMing's PC1
     # S1200_997_tfMRI_ALLTASKS_level2
+    # S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr
     fpaths = (
         '/nfs/e1/HCPD/fmriresults01/HCD2133433_V1_MR/'
+        'MNINonLinear/Results/rfMRI_REST1_AP/'
+        'rfMRI_REST1_AP_Atlas_MSMAll_hp0_clean.dtseries.nii',
+
+        '/nfs/e1/HCPA/fmriresults01/HCA9090779_V1_MR/'
         'MNINonLinear/Results/rfMRI_REST1_AP/'
         'rfMRI_REST1_AP_Atlas_MSMAll_hp0_clean.dtseries.nii',
 
@@ -101,7 +107,9 @@ def check_grayordinates():
         pjoin(proj_dir, 'data/space/pc1.dtseries.nii'),
 
         '/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
-        'HCP_S1200_997_tfMRI_ALLTASKS_level2_cohensd_hp200_s2_MSMAll.dscalar.nii'
+        'HCP_S1200_997_tfMRI_ALLTASKS_level2_cohensd_hp200_s2_MSMAll.dscalar.nii',
+
+        '/nfs/m1/hcp/HCP_S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr.dconn.nii'
     )
     for fpath in fpaths:
         print(fpath)

@@ -1,5 +1,6 @@
 import os
 import time
+import gzip
 import subprocess
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats.stats import zscore
 from scipy.spatial.distance import cdist, pdist
+from sklearn.metrics import pairwise_distances
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
     mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
@@ -590,7 +592,7 @@ def get_HCPY_rsfc_mat(hemi='rh'):
     mask_indices_LR = mask_indices + offset
     n_vtx = len(mask_indices)
     df = pd.read_csv(info_file)
-    subj_ids = df['subID'].to_list()[:2]
+    subj_ids = df['subID'].to_list()[:2]  # 目前只做了前2个被试
     n_subj = len(subj_ids)
     df_ck = pd.read_csv(check_file, sep='\t')
     subj_ids_1206 = df_ck['subID'].to_list()
@@ -865,6 +867,50 @@ def get_HCPY_face():
     wf.close()
 
 
+def get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right'):
+    """
+    用HCP官方拼接好的时间序列来计算功能连接，例如：
+    /nfs/e1/HCPD/fmriresults01/HCD1363546_V1_MR/MNINonLinear/Results/rfMRI_REST/rfMRI_REST_Atlas_MSMAll_hp0_clean.dtseries.nii
+    /nfs/e1/HCPA/fmriresults01/HCA9090779_V1_MR/MNINonLinear/Results/rfMRI_REST/rfMRI_REST_Atlas_MSMAll_hp0_clean.dtseries.nii
+    当Hemi='R'时，计算右脑29716个顶点和所有grayordinate顶点的相关矩阵
+    并保存在/nfs/m1/HCPD/RSFC_matrix/RightCortex2Grayordinate或/nfs/m1/HCPA/RSFC_matrix/RightCortex2Grayordinate
+    当Hemi='L'时，计算右脑29696个顶点和所有grayordinate顶点的相关矩阵
+    并保存在/nfs/m1/HCPD/RSFC_matrix/LeftCortex2Grayordinate或/nfs/m1/HCPA/RSFC_matrix/LeftCortex2Grayordinate
+
+    References:
+    https://stackoverflow.com/questions/22400652/compress-numpy-arrays-efficiently
+    """
+    Hemi2offset_count = {
+        'Left': (L_offset_32k, L_count_32k),
+        'Right': (R_offset_32k, R_count_32k)
+    }
+    info_file = pjoin(work_dir, f'{dataset_name}_SubjInfo.csv')
+    data_file = '/nfs/e1/{dataset}/fmriresults01/{sid}_V1_MR/'\
+        'MNINonLinear/Results/rfMRI_REST/rfMRI_REST_Atlas_MSMAll_hp0_clean.dtseries.nii'
+    # out_file = '/nfs/m1/{dataset}/RSFC_matrix/{Hemi}Cortex2Grayordinate/{sid}.npy.gz'
+    out_file = '/nfs/m1/{dataset}/RSFC_matrix/{Hemi}Cortex2Grayordinate/{sid}.npy'
+
+    offset, count = Hemi2offset_count[Hemi]
+    info_df = pd.read_csv(info_file)
+    subj_ids = info_df['subID'][2:]
+    n_subj = subj_ids.shape[0]
+    for subj_idx, subj_id in enumerate(subj_ids, 1):
+        time1 = time.time()
+        data = nib.load(
+            data_file.format(dataset=dataset_name, sid=subj_id)).get_fdata()
+        data_hemi = data[:, offset:(offset+count)]
+        out_data = 1 - pairwise_distances(data_hemi.T, data.T, 'correlation', n_jobs=-4)
+        out_data = out_data.astype(np.float32, copy=False)
+        # wf = gzip.GzipFile(out_file.format(
+        #     dataset=dataset_name, Hemi=Hemi, sid=subj_id), "w")
+        # np.save(file=wf, arr=out_data)
+        # wf.close()
+        np.save(out_file.format(
+            dataset=dataset_name, Hemi=Hemi, sid=subj_id), out_data)
+        print(f'Finished {subj_id}-{subj_idx}/{n_subj}: '
+              f'cost {time.time() - time1} seconds.')
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -928,4 +974,6 @@ if __name__ == '__main__':
     # get_HCPY_GBC_cortex_subcortex(metric='GBC', part='subcortex')
     # get_HCPY_GBC_cortex_subcortex(metric='FC-strength', part='subcortex')
     # get_HCPY_face()
-    get_HCPY_rsfc_mat(hemi='rh')
+    # get_HCPY_rsfc_mat(hemi='rh')
+    get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
+    get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
