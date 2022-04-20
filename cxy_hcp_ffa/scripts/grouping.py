@@ -158,7 +158,7 @@ def calc_prob_map_similarity():
     # inputs
     hemis = ('lh', 'rh')
     gids = (0, 1, 2)
-    roi2idx = {'pFus-face': 1, 'mFus-face': 2}
+    roi2idx = {'pFus': 1, 'mFus': 2}
     prob_file = pjoin(work_dir, 'prob_maps_{}_{}.nii.gz')
 
     # outputs
@@ -174,12 +174,14 @@ def calc_prob_map_similarity():
             gid2prob_map[gid] = nib.load(
                 prob_file.format(gid, hemi)).get_fdata().squeeze().T
         for roi, prob_idx in roi2idx.items():
-            roi_dice = f"{hemi}_{roi.split('-')[0]}_dice"
-            roi_corr = f"{hemi}_{roi.split('-')[0]}_corr"
-            data[roi_dice] = np.zeros((n_gid, n_gid))
-            data[roi_corr] = np.zeros((n_gid, n_gid))
-            for idx1, gid1 in enumerate(gids):
-                for idx2, gid2 in enumerate(gids):
+            roi_dice = f"{hemi}_{roi}_dice"
+            roi_corr = f"{hemi}_{roi}_corr"
+            roi_corr_p = f"{hemi}_{roi}_corr_p"
+            data[roi_dice] = np.ones((n_gid, n_gid)) * np.nan
+            data[roi_corr] = np.ones((n_gid, n_gid)) * np.nan
+            data[roi_corr_p] = np.ones((n_gid, n_gid)) * np.nan
+            for idx1, gid1 in enumerate(gids[:-1]):
+                for idx2, gid2 in enumerate(gids[idx1+1:], idx1+1):
                     prob_map1 = gid2prob_map[gid1][prob_idx]
                     prob_map2 = gid2prob_map[gid2][prob_idx]
                     idx_map1 = prob_map1 != 0
@@ -187,9 +189,67 @@ def calc_prob_map_similarity():
                     idx_map = np.logical_and(idx_map1, idx_map2)
                     dice = 2 * np.sum(idx_map) / \
                         (np.sum(idx_map1) + np.sum(idx_map2))
-                    r = pearsonr(prob_map1[idx_map], prob_map2[idx_map])[0]
+                    r, p = pearsonr(prob_map1[idx_map], prob_map2[idx_map])
                     data[roi_dice][idx1, idx2] = dice
+                    data[roi_dice][idx2, idx1] = dice
                     data[roi_corr][idx1, idx2] = r
+                    data[roi_corr][idx2, idx1] = r
+                    data[roi_corr_p][idx1, idx2] = p
+                    data[roi_corr_p][idx2, idx1] = p
+
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def calc_prob_map_similarity1():
+    """
+    为每个ROI概率图计算组间pearson相关
+    限制在MPM内
+    """
+    import numpy as np
+    import nibabel as nib
+    import pickle as pkl
+    from scipy.stats import pearsonr
+    from cxy_hcp_ffa.lib.predefine import roi2label
+
+    # inputs
+    hemis = ('lh', 'rh')
+    gids = (0, 1, 2)
+    roi2idx = {'pFus-face': 1, 'mFus-face': 2}
+    prob_file = pjoin(work_dir, 'prob_maps_{}_{}.nii.gz')
+    mpm_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/MPM_v3_{}_0.25.nii.gz')
+
+    # outputs
+    out_file = pjoin(work_dir, 'prob_map_similarity1.pkl')
+
+    # calculate
+    n_gid = len(gids)
+    data = {'shape': 'n_gid x n_gid',
+            'gid': gids}
+    for hemi in hemis:
+        gid2prob_map = {}
+        for gid in gids:
+            gid2prob_map[gid] = nib.load(
+                prob_file.format(gid, hemi)).get_fdata().squeeze().T
+        mpm_map = nib.load(mpm_file.format(hemi)).get_fdata().squeeze()
+        for roi, prob_idx in roi2idx.items():
+            roi_r = f"{hemi}_{roi.split('-')[0]}_corr"
+            roi_p = f"{hemi}_{roi.split('-')[0]}_corr_p"
+            data[roi_r] = np.ones((n_gid, n_gid)) * np.nan
+            data[roi_p] = np.ones((n_gid, n_gid)) * np.nan
+            mpm_mask = mpm_map == roi2label[roi]
+            for idx1, gid1 in enumerate(gids[:-1]):
+                for idx2, gid2 in enumerate(gids[idx1+1:], idx1+1):
+                    prob_map1 = gid2prob_map[gid1][prob_idx]
+                    prob_map2 = gid2prob_map[gid2][prob_idx]
+                    sample1 = prob_map1[mpm_mask]
+                    print(f'{hemi}_{roi}_G{gid1}:', np.sum(sample1 == 0))
+                    sample2 = prob_map2[mpm_mask]
+                    print(f'{hemi}_{roi}_G{gid2}:', np.sum(sample2 == 0))
+                    r, p = pearsonr(sample1, sample2)
+                    data[roi_r][idx1, idx2] = r
+                    data[roi_r][idx2, idx1] = r
+                    data[roi_p][idx1, idx2] = p
+                    data[roi_p][idx2, idx1] = p
 
     pkl.dump(data, open(out_file, 'wb'))
 
@@ -209,7 +269,7 @@ def plot_prob_map_similarity():
     rois = ('pFus', 'mFus')
     hemis = ('lh', 'rh')
     meas = 'corr'  # corr or dice
-    data_file = pjoin(work_dir, 'prob_map_similarity.pkl')
+    data_file = pjoin(work_dir, 'prob_map_similarity1.pkl')
     gid2name = {
         0: 'single',
         1: 'two-C',
@@ -248,10 +308,13 @@ def plot_prob_map_similarity():
 
             for i in range(n_gid):
                 for j in range(n_gid):
+                    if i == j:
+                        continue
                     ax.text(j, i, '{:.2f}'.format(arr[i, j]),
                             ha="center", va="center", color="k")
             ax.set_title(f'{hemi}_{roi}')
-    plt.show()
+    # plt.show()
+    plt.savefig(pjoin(work_dir, 'prob_map_similarity.jpg'))
 
 
 if __name__ == '__main__':
@@ -285,5 +348,6 @@ if __name__ == '__main__':
     # plot_roi_info(gid=1, hemi='rh')
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
-    calc_prob_map_similarity()
+    # calc_prob_map_similarity()
+    # calc_prob_map_similarity1()
     plot_prob_map_similarity()
