@@ -103,6 +103,31 @@ def gdist_fit_PC1():
         out_file=out_file, standard_scale=True)
 
 
+def gdist_fit_PC12():
+    """
+    用gdist map拟合PC1, PC2
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    src_files = [
+            pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'),
+            pjoin(anal_dir, 'gdist/gdist_src-OpMt.dscalar.nii')]
+    feat_names = ['CS', 'OpMt']
+    out_file = pjoin(work_dir, 'CS+OpMt=C1C2.csv')
+
+    X_list = []
+    for src_file in src_files:
+        data = nib.load(src_file).get_fdata()[:, mask]
+        X_list.append(data.T)
+    Y = nib.load(pc_file).get_fdata()[:2, mask].T
+    linear_fit1(
+        X_list=X_list, feat_names=feat_names,
+        Y=Y, trg_names=['C1', 'C2'], score_metric='R2',
+        out_file=out_file, standard_scale=True)
+
+
 def HCPDA_fit_PC12():
     """
     用HCPD/A每个被试的myelin和thickness map去拟合C1C2（半脑）
@@ -478,11 +503,12 @@ def PC12_fit_func2():
 
 if __name__ == '__main__':
     # gdist_fit_PC1()
+    gdist_fit_PC12()
     # HCPDA_fit_PC12()
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # HCPDA_fit_PC12_local1(data_name='HCPD', Hemi='R')
-    HCPDA_fit_PC12_local1(data_name='HCPA', Hemi='R')
+    # HCPDA_fit_PC12_local1(data_name='HCPA', Hemi='R')
     # age_linearFit_col()
     # PC12_fit_func()
     # PC12_fit_func1()
