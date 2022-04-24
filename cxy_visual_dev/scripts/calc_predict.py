@@ -548,6 +548,12 @@ if __name__ == '__main__':
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 2], mask_name='MMP-vis3-R', n_split=5)
+    PC_predict_ROI4(
+        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+        pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
+    PC_predict_ROI4(
+        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+        pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1], mask_name='R_V1~4', n_split=5)
@@ -564,6 +570,12 @@ if __name__ == '__main__':
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 2], mask_name='MMP-vis3-R', n_split=5)
+    PC_predict_ROI5(
+        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+        pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
+    PC_predict_ROI5(
+        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+        pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1], mask_name='R_V1~4', n_split=5)
@@ -577,41 +589,41 @@ if __name__ == '__main__':
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
     
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='MPM', pc_nums=[1], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='MPM', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='MPM', pc_nums=[2], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='MPM', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='MPM', pc_nums=[1], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='MPM', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='MPM', pc_nums=[2], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='MPM', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
 
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='animate', pc_nums=[1], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='animate', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='animate', pc_nums=[2], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='animate', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='animate', pc_nums=[1], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='animate', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='animate', pc_nums=[2], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='animate', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
 
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='count', pc_nums=[1], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='count', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='count', pc_nums=[2], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI6(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        trg='count', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='count', pc_nums=[1], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='count', pc_nums=[1], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='count', pc_nums=[2], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI6(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     trg='count', pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
