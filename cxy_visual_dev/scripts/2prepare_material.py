@@ -1,8 +1,12 @@
 import numpy as np
 from os.path import join as pjoin
 from magicbox.io.io import GiftiReader, CiftiReader
+from magicbox.algorithm.graph import bfs
+from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_visual_dev.lib.predefine import proj_dir, mmp_name2label,\
-    mmp_map_file, hemi2stru, hemi2Hemi
+    mmp_map_file, hemi2stru, hemi2Hemi, s1200_midthickness_L,\
+    s1200_midthickness_R, MedialWall, L_OccipitalPole_32k,\
+    R_OccipitalPole_32k, L_MT_32k, R_MT_32k
 
 
 def get_calcarine_sulcus(hemi):
@@ -41,6 +45,34 @@ def get_calcarine_sulcus(hemi):
                comments="#!ascii, label vertexes\n")
 
 
+def get_OpMt_line(hemi):
+    """
+    枕极和MT的连线
+    """
+    Hemi = hemi2Hemi[hemi]
+    hemi2surf = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
+    hemi2OP = {
+        'lh': L_OccipitalPole_32k,
+        'rh': R_OccipitalPole_32k}
+    hemi2MT = {
+        'lh': L_MT_32k, 'rh': R_MT_32k}
+    out_file = pjoin(proj_dir, f'data/{Hemi}_OpMt.label')
+
+    faces = GiftiReader(hemi2surf[hemi]).faces
+    faces = MedialWall().remove_from_faces(hemi, faces)
+    neighbors_list = get_n_ring_neighbor(faces)
+    vertices = bfs(neighbors_list, hemi2OP[hemi], hemi2MT[hemi])
+
+    # save as .label file
+    header = str(len(vertices))
+    np.savetxt(out_file, vertices, fmt='%d', header=header,
+               comments="#!ascii, label vertexes\n")
+
+
 if __name__ == '__main__':
-    get_calcarine_sulcus(hemi='lh')
-    get_calcarine_sulcus(hemi='rh')
+    # get_calcarine_sulcus(hemi='lh')
+    # get_calcarine_sulcus(hemi='rh')
+    get_OpMt_line(hemi='lh')
+    get_OpMt_line(hemi='rh')

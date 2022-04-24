@@ -32,6 +32,14 @@ L_OccipitalPole_32k = 23908
 # 右脑枕极的顶点号
 # 右脑枕极及其1阶近邻见data/R_OccipitalPole.label
 R_OccipitalPole_32k = 23868
+
+# 左脑MT中心顶点号
+# 左脑MT中心及其1阶近邻见data/L_MT.label
+L_MT_32k = 15293
+
+# 右脑MT中心顶点号
+# 右脑MT中心及其1阶近邻见data/R_MT.label
+R_MT_32k = 15291
 # 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
