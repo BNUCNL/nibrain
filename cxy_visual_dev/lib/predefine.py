@@ -149,6 +149,12 @@ for k, v in CiftiReader(wang2015_file).label_tables()[0].items():
     wang2015_name2label[f'R_{v.label}'] = k
 for k, v in wang2015_name2label.items():
     wang2015_label2name[v] = k
+
+# (Haak and Beckmann, 2018, Cortex)
+wang2015_early = ['V1v', 'V1d', 'V2v', 'V2d', 'V3v', 'V3d']
+wang2015_dorsal = ['V3A', 'V3B', 'IPS0', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'SPL1']
+wang2015_lateral = ['LO1', 'LO2', 'TO1', 'TO2']
+wang2015_ventral = ['hV4', 'VO1', 'VO2', 'PHC1', 'PHC2']
 # (Wang et al, 2015) visual ROIs<<<
 
 
@@ -305,6 +311,30 @@ def get_rois(name):
 
     elif name == 'Wang2015-R':
         rois = [i for i in wang2015_name2label.keys() if i.startswith('R_')]
+
+    elif name == 'Wang2015-early-L':
+        rois = [f'L_{i}' for i in wang2015_early]
+
+    elif name == 'Wang2015-early-R':
+        rois = [f'R_{i}' for i in wang2015_early]
+
+    elif name == 'Wang2015-dorsal-L':
+        rois = [f'L_{i}' for i in wang2015_dorsal]
+
+    elif name == 'Wang2015-dorsal-R':
+        rois = [f'R_{i}' for i in wang2015_dorsal]
+
+    elif name == 'Wang2015-lateral-L':
+        rois = [f'L_{i}' for i in wang2015_lateral]
+
+    elif name == 'Wang2015-lateral-R':
+        rois = [f'R_{i}' for i in wang2015_lateral]
+
+    elif name == 'Wang2015-ventral-L':
+        rois = [f'L_{i}' for i in wang2015_ventral]
+
+    elif name == 'Wang2015-ventral-R':
+        rois = [f'R_{i}' for i in wang2015_ventral]
     # (Wang et al, 2015) visual ROIs<<<
 
     # >>>visual path way
