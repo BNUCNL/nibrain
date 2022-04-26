@@ -210,6 +210,8 @@ s1200_midthickness_R = pjoin(
 s1200_MedialWall = pjoin(
     s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
 )
+s1200_group_rsfc_mat = '/nfs/m1/hcp/HCP_S1200_1003_rfMRI_MSMAll_'\
+    'groupPCA_d4500ROW_zcorr.dconn.nii'
 
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',
@@ -434,7 +436,7 @@ class Atlas:
             raise ValueError(f'{atlas_name} is not supported at present!')
         self.n_roi = len(self.roi2label)
 
-    def get_mask(self, roi_names):
+    def get_mask(self, roi_names, stru_range='cortex'):
         """
         制定mask，将roi_names指定的ROI都设置为True，其它地方为False
 
@@ -443,6 +445,9 @@ class Atlas:
                 'LR': 指代所有左右脑的ROI
                 'L': 指代所有左脑的ROI
                 'R': 指代所有右脑的ROI
+            stru_range (str):
+                'cortex': limited in LR_count_32k
+                'grayordinate': limited in All_count_32k
         """
         if isinstance(roi_names, str):
             roi_names = [roi_names]
@@ -461,6 +466,12 @@ class Atlas:
                 mask = np.logical_or(
                     mask, self.maps == self.roi2label[roi])
 
+        if stru_range == 'cortex':
+            pass
+        elif stru_range == 'grayordinate':
+            mask = np.c_[mask, np.zeros((1, All_count_32k-LR_count_32k), bool)]
+        else:
+            raise ValueError('not supported stru_range:', stru_range)
         return mask
 
 

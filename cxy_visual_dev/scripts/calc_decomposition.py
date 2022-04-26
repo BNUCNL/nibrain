@@ -2,13 +2,14 @@ import os
 import numpy as np
 import pandas as pd
 import pickle as pkl
+import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats.stats import zscore
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import proj_dir,\
+from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
     s1200_1096_thickness, s1200_1096_myelin, Atlas,\
-    get_rois, LR_count_32k, mmp_map_file
+    get_rois, LR_count_32k, mmp_map_file, s1200_group_rsfc_mat
 from cxy_visual_dev.lib.algo import decompose, transform
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -149,6 +150,83 @@ def pca_rsfc(
     # save
     save2cifti(out_comp_file, out_data1, bms, component_names)
     save2cifti(out_weight_file, out_data2, bms, component_names)
+    pkl.dump(transformer, open(out_model_file, 'wb'))
+
+
+def pca_HCPY_avg_rsfc_mat(
+    mask_name0, mask_name1, zscore0=False, n_component=None, random_state=None):
+    """
+    需要占用大量内存（33G以上），我是在hebb上跑的。
+    如果mask_name0和mask_name1都是grayordinate，大约需要占用90G
+    用PCA对HCPYA发布的组RSFC矩阵(91282, 91282)进行降维
+
+    Args:
+        mask_name0 (str): 指定使用哪些行
+            'grayordinate': 所有行
+            'MMP-vis3-R': 第3版右侧视觉皮层
+        mask_name1 (str): 指定使用哪些列
+            'grayordinate': 所有列
+        zscore0 (bool, optional): Default is False
+            If True, do zscore for each column
+        n_component (int, optional): the number of components
+        random_state (int, optional):
+    """
+    fname = f'S1200-grp-RSFC_{mask_name0}2{mask_name1}'
+
+    # get RSFC matrix
+    reader = CiftiReader(s1200_group_rsfc_mat)
+    bms = reader.brain_models()
+    vol = reader.volume
+    X = reader.get_data()
+
+    # get rows
+    if mask_name0 == 'grayordinate':
+        mask0 = None
+    elif mask_name0 == 'MMP-vis3-R':
+        mask0 = Atlas('HCP-MMP').get_mask(get_rois(mask_name0), 'grayordinate')[0]
+        X = X[mask0]
+    else:
+        raise ValueError('not supported mask_name0:', mask_name0)
+
+    # get columns
+    if mask_name1 == 'grayordinate':
+        mask1 = None
+    else:
+        raise ValueError('not supported mask_name1:', mask_name1)
+
+    # zscore
+    if zscore0:
+        fname = fname + '_zscore'
+        X = zscore(X, 0)
+
+    # calculate
+    transformer = PCA(n_components=n_component, random_state=random_state)
+    transformer.fit(X)
+    Y = transformer.transform(X)
+    if n_component is None:
+        n_component = Y.shape[1]
+    else:
+        assert n_component == Y.shape[1]
+    component_names = [f'C{i}' for i in range(1, n_component+1)]
+
+    if mask0 is None:
+        out_data1 = Y.T
+    else:
+        out_data1 = np.ones((n_component, All_count_32k), np.float64) * np.nan
+        out_data1[:, mask0] = Y.T
+    
+    if mask1 is None:
+        out_data2 = transformer.components_
+    else:
+        out_data2 = np.ones((n_component, All_count_32k), np.float64) * np.nan
+        out_data2[:, mask1] = transformer.components_
+
+    # save
+    out_comp_file = pjoin(work_dir, f'{fname}_PCA-comp.dscalar.nii')
+    out_weight_file = pjoin(work_dir, f'{fname}_PCA-weight.dscalar.nii')
+    out_model_file = pjoin(work_dir, f'{fname}_PCA.pkl')
+    save2cifti(out_comp_file, out_data1, bms, component_names, vol)
+    save2cifti(out_weight_file, out_data2, bms, component_names, vol)
     pkl.dump(transformer, open(out_model_file, 'wb'))
 
 
@@ -311,10 +389,17 @@ if __name__ == '__main__':
     # out_model_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_PCA.pkl'),
     # zscore0=False, n_component=20, random_state=7
     # )
-    pca_rsfc(
-    fpath=pjoin(proj_dir, 'data/HCP/RSFC_MMP-vis3-R2cortex.pkl'),
-    out_comp_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-comp.dscalar.nii'),
-    out_weight_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-weight.dscalar.nii'),
-    out_model_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA.pkl'),
-    zscore0=True, n_component=20, random_state=7
-    )
+    # pca_rsfc(
+    # fpath=pjoin(proj_dir, 'data/HCP/RSFC_MMP-vis3-R2cortex.pkl'),
+    # out_comp_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-comp.dscalar.nii'),
+    # out_weight_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA-weight.dscalar.nii'),
+    # out_model_file=pjoin(work_dir, 'RSFC_MMP-vis3-R2cortex_zscore_PCA.pkl'),
+    # zscore0=True, n_component=20, random_state=7
+    # )
+
+    pca_HCPY_avg_rsfc_mat(
+        mask_name0='MMP-vis3-R', mask_name1='grayordinate',
+        zscore0=False, n_component=20, random_state=7)
+    pca_HCPY_avg_rsfc_mat(
+        mask_name0='grayordinate', mask_name1='grayordinate',
+        zscore0=False, n_component=20, random_state=7)
