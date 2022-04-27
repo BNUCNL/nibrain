@@ -153,8 +153,8 @@ def pca_rsfc(
     pkl.dump(transformer, open(out_model_file, 'wb'))
 
 
-def pca_HCPY_avg_rsfc_mat(
-    mask_name0, mask_name1, zscore0=False, n_component=None, random_state=None):
+def pca_HCPY_avg_rsfc_mat(mask_name0, mask_name1, dtype='z',
+                          zscore0=False, n_component=None, random_state=None):
     """
     需要占用大量内存（33G以上），我是在hebb上跑的。
     如果mask_name0和mask_name1都是grayordinate，大约需要占用90G
@@ -166,15 +166,24 @@ def pca_HCPY_avg_rsfc_mat(
             'MMP-vis3-R': 第3版右侧视觉皮层
         mask_name1 (str): 指定使用哪些列
             'grayordinate': 所有列
+        dtype (str):
+            'z': 就用官方发布的fisherZ转换后的数据
+            'r': 用自行将z值转回r值之后的数据
         zscore0 (bool, optional): Default is False
             If True, do zscore for each column
         n_component (int, optional): the number of components
         random_state (int, optional):
     """
-    fname = f'S1200-grp-RSFC_{mask_name0}2{mask_name1}'
+    fname = f'S1200-grp-RSFC-{dtype}_{mask_name0}2{mask_name1}'
+    if dtype == 'z':
+        src_file = s1200_group_rsfc_mat
+    elif dtype == 'r':
+        src_file = pjoin(proj_dir, 'data/HCP/S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_corr.dscalar.nii')
+    else:
+        raise ValueError('not supported dtype:', dtype)
 
     # get RSFC matrix
-    reader = CiftiReader(s1200_group_rsfc_mat)
+    reader = CiftiReader(src_file)
     bms = reader.brain_models()
     vol = reader.volume
     X = reader.get_data()
@@ -182,6 +191,9 @@ def pca_HCPY_avg_rsfc_mat(
     # get rows
     if mask_name0 == 'grayordinate':
         mask0 = None
+    elif mask_name0 == 'cortex':
+        mask0 = Atlas('HCP-MMP').get_mask('LR', 'grayordinate')[0]
+        X = X[mask0]
     elif mask_name0 == 'MMP-vis3-R':
         mask0 = Atlas('HCP-MMP').get_mask(get_rois(mask_name0), 'grayordinate')[0]
         X = X[mask0]
@@ -191,6 +203,9 @@ def pca_HCPY_avg_rsfc_mat(
     # get columns
     if mask_name1 == 'grayordinate':
         mask1 = None
+    elif mask_name1 == 'cortex':
+        mask1 = Atlas('HCP-MMP').get_mask('LR', 'grayordinate')[0]
+        X = X[:, mask1]
     else:
         raise ValueError('not supported mask_name1:', mask_name1)
 
@@ -200,6 +215,7 @@ def pca_HCPY_avg_rsfc_mat(
         X = zscore(X, 0)
 
     # calculate
+    print('X.shape:', X.shape)
     transformer = PCA(n_components=n_component, random_state=random_state)
     transformer.fit(X)
     Y = transformer.transform(X)
@@ -397,9 +413,21 @@ if __name__ == '__main__':
     # zscore0=True, n_component=20, random_state=7
     # )
 
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='MMP-vis3-R', mask_name1='grayordinate',
+    #     dtype='z', zscore0=False, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='grayordinate', mask_name1='grayordinate',
+    #     dtype='z', zscore0=False, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='MMP-vis3-R', mask_name1='grayordinate',
+    #     dtype='r', zscore0=False, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='grayordinate', mask_name1='grayordinate',
+    #     dtype='r', zscore0=False, n_component=20, random_state=7)
     pca_HCPY_avg_rsfc_mat(
-        mask_name0='MMP-vis3-R', mask_name1='grayordinate',
-        zscore0=False, n_component=20, random_state=7)
+        mask_name0='MMP-vis3-R', mask_name1='cortex',
+        dtype='r', zscore0=False, n_component=20, random_state=7)
     pca_HCPY_avg_rsfc_mat(
-        mask_name0='grayordinate', mask_name1='grayordinate',
-        zscore0=False, n_component=20, random_state=7)
+        mask_name0='cortex', mask_name1='cortex',
+        dtype='r', zscore0=False, n_component=20, random_state=7)

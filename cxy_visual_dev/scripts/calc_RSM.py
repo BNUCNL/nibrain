@@ -61,8 +61,12 @@ def calc_RSM1(src_file, mask, out_file):
     Curvature; VertexArea; Eccentricity; PolarAngle; RFsize; 周明的PC1~4;
     RSFC_MMP-vis3-R2cortex_PCA-comp和RSFC_MMP-vis3-R2cortex_PCA-weight的PC1~6;
     RSFC_MMP-vis3-R2cortex_zscore_PCA-comp和RSFC_MMP-vis3-R2cortex_zscore_PCA-weight的PC1~6
-    S1200-grp-RSFC_grayordinate2grayordinate_PCA-comp和
-    S1200-grp-RSFC_MMP-vis3-R2grayordinate_PCA-comp的PC1~6；
+    S1200-grp-RSFC-z_grayordinate2grayordinate_PCA-comp和
+    S1200-grp-RSFC-z_MMP-vis3-R2grayordinate_PCA-comp的PC1~6；
+    S1200-grp-RSFC-r_grayordinate2grayordinate_PCA-comp和
+    S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp的PC1~6；
+    S1200-grp-RSFC-r_cortex2cortex_PCA-comp和
+    S1200-grp-RSFC-r_MMP-vis3-R2cortex_PCA-comp的PC1~6；
     之间的相关矩阵。
     """
     map_PCA = nib.load(src_file).get_fdata()[:2, mask]
@@ -110,17 +114,30 @@ def calc_RSM1(src_file, mask, out_file):
         anal_dir, 'decomposition/RSFC_MMP-vis3-R2cortex_zscore_PCA-weight.dscalar.nii'
     )).get_fdata()[:6, mask]
     map_grp_rsfc_all_comp = nib.load(pjoin(
-        anal_dir, 'decomposition/S1200-grp-RSFC_grayordinate2grayordinate_PCA-comp.dscalar.nii'
+        anal_dir, 'decomposition/S1200-grp-RSFC-z_grayordinate2grayordinate_PCA-comp.dscalar.nii'
     )).get_fdata()[:6, :LR_count_32k][:, mask]
     map_grp_rsfc_vis_comp = nib.load(pjoin(
-        anal_dir, 'decomposition/S1200-grp-RSFC_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+        anal_dir, 'decomposition/S1200-grp-RSFC-z_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_grp_rsfc_all_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_grayordinate2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_grp_rsfc_vis_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_grp_rsfc_c2c_comp = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_cortex2cortex_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_grp_rsfc_v2c_comp = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2cortex_PCA-comp.dscalar.nii'
     )).get_fdata()[:6, :LR_count_32k][:, mask]
 
     maps = np.concatenate([
         map_PCA, map_dist_cs, map_dist_cs1, map_dist_op, map_dist_mt,
         map_curv, map_va, map_ecc, map_ang, map_rfs, map_zm, map_rsfc_comp,
         map_rsfc_weight, map_rsfc_zscore_comp, map_rsfc_zscore_weight,
-        map_grp_rsfc_all_comp, map_grp_rsfc_vis_comp], 0)
+        map_grp_rsfc_all_comp, map_grp_rsfc_vis_comp, map_grp_rsfc_all_comp1,
+        map_grp_rsfc_vis_comp1, map_grp_rsfc_c2c_comp, map_grp_rsfc_v2c_comp], 0)
     map_names = (
         'PCA-C1', 'PCA-C2', 'distFromCS', 'distFromCS-split', 'distFromOP', 'distFromMT',
         'Curvature', 'VertexArea', 'Eccentricity', 'Angle', 'RFsize',
@@ -129,8 +146,12 @@ def calc_RSM1(src_file, mask, out_file):
     map_names = map_names + tuple(f'RSFC-W{i}' for i in range(1, 7))
     map_names = map_names + tuple(f'RSFC-zscore-C{i}' for i in range(1, 7))
     map_names = map_names + tuple(f'RSFC-zscore-W{i}' for i in range(1, 7))
-    map_names = map_names + tuple(f'grp-RSFC-all-C{i}' for i in range(1, 7))
-    map_names = map_names + tuple(f'grp-RSFC-vis-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-z-all-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-z-vis-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-r-all-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-r-vis-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-r-c2c-C{i}' for i in range(1, 7))
+    map_names = map_names + tuple(f'grp-RSFC-r-v2c-C{i}' for i in range(1, 7))
 
     data = {'row_name': map_names, 'col_name': map_names}
     data['r'], data['p'] = calc_pearson_r_p(maps, maps, True)
