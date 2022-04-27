@@ -120,10 +120,6 @@ if __name__ == '__main__':
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_R.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
     # )
-    make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY-face.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-face_mean.dscalar.nii')
-    )
 
     # make_age_maps(
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),

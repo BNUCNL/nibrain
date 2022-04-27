@@ -824,49 +824,6 @@ def get_HCPY_GBC_cortex_subcortex(metric='GBC', part='cortex'):
                [str(i) for i in info_df['subID']], reader.volume)
 
 
-def get_HCPY_face():
-    """
-    只选用1096名中存在“MNINonLinear/Results/tfMRI_WM/
-    tfMRI_WM_hp200_s2_level2_MSMAll.feat/
-    {sid}_tfMRI_WM_level2_hp200_s2_MSMAll.dscalar.nii”的被试
-    取出其中的FACE-AVG map
-    """
-    src_file = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/'\
-        'tfMRI_WM/tfMRI_WM_hp200_s2_level2_MSMAll.feat/'\
-        '{sid}_tfMRI_WM_level2_hp200_s2_MSMAll.dscalar.nii'
-    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
-    out_file = pjoin(proj_dir, 'data/HCP/HCPY-face.dscalar.nii')
-    out_log = pjoin(proj_dir, 'data/HCP/HCPY-face_log')
-
-    info_df = pd.read_csv(info_file)
-    n_subj = info_df.shape[0]
-
-    data = np.ones((n_subj, All_count_32k), np.float64) * np.nan
-    wf = open(out_log, 'w')
-    first_flag = True
-    bms = None
-    vol = None
-    map_names = ['None'] * n_subj
-    for idx in info_df.index:
-        time1 = time.time()
-        sid = info_df.loc[idx, 'subID']
-        try:
-            reader = CiftiReader(src_file.format(sid=sid))
-        except Exception as err:
-            wf.write(f'{err}\n')
-            continue
-        map_names[idx] = reader.map_names()[19]
-        if first_flag:
-            bms = reader.brain_models()
-            vol = reader.volume
-            first_flag = False
-        data[idx] = reader.get_data()[19]
-        print(f'Finished {idx+1}/{n_subj}, cost: {time.time()-time1} seconds.')
-
-    save2cifti(out_file, data, bms, map_names, vol)
-    wf.close()
-
-
 def get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right'):
     """
     用HCP官方拼接好的时间序列来计算功能连接，例如：

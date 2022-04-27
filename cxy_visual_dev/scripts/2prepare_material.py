@@ -8,7 +8,8 @@ from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
 from cxy_visual_dev.lib.predefine import proj_dir, mmp_name2label,\
     mmp_map_file, hemi2stru, hemi2Hemi, s1200_midthickness_L,\
     s1200_midthickness_R, MedialWall, L_OccipitalPole_32k,\
-    R_OccipitalPole_32k, L_MT_32k, R_MT_32k, get_rois, Atlas
+    R_OccipitalPole_32k, L_MT_32k, R_MT_32k, get_rois, Atlas,\
+    s1200_group_rsfc_mat
 
 
 def get_calcarine_sulcus(hemi):
@@ -125,9 +126,32 @@ def modify_wang2015():
     save2cifti(out_file2, out_data2, bms, label_tables=[lbl_tab2])
 
 
+def process_HCPYA_grp_rsfc_mat():
+    """
+    对HCP_S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr.dconn.nii
+    中的数据进行一些处理。本次只是讲z值转回r值
+
+    References
+    ----------
+    (Margulies et al., 2016, SI Materials and Methods):
+        Situating the default-mode network along a principal
+        gradient of macroscale cortical organization
+    """
+    reader = CiftiReader(s1200_group_rsfc_mat)
+    bms = reader.brain_models()
+    vol = reader.volume
+    data = reader.get_data()
+    del reader
+    data = np.tanh(data, dtype=np.float32)
+
+    out_file = pjoin(proj_dir, 'data/HCP/S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_corr.dscalar.nii')
+    save2cifti(out_file, data, bms, volume=vol)
+
+
 if __name__ == '__main__':
     # get_calcarine_sulcus(hemi='lh')
     # get_calcarine_sulcus(hemi='rh')
     # get_OpMt_line(hemi='lh')
     # get_OpMt_line(hemi='rh')
-    modify_wang2015()
+    # modify_wang2015()
+    process_HCPYA_grp_rsfc_mat()
