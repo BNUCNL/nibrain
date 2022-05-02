@@ -32,6 +32,14 @@ L_OccipitalPole_32k = 23908
 # 右脑枕极的顶点号
 # 右脑枕极及其1阶近邻见data/R_OccipitalPole.label
 R_OccipitalPole_32k = 23868
+
+# 左脑MT中心顶点号
+# 左脑MT中心及其1阶近邻见data/L_MT.label
+L_MT_32k = 15293
+
+# 右脑MT中心顶点号
+# 右脑MT中心及其1阶近邻见data/R_MT.label
+R_MT_32k = 15291
 # 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
@@ -141,6 +149,12 @@ for k, v in CiftiReader(wang2015_file).label_tables()[0].items():
     wang2015_name2label[f'R_{v.label}'] = k
 for k, v in wang2015_name2label.items():
     wang2015_label2name[v] = k
+
+# (Haak and Beckmann, 2018, Cortex)
+wang2015_early = ['V1v', 'V1d', 'V2v', 'V2d', 'V3v', 'V3d']
+wang2015_dorsal = ['V3A', 'V3B', 'IPS0', 'IPS1', 'IPS2', 'IPS3', 'IPS4', 'IPS5', 'SPL1']
+wang2015_lateral = ['LO1', 'LO2', 'TO1', 'TO2']
+wang2015_ventral = ['hV4', 'VO1', 'VO2', 'PHC1', 'PHC2']
 # (Wang et al, 2015) visual ROIs<<<
 
 
@@ -196,6 +210,8 @@ s1200_midthickness_R = pjoin(
 s1200_MedialWall = pjoin(
     s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
 )
+s1200_group_rsfc_mat = '/nfs/m1/hcp/HCP_S1200_1003_rfMRI_MSMAll_'\
+    'groupPCA_d4500ROW_zcorr.dconn.nii'
 
 dataset_name2dir = {
     'HCPD': '/nfs/e1/HCPD',
@@ -297,6 +313,30 @@ def get_rois(name):
 
     elif name == 'Wang2015-R':
         rois = [i for i in wang2015_name2label.keys() if i.startswith('R_')]
+
+    elif name == 'Wang2015-early-L':
+        rois = [f'L_{i}' for i in wang2015_early]
+
+    elif name == 'Wang2015-early-R':
+        rois = [f'R_{i}' for i in wang2015_early]
+
+    elif name == 'Wang2015-dorsal-L':
+        rois = [f'L_{i}' for i in wang2015_dorsal]
+
+    elif name == 'Wang2015-dorsal-R':
+        rois = [f'R_{i}' for i in wang2015_dorsal]
+
+    elif name == 'Wang2015-lateral-L':
+        rois = [f'L_{i}' for i in wang2015_lateral]
+
+    elif name == 'Wang2015-lateral-R':
+        rois = [f'R_{i}' for i in wang2015_lateral]
+
+    elif name == 'Wang2015-ventral-L':
+        rois = [f'L_{i}' for i in wang2015_ventral]
+
+    elif name == 'Wang2015-ventral-R':
+        rois = [f'R_{i}' for i in wang2015_ventral]
     # (Wang et al, 2015) visual ROIs<<<
 
     # >>>visual path way
@@ -396,7 +436,7 @@ class Atlas:
             raise ValueError(f'{atlas_name} is not supported at present!')
         self.n_roi = len(self.roi2label)
 
-    def get_mask(self, roi_names):
+    def get_mask(self, roi_names, stru_range='cortex'):
         """
         制定mask，将roi_names指定的ROI都设置为True，其它地方为False
 
@@ -405,6 +445,9 @@ class Atlas:
                 'LR': 指代所有左右脑的ROI
                 'L': 指代所有左脑的ROI
                 'R': 指代所有右脑的ROI
+            stru_range (str):
+                'cortex': limited in LR_count_32k
+                'grayordinate': limited in All_count_32k
         """
         if isinstance(roi_names, str):
             roi_names = [roi_names]
@@ -423,6 +466,12 @@ class Atlas:
                 mask = np.logical_or(
                     mask, self.maps == self.roi2label[roi])
 
+        if stru_range == 'cortex':
+            pass
+        elif stru_range == 'grayordinate':
+            mask = np.c_[mask, np.zeros((1, All_count_32k-LR_count_32k), bool)]
+        else:
+            raise ValueError('not supported stru_range:', stru_range)
         return mask
 
 

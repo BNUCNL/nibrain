@@ -196,10 +196,15 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus-split_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'gdist/gdist_src-OpMt.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus-split_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'gdist_src-OpMt_MMP-vis3.dscalar.nii')
     )
 
     # make_mask1()
