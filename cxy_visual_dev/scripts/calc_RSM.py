@@ -190,6 +190,20 @@ def calc_RSM1(mask, out_file):
     map_names.extend(f'fA{i}' for i in reader.map_names())
     maps.append(map_faff)
 
+    # S1200-grp-RSFC-r_grayordinate2grayordinate_zscore_PCA-comp和
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_all_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_grayordinate2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'grp-RSFC-r-all-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_all_z_comp1)
+
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
     # calculation
     maps = np.concatenate(maps, 0)
     data = {'row_name': map_names, 'col_name': map_names}

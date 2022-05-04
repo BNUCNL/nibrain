@@ -425,9 +425,15 @@ if __name__ == '__main__':
     # pca_HCPY_avg_rsfc_mat(
     #     mask_name0='grayordinate', mask_name1='grayordinate',
     #     dtype='r', zscore0=False, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='MMP-vis3-R', mask_name1='cortex',
+    #     dtype='r', zscore0=False, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='cortex', mask_name1='cortex',
+    #     dtype='r', zscore0=False, n_component=20, random_state=7)
     pca_HCPY_avg_rsfc_mat(
-        mask_name0='MMP-vis3-R', mask_name1='cortex',
-        dtype='r', zscore0=False, n_component=20, random_state=7)
+        mask_name0='MMP-vis3-R', mask_name1='grayordinate',
+        dtype='r', zscore0=True, n_component=20, random_state=7)
     pca_HCPY_avg_rsfc_mat(
-        mask_name0='cortex', mask_name1='cortex',
-        dtype='r', zscore0=False, n_component=20, random_state=7)
+        mask_name0='grayordinate', mask_name1='grayordinate',
+        dtype='r', zscore0=True, n_component=20, random_state=7)
