@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
+from os.path import join as pjoin
 from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
@@ -13,8 +14,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file, proj_dir
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -858,3 +860,93 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
         df.to_csv(out_file, index=False)
     else:
         raise ValueError('not supported out_file')
+
+
+class AgeSlideWindow:
+    """
+    按照月龄升序排序，将被试划分到不同年龄窗口中。
+    """
+
+    def __init__(self, dataset_name, width, step, merge_remainder):
+        """
+        Args:
+            dataset_name (str): "HCPD" or "HCPA"
+            width (int): window width
+                with units of subjects
+            step (int): step size
+                with uints of subjects
+            merge_remainder (bool):
+                Merge remainder subjects whose number is less than step
+                into the last window or not.
+                If the number of remainder subjects is 0, this parameter
+                will be ignored (set as False forcibly).
+        """
+        # subject information
+        self.dataset_name = dataset_name
+        self.subj_info = pd.read_csv(pjoin(
+            proj_dir, f'data/HCP/{dataset_name}_SubjInfo.csv'))
+        self.n_subj = self.subj_info.shape[0]
+        self.sorted_indices = np.argsort(self.subj_info['age in months'])
+
+        # width and step information
+        assert width < self.n_subj
+        self.width = width
+        self.step = step
+
+        # get window start and end indices
+        step_space = self.n_subj - self.width
+        self.n_remainder = step_space % self.step
+        self.merge_remainder = False if self.n_remainder == 0 else merge_remainder
+        self.start_indices = list(range(0, step_space, step))
+        self.end_indices = [i + width for i in self.start_indices]
+        if self.merge_remainder:
+            self.end_indices[-1] = self.n_subj
+        else:
+            self.start_indices.append(step_space)
+            self.end_indices.append(self.n_subj)
+        self.n_win = len(self.start_indices)
+
+    def get_subj_indices(self, win_id):
+        """
+        Get subject indices according to window ID
+
+        Args:
+            win_id (int): Count from 1
+        """
+        idx = win_id - 1
+        return self.sorted_indices[self.start_indices[idx]:self.end_indices[idx]]
+
+    def plot_sw_age_range(self, age_type='year', figsize=None, out_file='show'):
+        """
+        Plot age range of each window
+
+        Args:
+            age_type (str, optional): Defaults to 'year'.
+                'month' or 'year', the unit of the x axis
+        """
+        win_ids = np.arange(1, self.n_win + 1)
+        fig, ax = plt.subplots(figsize=figsize)
+        for win_id in win_ids:
+            indices = self.get_subj_indices(win_id)
+            ages = self.subj_info.loc[indices, 'age in months']
+            if age_type == 'year':
+                ages = ages / 12
+            elif age_type == 'month':
+                pass
+            else:
+                raise ValueError('not supported age_type:', age_type)
+            ax.plot([ages.min(), ages.max()], [win_id, win_id], c='k')
+        ax.set_xlabel(f'Age ({age_type})')
+        ax.set_ylabel('Window')
+        title = f'{self.dataset_name}_width-{self.width}_setp-{self.step}'
+        if self.merge_remainder:
+            title += '\nmerge remainder'
+        ax.set_title(title)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        fig.tight_layout()
+        if out_file == 'show':
+            fig.show()
+        else:
+            fig.savefig(out_file)
