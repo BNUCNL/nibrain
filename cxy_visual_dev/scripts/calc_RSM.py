@@ -456,51 +456,64 @@ def calc_RSM3():
 
 def calc_RSM5():
     """
-    计算PC1, PC2和eccentricity在每个视觉区域内的相关
+    计算各map在每个视觉区内与eccentricity的相关
     """
-    n_pc = 2
-    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
-    map_pcs = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )).get_fdata()[:n_pc]
-    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
-    out_file = pjoin(work_dir, 'RSM5_PC12-corr-ECC_area.pkl')
-
     atlas = Atlas('HCP-MMP')
     rois_vis = get_rois('MMP-vis3-R')
     n_roi = len(rois_vis)
+    out_file = pjoin(work_dir, 'RSM5_corr-ECC_area.pkl')
 
-    rs = np.zeros((n_pc, n_roi))
-    ps = np.zeros((n_pc, n_roi))
-    for pc_idx in range(n_pc):
-        for roi_idx, roi in enumerate(rois_vis):
-            mask = atlas.get_mask(roi)[0]
-            roi_pc = map_pcs[pc_idx, mask]
-            roi_ecc = map_ecc[mask]
-            r, p = pearsonr(roi_pc, roi_ecc)
-            rs[pc_idx, roi_idx] = r
-            ps[pc_idx, roi_idx] = p
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = [map_stru_pc]
 
-    data = {'row_name': pc_names, 'col_name': rois_vis, 'r': rs, 'p': ps}
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp的PC1~6;
+    map_grp_rsfc_vis_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_comp1)
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
+    # eccentricity
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+
+    # calculation
+    maps = np.concatenate(maps, 0)
+    n_map = maps.shape[0]
+    assert n_map == len(map_names)
+    rs = np.zeros((n_map, n_roi))
+    ps = np.zeros((n_map, n_roi))
+    for roi_idx, roi in enumerate(rois_vis):
+        mask = atlas.get_mask(roi)[0]
+        roi_ecc = map_ecc[mask]
+        for map_idx in range(n_map):
+            roi_map = maps[map_idx, mask]
+            r, p = pearsonr(roi_map, roi_ecc)
+            rs[map_idx, roi_idx] = r
+            ps[map_idx, roi_idx] = p
+
+    data = {'row_name': map_names, 'col_name': rois_vis, 'r': rs, 'p': ps}
     pkl.dump(data, open(out_file, 'wb'))
 
 
 def calc_RSM6():
     """
-    计算PC1, PC2和eccentricity在视觉区域间的相关
+    计算各map和eccentricity在视觉区域间的相关
     all: 使用所有的视觉区域
     ex(V1~3): 除V1~3以外的视觉区域
     ex(V1~4): 除V1~4以外的视觉区域
     ex(V1~4+V3A): 除V1~4以及V3A以外的视觉区域
     """
-    n_pc = 2
-    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
-    map_pcs = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )).get_fdata()[:n_pc]
-    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
-    out_file = pjoin(work_dir, 'RSM6_PC12-corr-ECC_area-between.pkl')
-
     atlas = Atlas('HCP-MMP')
     rois_vis = get_rois('MMP-vis3-R')
     col_names = ['all', 'ex(V1~3)', 'ex(V1~4)', 'ex(V1~4+V3A)']
@@ -510,33 +523,62 @@ def calc_RSM6():
         'ex(V1~4+V3A)': ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V3A']
     }
     n_col = len(col_names)
+    out_file = pjoin(work_dir, 'RSM6_corr-ECC_area-between.pkl')
 
-    rs = np.zeros((n_pc, n_col))
-    ps = np.zeros((n_pc, n_col))
-    for pc_idx in range(n_pc):
-        for col_idx, col in enumerate(col_names):
-            if col == 'all':
-                rois = rois_vis
-            else:
-                rois = [i for i in rois_vis if i not in col2exROIs[col]]
-            n_roi = len(rois)
-            print('n_roi:', n_roi)
-            pc_vec = np.zeros(n_roi)
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = [map_stru_pc]
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp的PC1~6;
+    map_grp_rsfc_vis_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_comp1)
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
+    # Eccentricity
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+
+    # calculation
+    maps = np.concatenate(maps, 0)
+    n_map = maps.shape[0]
+    assert n_map == len(map_names)
+    rs = np.zeros((n_map, n_col))
+    ps = np.zeros((n_map, n_col))
+    for col_idx, col in enumerate(col_names):
+        if col == 'all':
+            rois = rois_vis
+        else:
+            rois = [i for i in rois_vis if i not in col2exROIs[col]]
+        n_roi = len(rois)
+        print(f'n_roi of {col}:', n_roi)
+        for map_idx in range(n_map):
+            map_vec = np.zeros(n_roi)
             ecc_vec = np.zeros(n_roi)
             for roi_idx, roi in enumerate(rois):
                 mask = atlas.get_mask(roi)[0]
-                pc_vec[roi_idx] = np.mean(map_pcs[pc_idx, mask])
+                map_vec[roi_idx] = np.mean(maps[map_idx, mask])
                 ecc_vec[roi_idx] = np.mean(map_ecc[mask])
-            r, p = pearsonr(pc_vec, ecc_vec)
-            rs[pc_idx, col_idx] = r
-            ps[pc_idx, col_idx] = p
+            r, p = pearsonr(map_vec, ecc_vec)
+            rs[map_idx, col_idx] = r
+            ps[map_idx, col_idx] = p
 
-    data = {'row_name': pc_names, 'col_name': col_names, 'r': rs, 'p': ps}
+    data = {'row_name': map_names, 'col_name': col_names, 'r': rs, 'p': ps}
     pkl.dump(data, open(out_file, 'wb'))
 
 
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -562,5 +604,5 @@ if __name__ == '__main__':
 
     # calc_RSM2()
     # calc_RSM3()
-    # calc_RSM5()
-    # calc_RSM6()
+    calc_RSM5()
+    calc_RSM6()
