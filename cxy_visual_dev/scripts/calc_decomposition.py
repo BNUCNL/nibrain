@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -10,7 +11,7 @@ from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
     s1200_1096_thickness, s1200_1096_myelin, Atlas,\
     get_rois, LR_count_32k, mmp_map_file, s1200_group_rsfc_mat
-from cxy_visual_dev.lib.algo import decompose, transform
+from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'decomposition')
@@ -246,6 +247,46 @@ def pca_HCPY_avg_rsfc_mat(mask_name0, mask_name1, dtype='z',
     pkl.dump(transformer, open(out_model_file, 'wb'))
 
 
+def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
+                    merge_remainder, n_component, random_state):
+    """
+    用每个滑窗(slide window)内的所有被试的myelin和thickness map做联合空间PCA
+    """
+    m_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_myelin.dscalar.nii')
+    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_thickness.dscalar.nii')
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
+    out_name = f'{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width{width}-step{step}'
+    if merge_remainder:
+        out_name += '-merge'
+    out_file = pjoin(work_dir, f'{out_name}.pkl')
+
+    m_maps = nib.load(m_file).get_fdata()[:, mask]
+    t_maps = nib.load(t_file).get_fdata()[:, mask]
+    out_dict = {'n_win': asw.n_win, 'age in months': np.zeros(asw.n_win),
+                'component name': [f'C{i}' for i in range(1, n_component+1)],
+                '32k_LR_mask': mask}
+    for win_idx in range(asw.n_win):
+        time1 = time.time()
+        win_id = win_idx + 1
+        indices = asw.get_subj_indices(win_id)
+        n_idx = len(indices)
+        X = np.r_[m_maps[indices], t_maps[indices]].T
+        X = zscore(X, 0)
+        transformer = PCA(n_components=n_component, random_state=random_state)
+        transformer.fit(X)
+        Y = transformer.transform(X)
+        assert n_component == Y.shape[1]
+        out_dict[f'Win{win_id}_comp'] = Y.T
+        out_dict[f'Win{win_id}_weight_Myelination'] = transformer.components_[:, :n_idx]
+        out_dict[f'Win{win_id}_weight_Thickness'] = transformer.components_[:, n_idx:]
+        out_dict[f'Win{win_id}_model'] = transformer
+        out_dict['age in months'][win_idx] = asw.get_ages(win_id, 'month').mean()
+        print(f'Finished Win-{win_id}/{asw.n_win}, cost: {time.time() - time1} seconds.')
+
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===
     # atlas = Atlas('HCP-MMP')
@@ -431,9 +472,14 @@ if __name__ == '__main__':
     # pca_HCPY_avg_rsfc_mat(
     #     mask_name0='cortex', mask_name1='cortex',
     #     dtype='r', zscore0=False, n_component=20, random_state=7)
-    pca_HCPY_avg_rsfc_mat(
-        mask_name0='MMP-vis3-R', mask_name1='grayordinate',
-        dtype='r', zscore0=True, n_component=20, random_state=7)
-    pca_HCPY_avg_rsfc_mat(
-        mask_name0='grayordinate', mask_name1='grayordinate',
-        dtype='r', zscore0=True, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='MMP-vis3-R', mask_name1='grayordinate',
+    #     dtype='r', zscore0=True, n_component=20, random_state=7)
+    # pca_HCPY_avg_rsfc_mat(
+    #     mask_name0='grayordinate', mask_name1='grayordinate',
+    #     dtype='r', zscore0=True, n_component=20, random_state=7)
+
+    pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
+                    step=10, merge_remainder=True, n_component=10, random_state=7)
+    pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
+                    step=10, merge_remainder=True, n_component=10, random_state=7)
