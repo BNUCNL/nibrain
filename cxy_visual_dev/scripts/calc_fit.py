@@ -16,7 +16,7 @@ from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
     get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
-    linear_fit1
+    linear_fit1, AgeSlideWindow
 from magicbox.io.io import CiftiReader, save2cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -152,6 +152,55 @@ def HCPDA_fit_PC12():
         X_list=X_list, feat_names=feat_names,
         Y=Y, trg_names=['C1', 'C2'], score_metric='R2',
         out_file=out_file, standard_scale=True)
+
+
+def HCPDA_MT_fit_PC12_SW(dataset_name, vis_name, width, step, merge_remainder):
+    """
+    用每个滑窗(slide window)内的所有被试的myelin和thickness map去拟合stru-PC1/2
+    """
+    n_pc = 2
+    m_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_myelin.dscalar.nii')
+    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_thickness.dscalar.nii')
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
+    out_name = f'{dataset_name}-M+T=PC12_SW-width{width}-step{step}'
+    if merge_remainder:
+        out_name += '-merge'
+    out_file = pjoin(work_dir, f'{out_name}.pkl')
+
+    m_maps = nib.load(m_file).get_fdata()[:, mask]
+    t_maps = nib.load(t_file).get_fdata()[:, mask]
+    Y = nib.load(pc_file).get_fdata()[:n_pc, mask].T
+    out_dict = {
+        'score_C1': np.zeros(asw.n_win), 'score_C2': np.zeros(asw.n_win),
+        'intercept_C1': np.zeros(asw.n_win), 'intercept_C2': np.zeros(asw.n_win),
+        'age in months': np.zeros(asw.n_win)
+    }
+    for win_idx in range(asw.n_win):
+        time1 = time.time()
+        win_id = win_idx + 1
+        indices = asw.get_subj_indices(win_id)
+        n_idx = len(indices)
+        X = np.r_[m_maps[indices], t_maps[indices]].T
+        model = Pipeline([('preprocesser', StandardScaler()),
+                          ('regressor', LinearRegression())])
+        model.fit(X, Y)
+        Y_pred = model.predict(X)
+        for pc_idx in range(n_pc):
+            out_dict[f'coef_C{pc_idx+1}_Myelination_win{win_id}'] = \
+                model.named_steps['regressor'].coef_[pc_idx, :n_idx]
+            out_dict[f'coef_C{pc_idx+1}_Thickness_win{win_id}'] = \
+                model.named_steps['regressor'].coef_[pc_idx, n_idx:]
+            out_dict[f'intercept_C{pc_idx+1}'][win_idx] = \
+                model.named_steps['regressor'].intercept_[pc_idx]
+            out_dict[f'score_C{pc_idx+1}'][win_idx] = \
+                r2_score(Y[:, pc_idx], Y_pred[:, pc_idx])
+        out_dict['age in months'][win_idx] = asw.get_ages(win_id, 'month').mean()
+        print(f'Finished Win-{win_id}/{asw.n_win}, cost: {time.time() - time1} seconds.')
+
+    pkl.dump(out_dict, open(out_file, 'wb'))
 
 
 def mean_tau_diff_fit_PC12():
@@ -503,8 +552,10 @@ def PC12_fit_func2():
 
 if __name__ == '__main__':
     # gdist_fit_PC1()
-    gdist_fit_PC12()
+    # gdist_fit_PC12()
     # HCPDA_fit_PC12()
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
+                         width=50, step=10, merge_remainder=True)
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # HCPDA_fit_PC12_local1(data_name='HCPD', Hemi='R')

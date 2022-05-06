@@ -916,6 +916,25 @@ class AgeSlideWindow:
         idx = win_id - 1
         return self.sorted_indices[self.start_indices[idx]:self.end_indices[idx]]
 
+    def get_ages(self, win_id, age_type):
+        """
+        Get ages according to window ID
+
+        Args:
+            win_id (int): Count from 1
+            age_type (str): 'month' or 'year'
+        """
+        indices = self.get_subj_indices(win_id)
+        ages = self.subj_info.loc[indices, 'age in months']
+        if age_type == 'year':
+            ages = ages / 12
+        elif age_type == 'month':
+            pass
+        else:
+            raise ValueError('not supported age_type:', age_type)
+
+        return ages
+
     def plot_sw_age_range(self, age_type='year', figsize=None, out_file='show'):
         """
         Plot age range of each window
@@ -927,14 +946,7 @@ class AgeSlideWindow:
         win_ids = np.arange(1, self.n_win + 1)
         fig, ax = plt.subplots(figsize=figsize)
         for win_id in win_ids:
-            indices = self.get_subj_indices(win_id)
-            ages = self.subj_info.loc[indices, 'age in months']
-            if age_type == 'year':
-                ages = ages / 12
-            elif age_type == 'month':
-                pass
-            else:
-                raise ValueError('not supported age_type:', age_type)
+            ages = self.get_ages(win_id, age_type)
             ax.plot([ages.min(), ages.max()], [win_id, win_id], c='k')
         ax.set_xlabel(f'Age ({age_type})')
         ax.set_ylabel('Window')
