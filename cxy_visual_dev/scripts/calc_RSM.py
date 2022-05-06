@@ -577,6 +577,39 @@ def calc_RSM6():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM7(dataset_name, vis_name):
+    """
+    计算stru-PC1/2和各滑窗PC的相关
+    """
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    hcpy_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    n_hcpy_pc = 2
+    hcpda_file = pjoin(
+        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+    n_hcpda_pc = 10
+    out_file = pjoin(work_dir, f'RSM7_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+
+    hcpda_data = pkl.load(open(hcpda_file, 'rb'))
+    row_names = hcpda_data['component name']
+    hcpy_pc_maps = nib.load(hcpy_file).get_fdata()[:2, mask]
+    col_names = []
+    rs = np.zeros((n_hcpda_pc, n_hcpy_pc * hcpda_data['n_win']))
+    ps = np.zeros((n_hcpda_pc, n_hcpy_pc * hcpda_data['n_win']))
+    for win_idx in range(hcpda_data['n_win']):
+        win_id = win_idx + 1
+        s_idx = win_idx * n_hcpy_pc
+        e_idx = s_idx + n_hcpy_pc
+        rs_tmp, ps_tmp = calc_pearson_r_p(hcpda_data[f'Win{win_id}_comp'], hcpy_pc_maps)
+        rs[:, s_idx:e_idx] = rs_tmp
+        ps[:, s_idx:e_idx] = ps_tmp
+        col_names.extend([f'HCPY-C{i}_corr_Win{win_id}' for i in range(1, n_hcpy_pc + 1)])
+
+    data = {'row_name': row_names, 'col_name': col_names, 'r': rs, 'p': ps, 
+            'n_win': hcpda_data['n_win'], 'age in months': hcpda_data['age in months']}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_RSM1_main(mask_name='MMP-vis3-R')
 
@@ -604,5 +637,7 @@ if __name__ == '__main__':
 
     # calc_RSM2()
     # calc_RSM3()
-    calc_RSM5()
-    calc_RSM6()
+    # calc_RSM5()
+    # calc_RSM6()
+    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
