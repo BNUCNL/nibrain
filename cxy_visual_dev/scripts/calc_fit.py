@@ -554,7 +554,9 @@ if __name__ == '__main__':
     # gdist_fit_PC1()
     # gdist_fit_PC12()
     # HCPDA_fit_PC12()
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
+    #                      width=50, step=10, merge_remainder=True)
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
                          width=50, step=10, merge_remainder=True)
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
