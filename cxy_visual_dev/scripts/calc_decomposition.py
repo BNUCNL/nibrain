@@ -6,6 +6,7 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats.stats import zscore
+from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
@@ -287,6 +288,84 @@ def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def pca_HCPDA_MT_SW_param(src_file, pc_names, out_file):
+    """
+    获取每个年龄窗口指定成分的各种参数
+    """
+    data = pkl.load(open(src_file, 'rb'))
+    out_data = {'n_win': data['n_win'], 'age in months': data['age in months']}
+    for pc_name in pc_names:
+        pc_idx = data['component name'].index(pc_name)
+        out_data[f'{pc_name} explanation ratio'] = np.zeros(data['n_win'])
+        out_data[f'{pc_name} gradient range'] = np.zeros(data['n_win'])
+        out_data[f'{pc_name} gradient variation'] = np.zeros(data['n_win'])
+        for win_idx in range(data['n_win']):
+            win_id = win_idx + 1
+            pc_map = data[f'Win{win_id}_comp'][pc_idx]
+            out_data[f'{pc_name} explanation ratio'][win_idx] = \
+                data[f'Win{win_id}_model'].explained_variance_ratio_[pc_idx]
+            out_data[f'{pc_name} gradient range'][win_idx] = \
+                pc_map.max() - pc_map.min()
+            out_data[f'{pc_name} gradient variation'][win_idx] = pc_map.std()
+
+    out_data['gradient dispersion'] = np.zeros(data['n_win'])
+    pc_indices = [data['component name'].index(i) for i in pc_names]
+    for win_idx in range(data['n_win']):
+        win_id = win_idx + 1
+        pc_maps = data[f'Win{win_id}_comp'][pc_indices].T
+        centroid = np.mean(pc_maps, 0, keepdims=True)
+        out_data['gradient dispersion'][win_idx] = \
+            np.sum(cdist(centroid, pc_maps, 'euclidean')[0] ** 2)
+
+    pkl.dump(out_data, open(out_file, 'wb'))
+
+
+def pca_HCPDA_MT_SW_param_local(src_file, pc_names, local_name, out_file):
+    """
+    获取每个年龄窗口指定成分各局部的各种参数
+    """
+    if local_name == 'MMP-vis3-R-EDMV':
+        reader = CiftiReader(pjoin(anal_dir, 'tmp/MMP-vis3-EDMV.dlabel.nii'))
+        vis_mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+        mask = reader.get_data()[0, vis_mask]
+        local_name2key = {}
+        lbl_tab = reader.label_tables()[0]
+        for k in lbl_tab.keys():
+            if k == 0:
+                continue
+            local_name2key[lbl_tab[k].label] = k
+    else:
+        raise ValueError('not supported local name:', local_name)
+
+    data = pkl.load(open(src_file, 'rb'))
+    out_data = {'n_win': data['n_win'], 'age in months': data['age in months']}
+    for local_name, local_key in local_name2key.items():
+        mask_local = mask == local_key
+        out_data[local_name] = {}
+        for pc_name in pc_names:
+            pc_idx = data['component name'].index(pc_name)
+            out_data[local_name][f'{pc_name} gradient range'] = np.zeros(data['n_win'])
+            out_data[local_name][f'{pc_name} gradient variation'] = np.zeros(data['n_win'])
+            for win_idx in range(data['n_win']):
+                win_id = win_idx + 1
+                pc_map = data[f'Win{win_id}_comp'][pc_idx][mask_local]
+                out_data[local_name][f'{pc_name} gradient range'][win_idx] = \
+                    pc_map.max() - pc_map.min()
+                out_data[local_name][f'{pc_name} gradient variation'][win_idx] = \
+                    pc_map.std()
+
+        out_data[local_name]['gradient dispersion'] = np.zeros(data['n_win'])
+        pc_indices = [data['component name'].index(i) for i in pc_names]
+        for win_idx in range(data['n_win']):
+            win_id = win_idx + 1
+            pc_maps = data[f'Win{win_id}_comp'][pc_indices][:, mask_local].T
+            centroid = np.mean(pc_maps, 0, keepdims=True)
+            out_data[local_name]['gradient dispersion'][win_idx] = \
+                np.sum(cdist(centroid, pc_maps, 'euclidean')[0] ** 2)
+    
+    pkl.dump(out_data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===
     # atlas = Atlas('HCP-MMP')
@@ -479,7 +558,29 @@ if __name__ == '__main__':
     #     mask_name0='grayordinate', mask_name1='grayordinate',
     #     dtype='r', zscore0=True, n_component=20, random_state=7)
 
-    pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
-    pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+
+    # pca_HCPDA_MT_SW_param(
+    #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'],
+    #     out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    # )
+    # pca_HCPDA_MT_SW_param(
+    #     src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'],
+    #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    # )
+
+    pca_HCPDA_MT_SW_param_local(
+        src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
+        out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    )
+    pca_HCPDA_MT_SW_param_local(
+        src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
+        out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    )
