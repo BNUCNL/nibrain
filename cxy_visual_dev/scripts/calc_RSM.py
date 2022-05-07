@@ -610,6 +610,58 @@ def calc_RSM7(dataset_name, vis_name):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM8(dataset_name, local_name):
+    """
+    在各个局部计算stru-PC1/2和各滑窗PC的相关
+    """
+    if local_name == 'MMP-vis3-R-EDMV':
+        vis_name = 'MMP-vis3-R'
+        reader = CiftiReader(pjoin(anal_dir, 'tmp/MMP-vis3-EDMV.dlabel.nii'))
+        vis_mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+        local_mask = reader.get_data()[0, vis_mask]
+        local_name2key = {}
+        lbl_tab = reader.label_tables()[0]
+        for k in lbl_tab.keys():
+            if k == 0:
+                continue
+            local_name2key[lbl_tab[k].label] = k
+    else:
+        raise ValueError('not supported local name:', local_name)
+    n_local = len(local_name2key)
+
+    pc_names = ['C1', 'C2']
+    n_pc = len(pc_names)
+    hcpy_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    hcpda_file = pjoin(
+        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+    out_file = pjoin(work_dir, f'RSM8_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+
+    hcpda_data = pkl.load(open(hcpda_file, 'rb'))
+    hcpy_pc_maps = nib.load(hcpy_file).get_fdata()[:n_pc, vis_mask]
+
+    rs = np.zeros((n_pc * n_local, hcpda_data['n_win']))
+    ps = np.zeros((n_pc * n_local, hcpda_data['n_win']))
+    row_names = []
+    col_names = [f'Win{i}' for i in range(1, hcpda_data['n_win'] + 1)]
+    row_idx = 0
+    for local_name, local_key in local_name2key.items():
+        mask = local_mask == local_key
+        for pc_idx, pc_name in enumerate(pc_names):
+            row_names.append(f'{local_name} {pc_name}')
+            hcpy_pc_map = hcpy_pc_maps[pc_idx][mask]
+            for col_idx, col_name in enumerate(col_names):
+                hcpda_pc_map = hcpda_data[f'{col_name}_comp'][pc_idx][mask]
+                r, p = pearsonr(hcpy_pc_map, hcpda_pc_map)
+                rs[row_idx, col_idx] = r
+                ps[row_idx, col_idx] = p
+            row_idx += 1
+
+    data = {'row_name': row_names, 'col_name': col_names, 'r': rs, 'p': ps, 
+            'n_win': hcpda_data['n_win'], 'age in months': hcpda_data['age in months']}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_RSM1_main(mask_name='MMP-vis3-R')
 
@@ -639,5 +691,8 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM5()
     # calc_RSM6()
-    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
-    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+    # calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
+    # calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+
+    calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
+    calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
