@@ -10,7 +10,7 @@ from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
-    s1200_1096_thickness, s1200_1096_myelin, Atlas,\
+    s1200_1096_thickness, s1200_1096_myelin, Atlas, s1200_avg_eccentricity,\
     get_rois, LR_count_32k, mmp_map_file, s1200_group_rsfc_mat
 from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow
 
@@ -118,9 +118,9 @@ def pca_rsfc(
     Args:
         fpath (str): a pickle file
         out_comp_file (str): a .dscalar.nii file
-            shape=(n_component, LR_count_32k)
+            shape=(n_component, LR_count_32k/All_count_32k)
         out_weight_file (str): a .dscalar.nii file
-            shape=(n_component, LR_count_32k)
+            shape=(n_component, LR_count_32k/All_count_32k)
         out_model_file (str): a pkl file
             fitted model
         zscore0 (bool, optional): Default is False
@@ -131,9 +131,18 @@ def pca_rsfc(
     # prepare
     data = pkl.load(open(fpath, 'rb'))
     X = data['matrix']
+    n_vtx = X.shape[1]
+    if n_vtx == LR_count_32k:
+        reader = CiftiReader(mmp_map_file)
+    elif n_vtx == All_count_32k:
+        reader = CiftiReader(s1200_avg_eccentricity)
+    else:
+        raise ValueError("not supported n_vtx:", n_vtx)
+    bms = reader.brain_models()
+    vol = reader.volume
+
     if zscore0:
         X = zscore(X, 0)
-    bms = CiftiReader(mmp_map_file).brain_models()
 
     # calculate
     transformer = PCA(n_components=n_component, random_state=random_state)
@@ -145,13 +154,13 @@ def pca_rsfc(
         assert n_component == Y.shape[1]
     component_names = [f'C{i}' for i in range(1, n_component+1)]
 
-    out_data1 = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+    out_data1 = np.ones((n_component, n_vtx), np.float64) * np.nan
     out_data1[:, data['row-idx_to_32k-fs-LR-idx']] = Y.T
     out_data2 = transformer.components_
 
     # save
-    save2cifti(out_comp_file, out_data1, bms, component_names)
-    save2cifti(out_weight_file, out_data2, bms, component_names)
+    save2cifti(out_comp_file, out_data1, bms, component_names, vol)
+    save2cifti(out_weight_file, out_data2, bms, component_names, vol)
     pkl.dump(transformer, open(out_model_file, 'wb'))
 
 
@@ -533,6 +542,21 @@ if __name__ == '__main__':
     # zscore0=True, n_component=20, random_state=7
     # )
 
+    pca_rsfc(
+    fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
+    out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'),
+    out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight.dscalar.nii'),
+    out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA.pkl'),
+    zscore0=False, n_component=20, random_state=7
+    )
+    pca_rsfc(
+    fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
+    out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'),
+    out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight.dscalar.nii'),
+    out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA.pkl'),
+    zscore0=True, n_component=20, random_state=7
+    )
+
     # pca_HCPY_avg_rsfc_mat(
     #     mask_name0='MMP-vis3-R', mask_name1='grayordinate',
     #     dtype='z', zscore0=False, n_component=20, random_state=7)
@@ -574,13 +598,13 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
 
-    pca_HCPDA_MT_SW_param_local(
-        src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-        pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
-        out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
-    )
-    pca_HCPDA_MT_SW_param_local(
-        src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-        pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
-        out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
-    )
+    # pca_HCPDA_MT_SW_param_local(
+    #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
+    #     out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    # )
+    # pca_HCPDA_MT_SW_param_local(
+    #     src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
+    #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    # )

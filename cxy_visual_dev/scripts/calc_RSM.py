@@ -204,6 +204,34 @@ def calc_RSM1(mask, out_file):
     map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
     maps.append(map_grp_rsfc_vis_z_comp1)
 
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp和
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight的PC1~6;
+    map_rsfc_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-C{i}' for i in range(1, 7))
+    maps.append(map_rsfc_comp1)
+
+    map_rsfc_weight1 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-W{i}' for i in range(1, 7))
+    maps.append(map_rsfc_weight1)
+
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp和
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight的PC1~6;
+    map_rsfc_comp2 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_rsfc_comp2)
+
+    map_rsfc_weight2 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-z-W{i}' for i in range(1, 7))
+    maps.append(map_rsfc_weight2)
+
     # calculation
     maps = np.concatenate(maps, 0)
     data = {'row_name': map_names, 'col_name': map_names}
@@ -663,7 +691,7 @@ def calc_RSM8(dataset_name, local_name):
 
 
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -694,5 +722,5 @@ if __name__ == '__main__':
     # calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
     # calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
 
-    calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
-    calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
+    # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
+    # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
