@@ -189,7 +189,7 @@ def msp_fit_PC12(hemi='rh', method='ordinary'):
         msp_gii = nib.load(msp_file.format(lyr_idx, lyr_idx+1, hemi))
         X.append(msp_gii.darrays[0].data[non_nan_vec])
     X = np.array(X).T
-    
+
     # prepare model
     if method == 'ordinary':
         model = Pipeline([('preprocesser', StandardScaler()),
@@ -211,10 +211,69 @@ def msp_fit_PC12(hemi='rh', method='ordinary'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def msp_lasso_PC12(hemi='rh'):
+    """
+    用6层胞体密度map作为特征分别对结构梯度的PC1/2做lasso线性拟合
+    对比不同alpha的结果 (比较各特征系数的大小
+    """
+    Hemi = hemi2Hemi[hemi]
+    msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2.func.gii')
+    n_layer = 6
+    resample_way = '164fsLR2bigbrain'
+    pc_file = pjoin(anal_dir,
+                    'decomposition/HCPY-M+T_MMP-vis3-'
+                    f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
+    pc_names = ('C1', 'C2')
+    n_pc = len(pc_names)
+    alphas = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]
+    out_file = pjoin(work_dir, f'Msp1~6-s2_lasso_PC12-{resample_way}_{Hemi}.pkl')
+
+    # prepare Y
+    pc_gii = nib.load(pc_file)
+    non_nan_vec = None
+    Y = []
+    for pc_idx in range(n_pc):
+        pc_map = pc_gii.darrays[pc_idx].data
+        if non_nan_vec is None:
+            non_nan_vec = ~np.isnan(pc_map)
+        else:
+            assert np.all(non_nan_vec == ~np.isnan(pc_map))
+        Y.append(pc_map[non_nan_vec])
+    Y = np.array(Y).T
+
+    # prepare X
+    X = []
+    for lyr_idx in range(n_layer):
+        msp_gii = nib.load(msp_file.format(lyr_idx, lyr_idx+1, hemi))
+        X.append(msp_gii.darrays[0].data[non_nan_vec])
+    X = np.array(X).T
+
+    # fit
+    out_dict = {
+        'PC name': pc_names, 'layer ID': list(range(1, n_layer+1)),
+        'Y': Y, 'alpha': alphas}
+    for alpha in alphas:
+        model = Pipeline([
+            ('preprocesser', StandardScaler()),
+            ('regressor', Lasso(alpha=alpha, selection='cyclic'))
+        ])
+        model.fit(X, Y)
+        Y_pred = model.predict(X)
+        scores = [r2_score(Y[:, i], Y_pred[:, i]) for i in range(n_pc)]
+        out_dict[f'alpha{alpha}'] = {
+            'Y_pred': Y_pred, 'model': model, 'R2': scores,
+            'coef': model.named_steps['regressor'].coef_
+        }
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_msp_from_FFA_proj()
     # smooth_msp()
     # mask_msp()
     # PC12_corr_msp()
-    msp_fit_PC12(hemi='rh', method='ordinary')
-    msp_fit_PC12(hemi='rh', method='lasso')
+    # msp_fit_PC12(hemi='rh', method='ordinary')
+    # msp_fit_PC12(hemi='rh', method='lasso')
+    msp_lasso_PC12(hemi='rh')
