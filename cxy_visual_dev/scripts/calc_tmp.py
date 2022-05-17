@@ -151,7 +151,7 @@ def make_EDMV_dlabel1():
     rois_early_LR = rois_early_L + rois_early_R
     mask_early_LR = atlas.get_mask(rois_early_LR)
     data[mask_early_LR] = 1
-    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'early', 1, 0, 0, 1)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'early', 0.84, 0.84, 0.84, 1)
 
     rois_dorsal = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
         get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
@@ -160,7 +160,7 @@ def make_EDMV_dlabel1():
     rois_dorsal_LR = rois_dorsal_L + rois_dorsal_R
     mask_dorsal_LR = atlas.get_mask(rois_dorsal_LR)
     data[mask_dorsal_LR] = 2
-    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'dorsal', 0, 1, 0, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'dorsal', 0.38, 0.85, 0.21, 1)
 
     rois_middle = get_rois('MMP-vis3-G5')
     rois_middle_L = [f'L_{roi}' for roi in rois_middle]
@@ -168,7 +168,7 @@ def make_EDMV_dlabel1():
     rois_middle_LR = rois_middle_L + rois_middle_R
     mask_middle_LR = atlas.get_mask(rois_middle_LR)
     data[mask_middle_LR] = 3
-    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'middle', 0, 0, 1, 1)
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'middle', 0, 0.46, 0.73, 1)
 
     rois_ventral = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
         get_rois('MMP-vis3-G14')
@@ -177,7 +177,7 @@ def make_EDMV_dlabel1():
     rois_ventral_LR = rois_ventral_L + rois_ventral_R
     mask_ventral_LR = atlas.get_mask(rois_ventral_LR)
     data[mask_ventral_LR] = 4
-    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'ventral', 1, 1, 0, 1)
+    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'ventral', 0.80, 0.16, 0.48, 1)
 
     save2cifti(out_file, data, reader.brain_models(), label_tables=[lbl_tab])
 
