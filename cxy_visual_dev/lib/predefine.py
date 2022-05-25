@@ -432,6 +432,20 @@ class Atlas:
             self.maps = np.c_[map_L, map_R]
             self.roi2label = wang2015_name2label
 
+        elif atlas_name == 'MMP-vis3-EDMV':
+            reader = CiftiReader(pjoin(proj_dir, 'analysis/tmp/MMP-vis3-EDMV.dlabel.nii'))
+            map_L, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
+            map_R, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+            lbl_tab = reader.label_tables()[0]
+            self.roi2label = {}
+            for k in lbl_tab.keys():
+                if k == 0:
+                    continue
+                self.roi2label[f'R_{lbl_tab[k].label}'] = k
+                self.roi2label[f'L_{lbl_tab[k].label}'] = k + 4
+                map_L[map_L == k] = k + 4
+            self.maps = np.c_[map_L, map_R]
+
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')
         self.n_roi = len(self.roi2label)

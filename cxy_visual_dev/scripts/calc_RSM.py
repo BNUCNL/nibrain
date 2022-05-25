@@ -42,7 +42,10 @@ def calc_pearson_r_p(data1, data2, nan_mode=False):
         for i in range(m1):
             for j in range(m2):
                 non_nan_vec = np.logical_and(non_nan_arr1[i], non_nan_arr2[j])
-                r, p = pearsonr(data1[i][non_nan_vec], data2[j][non_nan_vec])
+                if np.sum(non_nan_vec) < 2:
+                    r, p = np.nan, np.nan
+                else:
+                    r, p = pearsonr(data1[i][non_nan_vec], data2[j][non_nan_vec])
                 r_arr[i, j] = r
                 p_arr[i, j] = p
     else:
@@ -690,8 +693,73 @@ def calc_RSM8(dataset_name, local_name):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM9():
+    """
+    用个体差异法计算各种指标之间的相关
+    """
+    n_subj = 1096
+    out_file = pjoin(work_dir, 'RSM9.pkl')
+
+    # ---PCA权重---
+    pc_names = ('C1', 'C2')
+    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中myelin的权重及其绝对值
+    weight_m_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv')
+    weight_m_df = pd.read_csv(weight_m_file, usecols=pc_names)
+    weight_m_arr = np.c_[weight_m_df, np.abs(weight_m_df)].T
+    map_names = [f'{i}_weight_M' for i in pc_names]
+    map_names.extend([f'{i}_abs(weight)_M' for i in pc_names])
+    maps = [weight_m_arr]
+
+    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中thickness的权重及其绝对值
+    weight_t_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')
+    weight_t_df = pd.read_csv(weight_t_file, usecols=pc_names)
+    weight_t_arr = np.c_[weight_t_df, np.abs(weight_t_df)].T
+    map_names.extend([f'{i}_weight_T' for i in pc_names])
+    map_names.extend([f'{i}_abs(weight)_T' for i in pc_names])
+    maps.append(weight_t_arr)
+
+    # ---behavior measures---
+    beh_file1 = '/nfs/m1/hcp/S1200_behavior.csv'
+    beh_file2 = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    beh_df1 = pd.read_csv(beh_file1)
+    beh_df2 = pd.read_csv(beh_file2)
+    info_df = pd.read_csv(info_file)
+    assert np.all(beh_df1['Subject'] == beh_df2['Subject'])
+    # get all numeric data
+    cols1 = [i for i in beh_df1.columns if is_numeric_dtype(beh_df1[i])]
+    cols2 = [i for i in beh_df2.columns if is_numeric_dtype(beh_df2[i])]
+    cols2.remove('Subject')
+    beh_arr = np.c_[np.array(beh_df1[cols1], np.float64),
+                    np.array(beh_df2[cols2], np.float64)]
+    cols = cols1 + cols2
+    # limited in 1096 subjects
+    subj_ids_beh = beh_df1['Subject'].to_list()
+    subj_indices = [subj_ids_beh.index(i) for i in info_df['subID']]
+    beh_arr = beh_arr[subj_indices].T
+    map_names.extend(cols)
+    maps.append(beh_arr)
+
+    # ---HCPY-M+T_fit_PC_subj-wise---
+    mt_fit_pc_file = pjoin(anal_dir, 'fit/HCPY-M+T_fit_PC_subj-wise.pkl')
+    mt_fit_pc_data = pkl.load(open(mt_fit_pc_file, 'rb'))
+    mt_fit_pc_maps = np.zeros((len(mt_fit_pc_data), n_subj))
+    for k_idx, k in enumerate(mt_fit_pc_data.keys()):
+        mt_fit_pc_maps[k_idx] = mt_fit_pc_data[k]
+        map_names.append(k)
+    maps.append(mt_fit_pc_maps)
+
+    # calculate correlation
+    maps = np.concatenate(maps, 0)
+    data = {'row_name': map_names, 'col_name': map_names}
+    data['r'], data['p'] = calc_pearson_r_p(maps, maps, True)
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -724,3 +792,5 @@ if __name__ == '__main__':
 
     # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
+
+    calc_RSM9()

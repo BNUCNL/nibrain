@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
-    get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize
+    get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize, s1200_1096_myelin, s1200_1096_thickness
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1, AgeSlideWindow
 from magicbox.io.io import CiftiReader, save2cifti
@@ -550,14 +550,76 @@ def PC12_fit_func2():
     fig.savefig(out_fig)
 
 
+def HCPY_MT_fit_PC12():
+    """
+    对每个被试用其myelin和thickness map拟合PC1/2
+    整体和局部的拟合都做，用以得到在整体或是局部视觉皮层中
+    每个被试对PC1/2的贡献
+    """
+    out_file = pjoin(work_dir, 'HCPY-M+T_fit_PC_subj-wise.pkl')
+    # preparation for feature
+    m_maps = nib.load(s1200_1096_myelin).get_fdata()
+    t_maps = nib.load(s1200_1096_thickness).get_fdata()
+    n_subj = m_maps.shape[0]
+
+    # preparation for target
+    n_pc = 2
+    pc_names = ['C1', 'C2']
+    pc_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
+    pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
+
+    # preparation for mask
+    out_data = {}
+    atlas_names = ['HCP-MMP', 'MMP-vis3-EDMV']
+    for atlas_name in atlas_names:
+        atlas = Atlas(atlas_name)
+        if atlas_name == 'HCP-MMP':
+            mask_names = ['MMP-vis3-R']
+            mask_names.extend(get_rois('MMP-vis3-R'))
+        elif atlas_name == 'MMP-vis3-EDMV':
+            mask_names = [i for i in atlas.roi2label.keys() if i.startswith('R_')]
+        else:
+            raise ValueError('not supported atlas name:', atlas_name)
+        n_mask = len(mask_names)
+
+        # fit for each mask
+        for mask_idx, mask_name in enumerate(mask_names, 1):
+            time1 = time.time()
+
+            if mask_name == 'MMP-vis3-R':
+                mask = atlas.get_mask(get_rois(mask_name))[0]
+            else:
+                mask = atlas.get_mask(mask_name)[0]
+
+            for pc_name in pc_names:
+                out_data[f'{mask_name}_{pc_name}'] = np.zeros(n_subj)
+            for subj_idx in range(n_subj):
+                m_map = m_maps[subj_idx][mask]
+                t_map = t_maps[subj_idx][mask]
+                X = np.array([m_map, t_map]).T
+                Y = pc_maps[:, mask].T
+                model = Pipeline([('preprocesser', StandardScaler()),
+                                  ('regressor', LinearRegression())])
+                model.fit(X, Y)
+                Y_pred = model.predict(X)
+                for pc_idx, pc_name in enumerate(pc_names):
+                    out_data[f'{mask_name}_{pc_name}'][subj_idx] = \
+                        r2_score(Y[:, pc_idx], Y_pred[:, pc_idx])
+            
+            print(f'Finished {atlas_name}-{mask_name}-{mask_idx}/{n_mask}: '
+                  f'cost {time.time() - time1} seconds.')
+
+    pkl.dump(out_data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # gdist_fit_PC12()
     # HCPDA_fit_PC12()
     # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
     #                      width=50, step=10, merge_remainder=True)
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
-                         width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
+    #                      width=50, step=10, merge_remainder=True)
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # HCPDA_fit_PC12_local1(data_name='HCPD', Hemi='R')
@@ -566,3 +628,4 @@ if __name__ == '__main__':
     # PC12_fit_func()
     # PC12_fit_func1()
     # PC12_fit_func2()
+    HCPY_MT_fit_PC12()
