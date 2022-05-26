@@ -6,9 +6,10 @@ import nibabel as nib
 import pickle as pkl
 from os.path import join as pjoin
 from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import proj_dir, mmp_map_file,\
+from cxy_visual_dev.lib.predefine import get_rois, proj_dir, mmp_map_file,\
     L_offset_32k, L_count_32k, R_offset_32k, R_count_32k, LR_count_32k,\
-    hemi2stru, s1200_midthickness_L, s1200_midthickness_R, MedialWall
+    hemi2stru, s1200_midthickness_L, s1200_midthickness_R, MedialWall,\
+    mmp_name2label
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'gdist')
@@ -64,6 +65,41 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
         save2cifti(out_file, data, reader.brain_models())
 
 
+def calc_gdist1():
+    """
+    计算视觉皮层内两两顶点之间的测地距离
+    """
+    # find vertex numbers
+    vis_name = 'MMP-vis3-R'
+    rois = get_rois(vis_name)
+    reader = CiftiReader(mmp_map_file)
+    mask_map = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)[0]
+    mask = np.zeros_like(mask_map, bool)
+    for roi in rois:
+        mask = np.logical_or(mask, mask_map == mmp_name2label[roi])
+    vertices = np.where(mask)[0].astype(np.int32)
+    n_vtx = len(vertices)
+
+    # prepare geometry
+    mw = MedialWall()
+    gii = GiftiReader(s1200_midthickness_R)
+    coords = gii.coords.astype(np.float64)
+    faces = gii.faces.astype(np.int32)
+    faces = mw.remove_from_faces('rh', faces)
+
+    # calculate gdist
+    ds = np.zeros((n_vtx, n_vtx))
+    for vtx_idx in range(n_vtx):
+        time1 = time.time()
+        ds[vtx_idx] = gdist.compute_gdist(coords, faces, vertices[[vtx_idx]], vertices)
+        print(f'Finished {vtx_idx + 1}/{n_vtx}, cost {time.time() - time1} seconds.')
+
+    # save out
+    out_dict = {'gdist': ds, 'vtx_number_in_32k_fs_R': vertices}
+    out_file = pjoin(work_dir, f'gdist-between-all-pair-vtx_{vis_name}.pkl')
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
@@ -88,11 +124,11 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
     # )
 
-    calc_gdist_map_from_src(
-        src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OpMt.label')),
-        src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OpMt.label')),
-        out_file=pjoin(work_dir, 'gdist_src-OpMt.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OpMt.label')),
+    #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OpMt.label')),
+    #     out_file=pjoin(work_dir, 'gdist_src-OpMt.dscalar.nii')
+    # )
 
     # 计算每条radial line的测地距离map
     # fpath = pjoin(anal_dir, 'variation/MMP-vis3_RadialLine1-CS2_R.pkl')
@@ -110,3 +146,5 @@ if __name__ == '__main__':
     #     print(f'Finished {idx+1}/{n_line}: cost {time.time() - time1} seconds')
     # save2cifti(out_file, out_maps,
     #            CiftiReader(mmp_map_file).brain_models(), map_names)
+
+    calc_gdist1()

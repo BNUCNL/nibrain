@@ -940,6 +940,75 @@ def get_HCPY_rsfc_mat(Hemi='R'):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def get_HCPY_rsfc_mat_roi():
+    """
+    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
+    每个被试的4个run都先沿时间轴做去均值中心化然后拼接在一起，来做
+    HCP-MMP1所有脑区之间的连接矩阵。
+    最后得到跨被试平均的连接矩阵。
+    """
+    # prepare
+    atlas = Atlas('HCP-MMP')
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_file = pjoin(work_dir, f'HCPY-avg_RSFC_HCP-MMP.pkl')
+
+    # loading
+    mask_map = atlas.maps[0]
+    rois = list(atlas.roi2label.keys())
+    n_roi = len(rois)
+    df = pd.read_csv(info_file)
+    subj_ids = df['subID'].to_list()
+    n_subj = len(subj_ids)
+    df_ck = pd.read_csv(check_file, sep='\t')
+    subj_ids_1206 = df_ck['subID'].to_list()
+    ok_idx_vec = np.all(df_ck[runs] == 'ok=(1200, 91282)', 1)
+    n_tp = 1200
+    n_run = len(runs)
+
+    # start
+    rs = np.zeros((n_roi, n_roi))
+    roi2indices = {}
+    for roi in rois:
+        mask = mask_map == atlas.roi2label[roi]
+        roi2indices[roi] = np.where(mask)[0]
+    n_subj_valid = 0
+    for subj_idx, subj_id in enumerate(subj_ids, 1):
+        time1 = time.time()
+
+        # check valid runs
+        subj_idx_1206 = subj_ids_1206.index(subj_id)
+        if not ok_idx_vec[subj_idx_1206]:
+            continue
+
+        # loop all runs
+        t_series_sub = np.zeros((LR_count_32k, n_run*n_tp))
+        t_series_roi = np.zeros((n_roi, n_run*n_tp))
+        for run_idx, run in enumerate(runs):
+            run_file = run_files.format(subj_id, run)
+            t_series_run = nib.load(run_file).get_fdata()[:, :LR_count_32k]
+            t_series_run = t_series_run - np.mean(t_series_run, 0, keepdims=True)
+            s_idx = run_idx * n_tp
+            e_idx = (run_idx + 1) * n_tp
+            t_series_sub[:, s_idx:e_idx] = t_series_run.T
+        for roi_idx, roi in enumerate(rois):
+            t_series_roi[roi_idx] = np.mean(t_series_sub[roi2indices[roi]], 0)
+        
+        rs_sub = 1 - cdist(t_series_roi, t_series_roi, 'correlation')
+        rs = rs + rs_sub
+        n_subj_valid += 1
+        print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+
+    data = {'matrix': rs / n_subj_valid, 'roi_name': rois}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -1006,4 +1075,5 @@ if __name__ == '__main__':
     # get_HCPY_rsfc_mat_old(hemi='rh')
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
-    get_HCPY_rsfc_mat(Hemi='R')
+    # get_HCPY_rsfc_mat(Hemi='R')
+    get_HCPY_rsfc_mat_roi()

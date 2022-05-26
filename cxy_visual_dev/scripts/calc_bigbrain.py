@@ -225,8 +225,10 @@ def msp_lasso_PC12(hemi='rh'):
                     f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
     pc_names = ('C1', 'C2')
     n_pc = len(pc_names)
-    alphas = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]
-    out_file = pjoin(work_dir, f'Msp1~6-s2_lasso_PC12-{resample_way}_{Hemi}.pkl')
+    # alphas = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]
+    # out_file = pjoin(work_dir, f'Msp1~6-s2_lasso_PC12-{resample_way}_{Hemi}.pkl')
+    alphas = [0.625, 0.6875, 0.75, 0.78125, 0.8125, 0.875]
+    out_file = pjoin(work_dir, f'Msp1~6-s2_lasso_PC12-{resample_way}_{Hemi}_fine1.pkl')
 
     # prepare Y
     pc_gii = nib.load(pc_file)
