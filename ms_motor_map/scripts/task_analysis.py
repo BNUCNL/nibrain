@@ -16,25 +16,7 @@ class task_analysis(object):
         self.project_dir = project_dir
         self.subject_list = subject_list
         self.fsf_template_dir = fsf_template_dir
-
-    def prepare_fsf(self):
-        level1_fsf_file = os.path.join(self.fsf_template_dir, 'level1.fsf')
-        level2_fsf_file = os.path.join(self.fsf_template_dir, 'level2.fsf')
-        for subject_id in self.subject_list:
-            results_dir = os.path.join(self.project_dir, 'data', 'bold', 'derivatives', 'ciftify', subject_id, 'MNINonLinear', 'Results')
-            with open(os.path.join(self.raw_data_dir, subject_id, 'ses-01', 'tmp', 'run_info', 'motor.rlf'), 'r') as f:
-                runs_id = f.read().splitlines()
-            level2_fsf_file_outdir = os.path.join(results_dir, 'ses-01_task-motor')
-            cpfsf2_command = ' '.join(['cp', level2_fsf_file, os.path.join(level2_fsf_file_outdir, 'ses-01_task-motor_hp200_s4_level2.fsf')])
-            subprocess.check_call(cpfsf2_command, shell=True)
-            self.customize_fsf2(os.path.join(level2_fsf_file_outdir, 'ses-01_task-motor_hp200_s4_level2.fsf'), runs_id)
-            for run_id in runs_id:
-                level1_fsf_file_outdir = os.path.join(results_dir, 'ses-01_task-motor_run-' + run_id)
-                if not os.path.exists(level1_fsf_file_outdir):
-                    os.mkdir(level1_fsf_file_outdir)
-                cpfsf1_command = ' '.join(['cp', level1_fsf_file, os.path.join(level1_fsf_file_outdir, 'ses-01_task-motor_run-' + run_id + '_hp200_s4_level1.fsf')])
-                subprocess.call(cpfsf1_command, shell=True)
-                self.customize_fsf1(os.path.join(level1_fsf_file_outdir, 'ses-01_task-motor_run-' + run_id + '_hp200_s4_level1.fsf'), 'run-' + run_id)
+        self.run_list = ['1', '2', '3', '4', '5', '6']
 
     def customize_fsf1(self, fsf_file_path, runid, from_runid='run-a'):
         sed_level1_fsf_command = " ".join(['sed', '-i', '\'s#{0}#{1}#g\''.format(from_runid, runid), fsf_file_path])
@@ -55,6 +37,23 @@ class task_analysis(object):
         sedfsf2_command6 = " ".join(['sed', '-i', '\'s#{0}#{1}#g\''.format('run-f', runid_list[5]), fsf_file_path])
         subprocess.call(sedfsf2_command6, shell=True)
 
+    def prepare_fsf(self):
+        level1_fsf_file = os.path.join(self.fsf_template_dir, 'level1.fsf')
+        level2_fsf_file = os.path.join(self.fsf_template_dir, 'level2.fsf')
+        for subject_id in self.subject_list:
+            results_dir = os.path.join(self.project_dir, 'data', 'bold', 'derivatives', 'ciftify', subject_id, 'MNINonLinear', 'Results')
+            level2_fsf_file_outdir = os.path.join(results_dir, 'ses-1_task-motor')
+            cpfsf2_command = ' '.join(['cp', level2_fsf_file, os.path.join(level2_fsf_file_outdir, 'ses-1_task-motor_hp200_s4_level2.fsf')])
+            subprocess.check_call(cpfsf2_command, shell=True)
+            self.customize_fsf2(os.path.join(level2_fsf_file_outdir, 'ses-1_task-motor_hp200_s4_level2.fsf'), self.run_list)
+            for run_id in self.run_list:
+                level1_fsf_file_outdir = os.path.join(results_dir, 'ses-1_task-motor_run-' + run_id)
+                if not os.path.exists(level1_fsf_file_outdir):
+                    os.mkdir(level1_fsf_file_outdir)
+                cpfsf1_command = ' '.join(['cp', level1_fsf_file, os.path.join(level1_fsf_file_outdir, 'ses-1_task-motor_run-' + run_id + '_hp200_s4_level1.fsf')])
+                subprocess.call(cpfsf1_command, shell=True)
+                self.customize_fsf1(os.path.join(level1_fsf_file_outdir, 'ses-1_task-motor_run-' + run_id + '_hp200_s4_level1.fsf'), 'run-' + run_id)
+
     def analysis(self):
         lowres = '32'
         grayres = '2'
@@ -67,17 +66,15 @@ class task_analysis(object):
         parcellation = 'NONE'
         parcefile = 'NONE'
         for subject in self.subject_list:
-            with open(os.path.join(self.raw_data_dir, subject, 'ses-01', 'tmp', 'run_info', 'motor.rlf'), 'r') as f:
-                runs_id = f.read().splitlines()
             lvl1tasks_list = []
-            for run_id in runs_id:
-                lvl1tasks_list.append('ses-01_task-motor_run-' + run_id)
+            for run_id in self.run_list:
+                lvl1tasks_list.append('ses-1_task-motor_run-' + run_id)
             level1_tasks = '@'.join(lvl1tasks_list)
             level1_fsfs = level1_tasks
-            level2_tasks = 'ses-01_task-motor'
+            level2_tasks = 'ses-1_task-motor'
             level2_fsf = level2_tasks
             analysis_command = ' '.join(['${HCPPIPEDIR}/TaskfMRIAnalysis/TaskfMRIAnalysis.sh',
-                                        '--path=' + self.ciftify_dir,
+                                        '--path=' + os.path.join(self.project_dir, 'data', 'bold', 'derivatives', 'ciftify'),
                                         '--subject=' + subject,
                                         '--lvl1tasks=' + level1_tasks,
                                         '--lvl1fsfs=' + level1_fsfs,
@@ -99,9 +96,9 @@ class task_analysis(object):
 
 if __name__ == '__main__':
     project_dir = '/nfs/z1/zhenlab/MotorMap'
-    subject_list = ['sub-01']
+    subject_list = pd.read_csv('/nfs/z1/userhome/MaSai/workingdir/Motor_project/code/task_analysis_group/subject_list.csv', header=None).iloc[18:24, 0].to_list()
     fsf_template_dir = '/nfs/z1/userhome/MaSai/workingdir/Motor_project/data/fsf_template'
 
     task_analysis = task_analysis(project_dir, subject_list, fsf_template_dir)
-    # task_analysis.prepare_fsf()
-    # task_analysis.analysis()
+    task_analysis.prepare_fsf()
+    task_analysis.analysis()
