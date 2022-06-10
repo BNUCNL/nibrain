@@ -3,6 +3,15 @@ import pandas as pd
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 
+# >>>32k_fs_LR CIFTI
+All_count_32k = 91282
+LR_count_32k = 59412
+L_offset_32k = 0
+L_count_32k = 29696
+R_offset_32k = 29696
+R_count_32k = 29716
+# 32k_fs_LR CIFTI<<<
+
 # map the name of a hemisphere to CIFTI brain structure
 hemi2stru = {
     'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',

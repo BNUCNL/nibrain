@@ -2,9 +2,11 @@ import os
 import time
 import numpy as np
 import pickle as pkl
+import nibabel as nib
 from os.path import join as pjoin
-from magicbox.io.io import CiftiReader
-from cxy_hcp_ffa.lib.predefine import proj_dir
+from magicbox.io.io import CiftiReader, save2cifti
+from cxy_hcp_ffa.lib.predefine import proj_dir, L_offset_32k,\
+    L_count_32k, R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'NI_R1')
@@ -68,7 +70,46 @@ def calc_cnr(meas_name='CNR'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def make_fus_mask(mask_name='union1'):
+    """
+    制作一个包含pFus和mFus在内的足够大的mask
+
+    Args:
+        mask_name (str, optional): Defaults to 'union1'.
+            union1: 用pFus和mFus的概率图的1%阈限以上的部分做并集
+    """
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1.0, 1.0, 1.0, 0.0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'R_Fus', 0.0, 1.0, 0.0, 1.0)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'L_Fus', 0.0, 0.0, 1.0, 1.0)
+    fus_mask = np.zeros((1, LR_count_32k), np.uint8)
+    out_file = pjoin(work_dir, f'Fus-{mask_name}.32k_fs_LR.dlabel.nii')
+
+    L_mask = np.zeros(LR_count_32k, bool)
+    L_mask[L_offset_32k:(L_offset_32k + L_count_32k)] = True
+    R_mask = np.zeros(LR_count_32k, bool)
+    R_mask[R_offset_32k:(R_offset_32k + R_count_32k)] = True
+    if mask_name.startswith('union'):
+        if mask_name == 'union1':
+            thr = 0.01
+        else:
+            raise ValueError
+        prob_file = pjoin(anal_dir, 'HCP-YA_FFA-prob.32k_fs_LR.dscalar.nii')
+        prob_maps = nib.load(prob_file).get_fdata() > thr
+        union_mask = np.logical_or(prob_maps[0], prob_maps[1])
+        union_mask_L = np.logical_and(union_mask, L_mask)
+        union_mask_R = np.logical_and(union_mask, R_mask)
+        fus_mask[0, union_mask_L] = 2
+        fus_mask[0, union_mask_R] = 1
+    else:
+        raise ValueError
+    
+    save2cifti(out_file, fus_mask, CiftiReader(mmp_map_file).brain_models(),
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # calc_cnr(meas_name='CNR')
-    calc_cnr(meas_name='TSNR')
-    calc_cnr(meas_name='BOLD_CNR')
+    # calc_cnr(meas_name='TSNR')
+    # calc_cnr(meas_name='BOLD_CNR')
+    make_fus_mask(mask_name='union1')
