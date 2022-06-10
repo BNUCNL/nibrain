@@ -4,6 +4,7 @@ import numpy as np
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.spatial.distance import cdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_hcp_ffa.lib.predefine import proj_dir, L_offset_32k,\
     L_count_32k, R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file
@@ -108,8 +109,75 @@ def make_fus_mask(mask_name='union1'):
                label_tables=[lbl_tab])
 
 
+def calc_fus_pattern_corr(mask_name='union1', meas_name='myelin'):
+    """
+    计算两两被试之间在mask内的空间pattern的相关
+
+    Args:
+        mask_name (str, optional): Defaults to 'union1'.
+            See "make_fus_mask" for details
+        meas_name (str, optional): Defaults to 'myelin'.
+    """
+    subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    mask_file = pjoin(work_dir, f'Fus-{mask_name}.32k_fs_LR.dlabel.nii')
+    meas2file = {
+        'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                     'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                     'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii',
+        'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                  'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
+        'va': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+              'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+              'S1200.All.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii',
+        'curv': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                'S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii',
+        'GBC': '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev/'
+               'data/HCP/HCPY-GBC_cortex.dscalar.nii',
+        'activ': pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
+    }
+    out_file = pjoin(work_dir, f'Fus-pattern-corr_{mask_name}_{meas_name}.pkl')
+
+    # prepare meas
+    reader = CiftiReader(meas2file[meas_name])
+    subj_ids = open(subj_file).read().splitlines()
+    if meas_name in ('thickness', 'myelin', 'va', 'curv', 'GBC'):
+        meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+        meas_ids = open(meas_id_file).read().splitlines()
+        meas_indices = [meas_ids.index(i) for i in subj_ids]
+        meas_maps = reader.get_data()[meas_indices]
+        if meas_name == 'GBC':
+            meas_maps = meas_maps[:, :LR_count_32k]
+    elif meas_name == 'activ':
+        map_names = [i.split('_')[0] for i in reader.map_names()]
+        assert subj_ids == map_names
+        meas_maps = reader.get_data()
+    else:
+        raise ValueError
+
+    # calculate
+    mask_reader = CiftiReader(mask_file)
+    lbl_tab = mask_reader.label_tables()[0]
+    mask_map = mask_reader.get_data()[0]
+    out_dict = {}
+    for k in lbl_tab.keys():
+        if k == 0:
+            continue
+        mask = mask_map == k
+        meas_arr = meas_maps[:, mask]
+        out_dict[lbl_tab[k].label] = 1 - cdist(meas_arr, meas_arr, 'correlation')
+
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_cnr(meas_name='CNR')
     # calc_cnr(meas_name='TSNR')
     # calc_cnr(meas_name='BOLD_CNR')
-    make_fus_mask(mask_name='union1')
+    # make_fus_mask(mask_name='union1')
+    calc_fus_pattern_corr(mask_name='union1', meas_name='myelin')
+    calc_fus_pattern_corr(mask_name='union1', meas_name='thickness')
+    calc_fus_pattern_corr(mask_name='union1', meas_name='curv')
+    calc_fus_pattern_corr(mask_name='union1', meas_name='GBC')
+    calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
