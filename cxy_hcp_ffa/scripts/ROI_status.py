@@ -387,7 +387,6 @@ def compare_gdist_grouping(gid, items, t_type, data_file):
 
 
 def pre_ANOVA_gdist_peak():
-    import pandas as pd
 
     hemis = ('lh', 'rh')
     gids = (1, 2)
@@ -403,12 +402,47 @@ def pre_ANOVA_gdist_peak():
         for gid in gids:
             gid_vec_idx = gid_df[hemi] == gid
             meas_vec = df[f'{hemi}_pFus-mFus'][gid_vec_idx]
-            meas_vec.dropna(inplace=True)
             n_valid = len(meas_vec)
             out_dict['hemi'].extend([hemi] * n_valid)
             out_dict['gid'].extend([gid] * n_valid)
             out_dict['meas'].extend(meas_vec)
             print(f'#{hemi}_pFus-mFus:', n_valid)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(out_file, index=False)
+
+
+def pre_ANOVA_gdist_peak_mix():
+    """
+    准备好2因素混合设计方差分析需要的数据。
+    被试间因子：group
+    被试内因子：hemisphere
+    2 groups x 2 hemispheres
+    """
+    hemis = ('lh', 'rh')
+    gids = (1, 2)
+    data_file = pjoin(work_dir, 'gdist_peak.csv')
+    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
+    out_file = pjoin(work_dir, 'gdist_peak_preANOVA_mix.csv')
+
+    df = pd.read_csv(data_file)
+    gid_df = pd.read_csv(gid_file)
+
+    out_dict = {'gid': []}
+    for idx, gid in enumerate(gids):
+        gid_idx_vec = (gid_df['lh'] == gid) & \
+                      (gid_df['rh'] == gid)
+        for hemi in hemis:
+            col = f'{hemi}_pFus-mFus'
+            meas_vec = np.array(df[col][gid_idx_vec])
+            assert np.all(~np.isnan(meas_vec))
+            if idx == 0:
+                out_dict[hemi] = meas_vec.tolist()
+            else:
+                out_dict[hemi].extend(meas_vec)
+        n_valid = np.sum(gid_idx_vec)
+        print('#subject of gid:', n_valid)
+        out_dict['gid'].extend([gid] * n_valid)
+
     out_df = pd.DataFrame(out_dict)
     out_df.to_csv(out_file, index=False)
 
@@ -805,13 +839,14 @@ if __name__ == '__main__':
     # calc_gdist(method='max')
     # plot_gdist()
     # compare_gdist_paired()
-    compare_gdist_grouping(
-        gid=2, items=('pFus-mFus',), t_type='t',
-        data_file=pjoin(work_dir, 'gdist_min1.csv'))
-    compare_gdist_grouping(
-        gid=2, items=('pFus-mFus',), t_type='pair-t',
-        data_file=pjoin(work_dir, 'gdist_min1.csv'))
+    # compare_gdist_grouping(
+    #     gid=2, items=('pFus-mFus',), t_type='t',
+    #     data_file=pjoin(work_dir, 'gdist_min1.csv'))
+    # compare_gdist_grouping(
+    #     gid=2, items=('pFus-mFus',), t_type='pair-t',
+    #     data_file=pjoin(work_dir, 'gdist_min1.csv'))
     # pre_ANOVA_gdist_peak()
+    pre_ANOVA_gdist_peak_mix()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
