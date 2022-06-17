@@ -1,8 +1,12 @@
+import os
 import numpy as np
+import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.stats.stats import ttest_rel, ttest_ind
 from magicbox.io.io import CiftiReader, save2cifti
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
+from magicbox.stats import EffectSize
 from cxy_hcp_ffa.lib.tools import bfs
 from cxy_hcp_ffa.lib.predefine import proj_dir, mmp_map_file
 
@@ -318,11 +322,7 @@ def plot_gdist():
     plt.show()
 
 
-def compare_gdist():
-    import numpy as np
-    import pandas as pd
-    from scipy.stats.stats import ttest_rel
-
+def compare_gdist_paired():
     items = ('pFus-mFus',)
     data_file = pjoin(work_dir, 'gdist_peak.csv')
 
@@ -341,28 +341,49 @@ def compare_gdist():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
-def compare_gdist1():
-    import numpy as np
-    import pandas as pd
-    from scipy.stats.stats import ttest_ind
+def compare_gdist_grouping(gid, items, t_type, data_file):
+    """
+    比较各组左脑和右脑的FFA间距
 
-    gid = 2
-    items = ('pFus-mFus',)
-    data_file = pjoin(work_dir, 'gdist_min1.csv')
+    Args:
+        gid (int): group ID
+        items (_type_): _description_
+        t_type (str): the type of t-test
+            t: two-sample t-test
+            pair-t: paired t-test
+        data_file (_type_): _description_
+    """
+    # prepare group ID information
     gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
-
     gid_df = pd.read_csv(gid_file)
     gid_idx_lh = np.array(gid_df['lh']) == gid
     gid_idx_rh = np.array(gid_df['rh']) == gid
 
+    # calculate
+    es = EffectSize()
+    fname = os.path.basename(data_file)
     df = pd.read_csv(data_file)
     for item in items:
-        col1 = 'lh_' + item
-        col2 = 'rh_' + item
-        data1 = np.array(df[col1])[gid_idx_lh]
-        data2 = np.array(df[col2])[gid_idx_rh]
-        print(np.mean(data1), np.mean(data2))
-        print(f'{col1} vs {col2}:', ttest_ind(data1, data2))
+        print(f'\n---{t_type} between lh and rh {item} in {fname}---')
+        col_lh = 'lh_' + item
+        col_rh = 'rh_' + item
+        if t_type == 't':
+            data_lh = np.array(df[col_lh])[gid_idx_lh]
+            data_rh = np.array(df[col_rh])[gid_idx_rh]
+            print(f"Cohen's d of {col_lh} | {col_rh}:", es.cohen_d(data_lh, data_rh))
+            out_info = ttest_ind(data_lh, data_rh)
+        elif t_type == 'pair-t':
+            gid_idx = np.logical_and(gid_idx_lh, gid_idx_rh)
+            data_lh = np.array(df[col_lh])[gid_idx]
+            data_rh = np.array(df[col_rh])[gid_idx]
+            data = data_lh - data_rh
+            print(f"Cohen's d of {col_lh} | {col_rh}:", es.cohen_d(data, [0]))
+            out_info = ttest_rel(data_lh, data_rh)
+        else:
+            raise ValueError
+        print(f'average of {col_lh} | {col_rh}: {np.mean(data_lh)} | {np.mean(data_rh)}')
+        print(f'size of {col_lh} | {col_rh}: {len(data_lh)} | {len(data_rh)}')
+        print(f'{col_lh} vs {col_rh}:', out_info)
 
 
 def pre_ANOVA_gdist_peak():
@@ -783,8 +804,13 @@ if __name__ == '__main__':
     # calc_gdist(method='min1')
     # calc_gdist(method='max')
     # plot_gdist()
-    # compare_gdist()
-    # compare_gdist1()
+    # compare_gdist_paired()
+    compare_gdist_grouping(
+        gid=2, items=('pFus-mFus',), t_type='t',
+        data_file=pjoin(work_dir, 'gdist_min1.csv'))
+    compare_gdist_grouping(
+        gid=2, items=('pFus-mFus',), t_type='pair-t',
+        data_file=pjoin(work_dir, 'gdist_min1.csv'))
     # pre_ANOVA_gdist_peak()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
@@ -806,5 +832,5 @@ if __name__ == '__main__':
     # create_FFA_mpm(space='164k_fsavg_LR', thr=0.1)
     # create_FFA_mpm(space='164k_fsavg_LR', thr=0.25)
     # create_FFA_mpm(space='164k_fsavg_LR', thr=0.50)
-    split_FFC(space='32k_fs_LR')
-    split_FFC(space='164k_fsavg_LR')
+    # split_FFC(space='32k_fs_LR')
+    # split_FFC(space='164k_fsavg_LR')
