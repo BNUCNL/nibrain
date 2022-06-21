@@ -36,10 +36,14 @@ def mask_maps(data_file, mask, out_file):
         raise ValueError
 
     # calculate
-    data[:, ~mask] = np.nan
+    if data_file.endswith('.dlabel.nii'):
+        data[:, ~mask] = 0
+    else:
+        data[:, ~mask] = np.nan
 
     # save
-    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
+    save2cifti(out_file, data, reader1.brain_models(),
+               reader2.map_names(), label_tables=reader2.label_tables())
 
 
 def make_mask1():
@@ -201,10 +205,15 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus-split_MMP-vis3.dscalar.nii')
     # )
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'gdist/gdist_src-OpMt.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OpMt_MMP-vis3.dscalar.nii')
+    # )
     mask_maps(
-        data_file=pjoin(anal_dir, 'gdist/gdist_src-OpMt.dscalar.nii'),
+        data_file=pjoin(anal_dir, 'variation/MMP-vis3_ring1-CS1_R_width5.dlabel.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-OpMt_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     )
 
     # make_mask1()

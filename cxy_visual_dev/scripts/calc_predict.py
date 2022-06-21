@@ -294,9 +294,9 @@ def PC_predict_ROI4(pc_file, pc_nums, mask_name, n_split=5):
     # prepare parameters for GridSearch
     Cs = [0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
     param_grid = [
-        {'classifier': [LogisticRegression(penalty='none', max_iter=1000)],
+        {'classifier': [LogisticRegression(penalty='none', max_iter=10000)],
          'classifier__solver': ['saga', 'lbfgs']},
-        {'classifier': [LogisticRegression(penalty='l2', max_iter=1000)],
+        {'classifier': [LogisticRegression(penalty='l2', max_iter=10000)],
          'classifier__solver': ['saga', 'lbfgs'],
          'classifier__C': Cs},
     ]
@@ -373,9 +373,9 @@ def PC_predict_ROI5(pc_file, pc_nums, mask_name, n_split=5):
     # prepare parameters for GridSearch
     Cs = [0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
     param_grid = [
-        {'classifier': [LogisticRegression(penalty='none', max_iter=1000)],
+        {'classifier': [LogisticRegression(penalty='none', max_iter=10000)],
          'classifier__solver': ['saga', 'lbfgs']},
-        {'classifier': [LogisticRegression(penalty='l2', max_iter=1000)],
+        {'classifier': [LogisticRegression(penalty='l2', max_iter=10000)],
          'classifier__solver': ['saga', 'lbfgs'],
          'classifier__C': Cs},
     ]
@@ -548,12 +548,15 @@ if __name__ == '__main__':
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 2], mask_name='MMP-vis3-R', n_split=5)
-    PC_predict_ROI4(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI4(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI4(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI4(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI4(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1], mask_name='MMP-vis3-R', n_split=5)
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1], mask_name='R_V1~4', n_split=5)
@@ -566,16 +569,29 @@ if __name__ == '__main__':
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI4(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[i for i in range(1, 11) if i != 2], mask_name='MMP-vis3-R', n_split=5)
+    # PC_predict_ROI4(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 3], mask_name='MMP-vis3-R', n_split=5)
+    for i in range(4, 11):
+        PC_predict_ROI4(
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
 
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 2], mask_name='MMP-vis3-R', n_split=5)
-    PC_predict_ROI5(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
-    PC_predict_ROI5(
-        pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI5(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 2], mask_name='R_V1~4', n_split=5)
+    # PC_predict_ROI5(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI5(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1], mask_name='MMP-vis3-R', n_split=5)
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1], mask_name='R_V1~4', n_split=5)
@@ -588,6 +604,13 @@ if __name__ == '__main__':
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[2], mask_name='MMP-vis3-R_ex(V1~4)', n_split=5)
+    # PC_predict_ROI5(
+    #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #     pc_nums=[1, 3], mask_name='MMP-vis3-R', n_split=5)
+    for i in range(4, 11):
+        PC_predict_ROI5(
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
     
     # PC_predict_ROI6(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),

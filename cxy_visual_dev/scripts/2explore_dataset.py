@@ -215,6 +215,61 @@ def rfMRI_file_status(fpath):
     plt.show()
 
 
+def summary_subj_info(data_flag):
+    """
+    获取各类数据所涉及的被试信息
+
+    Args:
+        data_flag (str):
+    """
+    if data_flag in ('HCPY-myelin', 'HCPY-thickness'):
+        fpath = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+        df = pd.read_csv(fpath)
+        print('#Subject:', df.shape[0])
+        print('#Male:', np.sum(df['gender'] == 'M'))
+        print('#Female:', np.sum(df['gender'] == 'F'))
+        print('Mean age:', np.mean(df['age in years']))
+        print('Age std:', np.std(df['age in years']))
+        print(f"Age range: {np.min(df['age in years'])} to "
+              f"{np.max(df['age in years'])}")
+    elif data_flag in ('HCPD-myelin', 'HCPD-thickness', 'HCPA-myelin', 'HCPA-thickness'):
+        dataset_name = data_flag.split('-')[0]
+        fpath = pjoin(work_dir, f'{dataset_name}_SubjInfo.csv')
+        df = pd.read_csv(fpath)
+        print('#Subject:', df.shape[0])
+        print('#Male:', np.sum(df['gender'] == 'M'))
+        print('#Female:', np.sum(df['gender'] == 'F'))
+        print('Mean age:', np.mean(df['age in months']) / 12)
+        print('Age std:', np.std(df['age in months']) / 12)
+        print(f"Age range: {np.min(df['age in months']) / 12} to "
+              f"{np.max(df['age in months']) / 12}")
+    elif data_flag == 'HCPY-rfMRI':
+        fpath = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+        check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+        runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+                'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+        df = pd.read_csv(fpath)
+        df_ck = pd.read_csv(check_file, sep='\t')
+        subj_ids_1206 = df_ck['subID'].to_list()
+        ok_idx_vec = np.all(df_ck[runs] == 'ok=(1200, 91282)', 1)
+        indices = []
+        for idx in df.index:
+            subj_id = df.loc[idx, 'subID']
+            subj_idx_1206 = subj_ids_1206.index(subj_id)
+            if ok_idx_vec[subj_idx_1206]:
+                indices.append(idx)
+        df = df.loc[indices]
+        print('#Subject:', df.shape[0])
+        print('#Male:', np.sum(df['gender'] == 'M'))
+        print('#Female:', np.sum(df['gender'] == 'F'))
+        print('Mean age:', np.mean(df['age in years']))
+        print('Age std:', np.std(df['age in years']))
+        print(f"Age range: {np.min(df['age in years'])} to "
+              f"{np.max(df['age in years'])}")
+    else:
+        raise ValueError('not supported data_flag:', data_flag)
+
+
 if __name__ == '__main__':
     # >>>check_rfMRI_file
     # subj_par = '/nfs/m1/hcp'
@@ -282,7 +337,12 @@ if __name__ == '__main__':
     # rfMRI_file_status(pjoin(work_dir, 'HCPA_rfMRI_file_check.tsv'))
     # rfMRI_file_status<<<
 
-    get_subject_info_from_fmriresults01('HCPD')
-    get_subject_info_from_completeness('HCPD')
-    get_subject_info_from_fmriresults01('HCPA')
-    get_subject_info_from_completeness('HCPA')
+    # get_subject_info_from_fmriresults01('HCPD')
+    # get_subject_info_from_completeness('HCPD')
+    # get_subject_info_from_fmriresults01('HCPA')
+    # get_subject_info_from_completeness('HCPA')
+
+    # summary_subj_info(data_flag='HCPY-myelin')
+    # summary_subj_info(data_flag='HCPD-myelin')
+    summary_subj_info(data_flag='HCPA-myelin')
+    summary_subj_info(data_flag='HCPY-rfMRI')

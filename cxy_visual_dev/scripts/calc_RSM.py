@@ -42,7 +42,10 @@ def calc_pearson_r_p(data1, data2, nan_mode=False):
         for i in range(m1):
             for j in range(m2):
                 non_nan_vec = np.logical_and(non_nan_arr1[i], non_nan_arr2[j])
-                r, p = pearsonr(data1[i][non_nan_vec], data2[j][non_nan_vec])
+                if np.sum(non_nan_vec) < 2:
+                    r, p = np.nan, np.nan
+                else:
+                    r, p = pearsonr(data1[i][non_nan_vec], data2[j][non_nan_vec])
                 r_arr[i, j] = r
                 p_arr[i, j] = p
     else:
@@ -189,6 +192,48 @@ def calc_RSM1(mask, out_file):
     map_faff = reader.get_data()[:, :LR_count_32k][:, mask]
     map_names.extend(f'fA{i}' for i in reader.map_names())
     maps.append(map_faff)
+
+    # S1200-grp-RSFC-r_grayordinate2grayordinate_zscore_PCA-comp和
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_all_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_grayordinate2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'grp-RSFC-r-all-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_all_z_comp1)
+
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp和
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight的PC1~6;
+    map_rsfc_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-C{i}' for i in range(1, 7))
+    maps.append(map_rsfc_comp1)
+
+    map_rsfc_weight1 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-W{i}' for i in range(1, 7))
+    maps.append(map_rsfc_weight1)
+
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp和
+    # HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight的PC1~6;
+    map_rsfc_comp2 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_rsfc_comp2)
+
+    map_rsfc_weight2 = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k][:, mask]
+    map_names.extend(f'avg-RSFC-vis-z-W{i}' for i in range(1, 7))
+    maps.append(map_rsfc_weight2)
 
     # calculation
     maps = np.concatenate(maps, 0)
@@ -442,51 +487,64 @@ def calc_RSM3():
 
 def calc_RSM5():
     """
-    计算PC1, PC2和eccentricity在每个视觉区域内的相关
+    计算各map在每个视觉区内与eccentricity的相关
     """
-    n_pc = 2
-    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
-    map_pcs = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )).get_fdata()[:n_pc]
-    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
-    out_file = pjoin(work_dir, 'RSM5_PC12-corr-ECC_area.pkl')
-
     atlas = Atlas('HCP-MMP')
     rois_vis = get_rois('MMP-vis3-R')
     n_roi = len(rois_vis)
+    out_file = pjoin(work_dir, 'RSM5_corr-ECC_area.pkl')
 
-    rs = np.zeros((n_pc, n_roi))
-    ps = np.zeros((n_pc, n_roi))
-    for pc_idx in range(n_pc):
-        for roi_idx, roi in enumerate(rois_vis):
-            mask = atlas.get_mask(roi)[0]
-            roi_pc = map_pcs[pc_idx, mask]
-            roi_ecc = map_ecc[mask]
-            r, p = pearsonr(roi_pc, roi_ecc)
-            rs[pc_idx, roi_idx] = r
-            ps[pc_idx, roi_idx] = p
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = [map_stru_pc]
 
-    data = {'row_name': pc_names, 'col_name': rois_vis, 'r': rs, 'p': ps}
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp的PC1~6;
+    map_grp_rsfc_vis_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_comp1)
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
+    # eccentricity
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+
+    # calculation
+    maps = np.concatenate(maps, 0)
+    n_map = maps.shape[0]
+    assert n_map == len(map_names)
+    rs = np.zeros((n_map, n_roi))
+    ps = np.zeros((n_map, n_roi))
+    for roi_idx, roi in enumerate(rois_vis):
+        mask = atlas.get_mask(roi)[0]
+        roi_ecc = map_ecc[mask]
+        for map_idx in range(n_map):
+            roi_map = maps[map_idx, mask]
+            r, p = pearsonr(roi_map, roi_ecc)
+            rs[map_idx, roi_idx] = r
+            ps[map_idx, roi_idx] = p
+
+    data = {'row_name': map_names, 'col_name': rois_vis, 'r': rs, 'p': ps}
     pkl.dump(data, open(out_file, 'wb'))
 
 
 def calc_RSM6():
     """
-    计算PC1, PC2和eccentricity在视觉区域间的相关
+    计算各map和eccentricity在视觉区域间的相关
     all: 使用所有的视觉区域
     ex(V1~3): 除V1~3以外的视觉区域
     ex(V1~4): 除V1~4以外的视觉区域
     ex(V1~4+V3A): 除V1~4以及V3A以外的视觉区域
     """
-    n_pc = 2
-    pc_names = [f'PC{i}' for i in range(1, n_pc + 1)]
-    map_pcs = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )).get_fdata()[:n_pc]
-    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
-    out_file = pjoin(work_dir, 'RSM6_PC12-corr-ECC_area-between.pkl')
-
     atlas = Atlas('HCP-MMP')
     rois_vis = get_rois('MMP-vis3-R')
     col_names = ['all', 'ex(V1~3)', 'ex(V1~4)', 'ex(V1~4+V3A)']
@@ -496,33 +554,212 @@ def calc_RSM6():
         'ex(V1~4+V3A)': ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V3A']
     }
     n_col = len(col_names)
+    out_file = pjoin(work_dir, 'RSM6_corr-ECC_area-between.pkl')
 
-    rs = np.zeros((n_pc, n_col))
-    ps = np.zeros((n_pc, n_col))
-    for pc_idx in range(n_pc):
-        for col_idx, col in enumerate(col_names):
-            if col == 'all':
-                rois = rois_vis
-            else:
-                rois = [i for i in rois_vis if i not in col2exROIs[col]]
-            n_roi = len(rois)
-            print('n_roi:', n_roi)
-            pc_vec = np.zeros(n_roi)
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = [map_stru_pc]
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp的PC1~6;
+    map_grp_rsfc_vis_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_comp1)
+
+    # S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp的PC1~6
+    map_grp_rsfc_vis_z_comp1 = nib.load(pjoin(
+        anal_dir, 'decomposition/S1200-grp-RSFC-r_MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'
+    )).get_fdata()[:6, :LR_count_32k]
+    map_names.extend(f'grp-RSFC-r-vis-z-C{i}' for i in range(1, 7))
+    maps.append(map_grp_rsfc_vis_z_comp1)
+
+    # Eccentricity
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k]
+
+    # calculation
+    maps = np.concatenate(maps, 0)
+    n_map = maps.shape[0]
+    assert n_map == len(map_names)
+    rs = np.zeros((n_map, n_col))
+    ps = np.zeros((n_map, n_col))
+    for col_idx, col in enumerate(col_names):
+        if col == 'all':
+            rois = rois_vis
+        else:
+            rois = [i for i in rois_vis if i not in col2exROIs[col]]
+        n_roi = len(rois)
+        print(f'n_roi of {col}:', n_roi)
+        for map_idx in range(n_map):
+            map_vec = np.zeros(n_roi)
             ecc_vec = np.zeros(n_roi)
             for roi_idx, roi in enumerate(rois):
                 mask = atlas.get_mask(roi)[0]
-                pc_vec[roi_idx] = np.mean(map_pcs[pc_idx, mask])
+                map_vec[roi_idx] = np.mean(maps[map_idx, mask])
                 ecc_vec[roi_idx] = np.mean(map_ecc[mask])
-            r, p = pearsonr(pc_vec, ecc_vec)
-            rs[pc_idx, col_idx] = r
-            ps[pc_idx, col_idx] = p
+            r, p = pearsonr(map_vec, ecc_vec)
+            rs[map_idx, col_idx] = r
+            ps[map_idx, col_idx] = p
 
-    data = {'row_name': pc_names, 'col_name': col_names, 'r': rs, 'p': ps}
+    data = {'row_name': map_names, 'col_name': col_names, 'r': rs, 'p': ps}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def calc_RSM7(dataset_name, vis_name):
+    """
+    计算stru-PC1/2和各滑窗PC的相关
+    """
+    mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    hcpy_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    n_hcpy_pc = 2
+    hcpda_file = pjoin(
+        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+    n_hcpda_pc = 10
+    out_file = pjoin(work_dir, f'RSM7_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+
+    hcpda_data = pkl.load(open(hcpda_file, 'rb'))
+    row_names = hcpda_data['component name']
+    hcpy_pc_maps = nib.load(hcpy_file).get_fdata()[:2, mask]
+    col_names = []
+    rs = np.zeros((n_hcpda_pc, n_hcpy_pc * hcpda_data['n_win']))
+    ps = np.zeros((n_hcpda_pc, n_hcpy_pc * hcpda_data['n_win']))
+    for win_idx in range(hcpda_data['n_win']):
+        win_id = win_idx + 1
+        s_idx = win_idx * n_hcpy_pc
+        e_idx = s_idx + n_hcpy_pc
+        rs_tmp, ps_tmp = calc_pearson_r_p(hcpda_data[f'Win{win_id}_comp'], hcpy_pc_maps)
+        rs[:, s_idx:e_idx] = rs_tmp
+        ps[:, s_idx:e_idx] = ps_tmp
+        col_names.extend([f'HCPY-C{i}_corr_Win{win_id}' for i in range(1, n_hcpy_pc + 1)])
+
+    data = {'row_name': row_names, 'col_name': col_names, 'r': rs, 'p': ps, 
+            'n_win': hcpda_data['n_win'], 'age in months': hcpda_data['age in months']}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def calc_RSM8(dataset_name, local_name):
+    """
+    在各个局部计算stru-PC1/2和各滑窗PC的相关
+    """
+    if local_name == 'MMP-vis3-R-EDMV':
+        vis_name = 'MMP-vis3-R'
+        reader = CiftiReader(pjoin(anal_dir, 'tmp/MMP-vis3-EDMV.dlabel.nii'))
+        vis_mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+        local_mask = reader.get_data()[0, vis_mask]
+        local_name2key = {}
+        lbl_tab = reader.label_tables()[0]
+        for k in lbl_tab.keys():
+            if k == 0:
+                continue
+            local_name2key[lbl_tab[k].label] = k
+    else:
+        raise ValueError('not supported local name:', local_name)
+    n_local = len(local_name2key)
+
+    pc_names = ['C1', 'C2']
+    n_pc = len(pc_names)
+    hcpy_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    hcpda_file = pjoin(
+        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+    out_file = pjoin(work_dir, f'RSM8_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+
+    hcpda_data = pkl.load(open(hcpda_file, 'rb'))
+    hcpy_pc_maps = nib.load(hcpy_file).get_fdata()[:n_pc, vis_mask]
+
+    rs = np.zeros((n_pc * n_local, hcpda_data['n_win']))
+    ps = np.zeros((n_pc * n_local, hcpda_data['n_win']))
+    row_names = []
+    col_names = [f'Win{i}' for i in range(1, hcpda_data['n_win'] + 1)]
+    row_idx = 0
+    for local_name, local_key in local_name2key.items():
+        mask = local_mask == local_key
+        for pc_idx, pc_name in enumerate(pc_names):
+            row_names.append(f'{local_name} {pc_name}')
+            hcpy_pc_map = hcpy_pc_maps[pc_idx][mask]
+            for col_idx, col_name in enumerate(col_names):
+                hcpda_pc_map = hcpda_data[f'{col_name}_comp'][pc_idx][mask]
+                r, p = pearsonr(hcpy_pc_map, hcpda_pc_map)
+                rs[row_idx, col_idx] = r
+                ps[row_idx, col_idx] = p
+            row_idx += 1
+
+    data = {'row_name': row_names, 'col_name': col_names, 'r': rs, 'p': ps, 
+            'n_win': hcpda_data['n_win'], 'age in months': hcpda_data['age in months']}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def calc_RSM9():
+    """
+    用个体差异法计算各种指标之间的相关
+    """
+    n_subj = 1096
+    out_file = pjoin(work_dir, 'RSM9.pkl')
+
+    # ---PCA权重---
+    pc_names = ('C1', 'C2')
+    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中myelin的权重及其绝对值
+    weight_m_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv')
+    weight_m_df = pd.read_csv(weight_m_file, usecols=pc_names)
+    weight_m_arr = np.c_[weight_m_df, np.abs(weight_m_df)].T
+    map_names = [f'{i}_weight_M' for i in pc_names]
+    map_names.extend([f'{i}_abs(weight)_M' for i in pc_names])
+    maps = [weight_m_arr]
+
+    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中thickness的权重及其绝对值
+    weight_t_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')
+    weight_t_df = pd.read_csv(weight_t_file, usecols=pc_names)
+    weight_t_arr = np.c_[weight_t_df, np.abs(weight_t_df)].T
+    map_names.extend([f'{i}_weight_T' for i in pc_names])
+    map_names.extend([f'{i}_abs(weight)_T' for i in pc_names])
+    maps.append(weight_t_arr)
+
+    # ---behavior measures---
+    beh_file1 = '/nfs/m1/hcp/S1200_behavior.csv'
+    beh_file2 = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    beh_df1 = pd.read_csv(beh_file1)
+    beh_df2 = pd.read_csv(beh_file2)
+    info_df = pd.read_csv(info_file)
+    assert np.all(beh_df1['Subject'] == beh_df2['Subject'])
+    # get all numeric data
+    cols1 = [i for i in beh_df1.columns if is_numeric_dtype(beh_df1[i])]
+    cols2 = [i for i in beh_df2.columns if is_numeric_dtype(beh_df2[i])]
+    cols2.remove('Subject')
+    beh_arr = np.c_[np.array(beh_df1[cols1], np.float64),
+                    np.array(beh_df2[cols2], np.float64)]
+    cols = cols1 + cols2
+    # limited in 1096 subjects
+    subj_ids_beh = beh_df1['Subject'].to_list()
+    subj_indices = [subj_ids_beh.index(i) for i in info_df['subID']]
+    beh_arr = beh_arr[subj_indices].T
+    map_names.extend(cols)
+    maps.append(beh_arr)
+
+    # ---HCPY-M+T_fit_PC_subj-wise---
+    mt_fit_pc_file = pjoin(anal_dir, 'fit/HCPY-M+T_fit_PC_subj-wise.pkl')
+    mt_fit_pc_data = pkl.load(open(mt_fit_pc_file, 'rb'))
+    mt_fit_pc_maps = np.zeros((len(mt_fit_pc_data), n_subj))
+    for k_idx, k in enumerate(mt_fit_pc_data.keys()):
+        mt_fit_pc_maps[k_idx] = mt_fit_pc_data[k]
+        map_names.append(k)
+    maps.append(mt_fit_pc_maps)
+
+    # calculate correlation
+    maps = np.concatenate(maps, 0)
+    data = {'row_name': map_names, 'col_name': map_names}
+    data['r'], data['p'] = calc_pearson_r_p(maps, maps, True)
     pkl.dump(data, open(out_file, 'wb'))
 
 
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -550,3 +787,10 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM5()
     # calc_RSM6()
+    # calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
+    # calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+
+    # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
+    # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
+
+    calc_RSM9()
