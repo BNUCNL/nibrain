@@ -5,6 +5,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.io import loadmat, savemat
 from scipy.spatial.distance import cdist
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_hcp_ffa.lib.predefine import proj_dir, L_offset_32k,\
@@ -337,8 +338,69 @@ def MT_gradient():
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def select_data(subj_mask, out_dir):
+    """
+    把指定被试的数据节选出来
+
+    Args:
+        subj_mask (bool vector):
+        out_dir (str):
+    """
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    data_files1 = [
+        pjoin(anal_dir, 'gdist_peak.csv'),
+        pjoin(anal_dir, 'gdist_min1.csv'),
+        pjoin(anal_dir, 'structure/FFA_va.csv'),
+        pjoin(anal_dir, 'structure/FFA_myelin.csv'),
+        pjoin(anal_dir, 'structure/FFA_thickness.csv'),
+        pjoin(anal_dir, 'tfMRI/FFA_activ-emo.csv'),
+        pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole-mean.csv'),
+        pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
+    ]
+    for data_file1 in data_files1:
+        out_file1 = os.path.basename(data_file1)
+        print(f'Doing: {out_file1}')
+        out_file1 = pjoin(out_dir, out_file1)
+        df1 = pd.read_csv(data_file1)
+        df1 = df1.loc[subj_mask]
+        df1.to_csv(out_file1, index=False)
+
+    data_files2 = [
+        pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+    ]
+    for data_file2 in data_files2:
+        out_file2 = os.path.basename(data_file2)
+        print(f'Doing: {out_file2}')
+        out_file2 = pjoin(out_dir, out_file2)
+        reader2 = CiftiReader(data_file2)
+        data2 = reader2.get_data()[subj_mask]
+        map_names2 = reader2.map_names()
+        map_names2 = [j for i, j in enumerate(map_names2) if subj_mask[i]]
+        lbl_tabs2 = reader2.label_tables()
+        lbl_tabs2 = [j for i, j in enumerate(lbl_tabs2) if subj_mask[i]]
+        save2cifti(out_file2, data2, reader2.brain_models(), map_names2,
+                   reader2.volume, lbl_tabs2)
+
+    data_files3 = [
+        pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
+        pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+    ]
+    for data_file3 in data_files3:
+        rois3 = ['lh_pFus', 'lh_mFus', 'rh_pFus', 'rh_mFus']
+        out_file3 = os.path.basename(data_file3)
+        print(f'Doing: {out_file3}')
+        out_file3 = pjoin(out_dir, out_file3)
+        data3 = loadmat(data_file3)
+        out_data3 = {'target_label': data3['target_label']}
+        for roi3 in rois3:
+            out_data3[roi3] = data3[roi3][subj_mask]
+        savemat(out_file3, out_data3)  # 验证一下
+
+
 if __name__ == '__main__':
-    calc_snr2(meas_name='TSNR')
+    # calc_snr2(meas_name='TSNR')
     # make_fus_mask(mask_name='union1')
     # make_fus_mask(mask_name='MMP1')
     # calc_fus_pattern_corr(mask_name='union1', meas_name='myelin')
@@ -348,3 +410,6 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
     # MT_gradient()
+    select_data(
+        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
+        out_dir=pjoin(work_dir, 'data_1053'))

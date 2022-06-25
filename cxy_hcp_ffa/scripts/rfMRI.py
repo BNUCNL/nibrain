@@ -1,4 +1,7 @@
+import numpy as np
+import pandas as pd
 from os.path import join as pjoin
+from scipy.io import loadmat
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
@@ -219,7 +222,6 @@ def rsfc(hemi='lh', sess=1, run='LR'):
 
 
 def fc_mean_among_run(hemi='lh'):
-    import numpy as np
     import pickle as pkl
 
     # parameters
@@ -329,6 +331,22 @@ def pkl2mat(lh_file, rh_file, out_file, seeds, exclude_trg_labels=None):
             out_dict[col] = data[seed]
 
     savemat(out_file, out_dict)
+
+
+def fc_merge_Cole():
+    """
+    为每个被试每个ROI计算跨Cole networks的平均RSFC
+    """
+    rois = ['lh_pFus', 'lh_mFus', 'rh_pFus', 'rh_mFus']
+    data = loadmat(pjoin(work_dir, 'rsfc_FFA2Cole.mat'))
+    out_file = pjoin(work_dir, 'rsfc_FFA2Cole-mean.csv')
+    out_data = {}
+    for roi in rois:
+        nan_arr = np.isnan(data[roi])
+        assert np.all(np.all(nan_arr, 1) == np.any(nan_arr, 1))
+        out_data[roi] = np.mean(data[roi], 1)
+    out_df = pd.DataFrame(out_data)
+    out_df.to_csv(out_file, index=False)
 
 
 def pre_ANOVA_rm():
@@ -686,13 +704,14 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'rsfc_FFA2Cole.mat'),
     #     seeds=('pFus-face', 'mFus-face')
     # )
-    pkl2mat(
-        lh_file=pjoin(work_dir, 'rsfc_individual2MMP_lh.pkl'),
-        rh_file=pjoin(work_dir, 'rsfc_individual2MMP_rh.pkl'),
-        out_file=pjoin(work_dir, 'rsfc_FFA2MMP.mat'),
-        seeds=('pFus-face', 'mFus-face'),
-        exclude_trg_labels=(18, 198)
-    )
+    # pkl2mat(
+    #     lh_file=pjoin(work_dir, 'rsfc_individual2MMP_lh.pkl'),
+    #     rh_file=pjoin(work_dir, 'rsfc_individual2MMP_rh.pkl'),
+    #     out_file=pjoin(work_dir, 'rsfc_FFA2MMP.mat'),
+    #     seeds=('pFus-face', 'mFus-face'),
+    #     exclude_trg_labels=(18, 198)
+    # )
+    fc_merge_Cole()
     # pre_ANOVA_rm()
     # roi_ttest()
     # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
