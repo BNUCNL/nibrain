@@ -340,7 +340,7 @@ if __name__ == '__main__':
     # merge_group()
     # count_subject()
     count_subject(
-        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id_MSMAll.npy'))
+        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy'))
     )
     # npy2csv(
     #     lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),

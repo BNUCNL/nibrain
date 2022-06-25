@@ -17,16 +17,16 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def calc_cnr(meas_name='CNR'):
+def calc_snr1(meas_name):
     """
     直接从fixextended目录下的RunName_Atlas_stats.dscalar.nii
     文件中取出CNR, TSNR, BOLDVar/UnstructNoiseVar指标
     但后来发现这些统计指标是针对ICA-FIX之前的时间序列的。
-    我们还是得按照审稿人的办法重新算CNR。由此，新建calc_cnr1函数
+    我们还是得按照审稿人的办法重新算CNR。由此，新建calc_snr2函数
     另外，这里用的CIFTI文件名也没写MSMAll，所以定是不能用这个了~
 
     Args:
-        meas_name (str, optional): Defaults to 'CNR'.
+        meas_name (str):
             CNR: CNR
             TSNR: TSNR
             BOLD_CNR: BOLDVar/UnstructNoiseVar
@@ -37,8 +37,8 @@ def calc_cnr(meas_name='CNR'):
             'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
     meas_files = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/'\
         '{run}/{run}_Atlas_stats.dscalar.nii'
-    log_file = pjoin(work_dir, f'CNR_log')
-    out_file = pjoin(work_dir, f'{meas_name}.pkl')
+    log_file = pjoin(work_dir, f'{meas_name}1_log')
+    out_file = pjoin(work_dir, f'{meas_name}1.pkl')
     
     reader = CiftiReader(roi_file)
     subj_ids = reader.map_names()
@@ -85,16 +85,17 @@ def calc_cnr(meas_name='CNR'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
-def calc_cnr1(meas_name):
+def calc_snr2(meas_name):
     """
+    基于RunName_Atlas_MSMAll_hp2000_clean.dtseries.nii计算信噪比
+
     Args:
-        meas_name (str):
-            TSNR: 直接计算RunName_Atlas_MSMAll_hp2000_clean.dtseries.nii
-                中时间序列的tSNR
+        meas_name (str): 信噪比种类
+            TSNR: 直接计算tSNR = mean(timeseries) / std(timeseries)
     Notes:
-        我发现一个trick，就是如果先计算ROI的平均时间序列的话会抹掉部分甚至全部的非结构噪声，
-        这样再去计算tSNR的话，就不好说这块区域的信噪比到底怎么样了。
-        所以先基于vertex-wise的时间序列计算tSNR，然后计算ROI内的平均才比较合理
+        我发现一个trick，就是如果先计算ROI的平均时间序列的话会抹掉部分甚至全部的随机噪声，
+        这样再去计算SNR的话，就不好说这块区域的信噪比到底怎么样了。
+        所以先基于vertex-wise的时间序列计算SNR，然后计算ROI内的平均才比较合理
         之前HCP提供的tSNR这些指标就都是vertex-wise的
     """
     roi_names = ['R_pFus', 'R_mFus', 'L_pFus', 'L_mFus']
@@ -103,9 +104,9 @@ def calc_cnr1(meas_name):
             'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
     src_files = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/'\
         '{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    log_file = pjoin(work_dir, f'CNR1_log')
-    out_file = pjoin(work_dir, f'{meas_name}1.pkl')
-    
+    log_file = pjoin(work_dir, f'{meas_name}2_log')
+    out_file = pjoin(work_dir, f'{meas_name}2.pkl')
+
     reader = CiftiReader(roi_file)
     subj_ids = reader.map_names()
     lbl_tabs = reader.label_tables()
@@ -337,10 +338,7 @@ def MT_gradient():
 
 
 if __name__ == '__main__':
-    # calc_cnr(meas_name='CNR')
-    # calc_cnr(meas_name='TSNR')
-    # calc_cnr(meas_name='BOLD_CNR')
-    # calc_cnr1(meas_name='TSNR')
+    calc_snr2(meas_name='TSNR')
     # make_fus_mask(mask_name='union1')
     # make_fus_mask(mask_name='MMP1')
     # calc_fus_pattern_corr(mask_name='union1', meas_name='myelin')
@@ -349,4 +347,4 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='GBC')
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
-    MT_gradient()
+    # MT_gradient()
