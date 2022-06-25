@@ -1,9 +1,13 @@
+import os
 import numpy as np
+import pandas as pd
 from os.path import join as pjoin
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
-work_dir = pjoin(proj_dir,
-                 'analysis/s2/1080_fROI/refined_with_Kevin/grouping')
+anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
+work_dir = pjoin(anal_dir, 'grouping')
+if not os.path.isdir(work_dir):
+    os.makedirs(work_dir)
 
 
 def merge_group():
@@ -25,8 +29,6 @@ def npy2csv(lh_file, rh_file, out_file):
     """
     把左右的分组编号合并到一个CSV文件中
     """
-    import pandas as pd
-
     df = pd.DataFrame()
     df['lh'] = np.load(lh_file)
     df['rh'] = np.load(rh_file)
@@ -34,25 +36,42 @@ def npy2csv(lh_file, rh_file, out_file):
     df.to_csv(out_file, index=False)
 
 
-def count_subject():
+def count_subject(subj_mask=None):
     """
     统计每组的人数
-    """
-    hemis = ('lh', 'rh')
-    gids = (1, 2)
-    gid_files = pjoin(work_dir, 'group_id_{hemi}_v2_merged.npy')
-    # gid2name = {-1: 'pFus', 0: 'mFus', 1: 'two-C', 2: 'two-S'}
-    gid2name = {1: 'continuous', 2: 'separate'}
 
-    hemi2gid_vec = {
-        'lh': np.load(gid_files.format(hemi='lh')),
-        'rh': np.load(gid_files.format(hemi='rh'))
-    }
+    Args:
+        subj_mask (bool vector, optional): Defaults to None.
+            在统计人数时，只用这个mask指定的被试
+    """
+    # gids = (-1, 0, 1, 2)
+    # gid_file = pjoin(work_dir, 'group_id_v2.csv')
+    # gid2name = {-1: 'pFus', 0: 'mFus', 1: 'two-C', 2: 'two-S'}
+
+    # gids = (1, 2)
+    # gid_file = pjoin(work_dir, 'group_id_v2_merged.csv')
+    # gid2name = {1: 'continuous', 2: 'separate'}
+
+    gids = (0, 1, 2)
+    gid_file = pjoin(work_dir, 'group_id_v2_012.csv')
+    gid2name = {0: 'single', 1: 'continuous', 2: 'separate'}
+
+    df = pd.read_csv(gid_file)
+    if subj_mask is not None:
+        df = df.loc[subj_mask]
+    n_subj = df.shape[0]
+
+    hemis = ('lh', 'rh')
+    hemi2gid_vec = {}
+    for hemi in hemis:
+        hemi2gid_vec[hemi] = np.array(df[hemi])
+
     print('the number of subjects of each group:')
     for gid in gids:
         n_subjs = []
         for hemi in hemis:
-            n_subjs.append(str(np.sum(hemi2gid_vec[hemi] == gid)))
+            n_subj_g = np.sum(hemi2gid_vec[hemi] == gid)
+            n_subjs.append(f'{n_subj_g}({n_subj_g / n_subj})')
         print(f"{gid2name[gid]} ({'/'.join(hemis)}): {'/'.join(n_subjs)}")
 
 
@@ -320,6 +339,9 @@ def plot_prob_map_similarity():
 if __name__ == '__main__':
     # merge_group()
     # count_subject()
+    count_subject(
+        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id_MSMAll.npy'))
+    )
     # npy2csv(
     #     lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),
     #     rh_file=pjoin(work_dir, 'old_group_id_rh.npy'),
@@ -350,4 +372,4 @@ if __name__ == '__main__':
     # plot_roi_info(gid=2, hemi='rh')
     # calc_prob_map_similarity()
     # calc_prob_map_similarity1()
-    plot_prob_map_similarity()
+    # plot_prob_map_similarity()

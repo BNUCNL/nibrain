@@ -85,26 +85,17 @@ def calc_cnr(meas_name='CNR'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
-def calc_cnr1(meas_name='CNR'):
+def calc_cnr1(meas_name):
     """
-
     Args:
-        meas_name (str, optional): Defaults to 'CNR'.
-            CNR: BOLDVar/UnstructNoiseVar
-                These two quantities can be determined by regressing out
-                the signal spatial ICA component timeseries (from the sICA+FIX
-                processing run by the HCP) from the cleaned resting state timeseries
-                (to compute the Unstructured Noise Variance) and then taking the
-                difference between the Cleaned Timeseries Variance and the Unstructured
-                Noise Variance to compute the BOLD Variance.
-            TSNR: 直接计算rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean.dtseries.nii
+        meas_name (str):
+            TSNR: 直接计算RunName_Atlas_MSMAll_hp2000_clean.dtseries.nii
                 中时间序列的tSNR
     Notes:
         我发现一个trick，就是如果先计算ROI的平均时间序列的话会抹掉部分甚至全部的非结构噪声，
-        这样再去计算tSNR或是CNR的话，就不好说这块区域的信噪比到底怎么样了。
-        所以先基于vertex-wise的时间序列计算tSNR或是CNR，然后计算ROI内的平均才比较合理
-        之前HCP提供的CNR这些指标就都是vertex-wise的
-
+        这样再去计算tSNR的话，就不好说这块区域的信噪比到底怎么样了。
+        所以先基于vertex-wise的时间序列计算tSNR，然后计算ROI内的平均才比较合理
+        之前HCP提供的tSNR这些指标就都是vertex-wise的
     """
     roi_names = ['R_pFus', 'R_mFus', 'L_pFus', 'L_mFus']
     roi_file = pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')

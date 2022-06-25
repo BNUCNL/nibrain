@@ -58,7 +58,7 @@ def make_subj_idx_vec(src_file, out_fname):
 
 if __name__ == '__main__':
     # basic_info(subj_file=pjoin(proj_dir, 'analysis/s2/subject_id'))
-    make_subj_idx_vec(
-        src_file=pjoin(proj_dir, 'data/HCP/subject_id_1071'),
-        out_fname='subject_id_MSMAll')
+    # make_subj_idx_vec(
+    #     src_file=pjoin(proj_dir, 'data/HCP/subject_id_1071'),
+    #     out_fname='subject_id_MSMAll')
     basic_info(subj_file=pjoin(work_dir, 'subject_id_MSMAll.txt'))
