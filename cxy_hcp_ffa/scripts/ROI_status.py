@@ -341,51 +341,6 @@ def compare_gdist_paired():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
-def compare_gdist_grouping(gid, items, t_type, data_file):
-    """
-    比较各组左脑和右脑的FFA间距
-
-    Args:
-        gid (int): group ID
-        items (_type_): _description_
-        t_type (str): the type of t-test
-            t: two-sample t-test
-            pair-t: paired t-test
-        data_file (_type_): _description_
-    """
-    # prepare group ID information
-    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
-    gid_df = pd.read_csv(gid_file)
-    gid_idx_lh = np.array(gid_df['lh']) == gid
-    gid_idx_rh = np.array(gid_df['rh']) == gid
-
-    # calculate
-    es = EffectSize()
-    fname = os.path.basename(data_file)
-    df = pd.read_csv(data_file)
-    for item in items:
-        print(f'\n---{t_type} between lh and rh {item} in {fname}---')
-        col_lh = 'lh_' + item
-        col_rh = 'rh_' + item
-        if t_type == 't':
-            data_lh = np.array(df[col_lh])[gid_idx_lh]
-            data_rh = np.array(df[col_rh])[gid_idx_rh]
-            print(f"Cohen's d of {col_lh} | {col_rh}:", es.cohen_d(data_lh, data_rh))
-            out_info = ttest_ind(data_lh, data_rh)
-        elif t_type == 'pair-t':
-            gid_idx = np.logical_and(gid_idx_lh, gid_idx_rh)
-            data_lh = np.array(df[col_lh])[gid_idx]
-            data_rh = np.array(df[col_rh])[gid_idx]
-            data = data_lh - data_rh
-            print(f"Cohen's d of {col_lh} | {col_rh}:", es.cohen_d(data, [0]))
-            out_info = ttest_rel(data_lh, data_rh)
-        else:
-            raise ValueError
-        print(f'average of {col_lh} | {col_rh}: {np.mean(data_lh)} | {np.mean(data_rh)}')
-        print(f'size of {col_lh} | {col_rh}: {len(data_lh)} | {len(data_rh)}')
-        print(f'{col_lh} vs {col_rh}:', out_info)
-
-
 def pre_ANOVA_gdist_peak():
 
     hemis = ('lh', 'rh')
@@ -407,42 +362,6 @@ def pre_ANOVA_gdist_peak():
             out_dict['gid'].extend([gid] * n_valid)
             out_dict['meas'].extend(meas_vec)
             print(f'#{hemi}_pFus-mFus:', n_valid)
-    out_df = pd.DataFrame(out_dict)
-    out_df.to_csv(out_file, index=False)
-
-
-def pre_ANOVA_gdist_peak_mix():
-    """
-    准备好2因素混合设计方差分析需要的数据。
-    被试间因子：group
-    被试内因子：hemisphere
-    2 groups x 2 hemispheres
-    """
-    hemis = ('lh', 'rh')
-    gids = (1, 2)
-    data_file = pjoin(work_dir, 'gdist_peak.csv')
-    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
-    out_file = pjoin(work_dir, 'gdist_peak_preANOVA_mix.csv')
-
-    df = pd.read_csv(data_file)
-    gid_df = pd.read_csv(gid_file)
-
-    out_dict = {'gid': []}
-    for idx, gid in enumerate(gids):
-        gid_idx_vec = (gid_df['lh'] == gid) & \
-                      (gid_df['rh'] == gid)
-        for hemi in hemis:
-            col = f'{hemi}_pFus-mFus'
-            meas_vec = np.array(df[col][gid_idx_vec])
-            assert np.all(~np.isnan(meas_vec))
-            if idx == 0:
-                out_dict[hemi] = meas_vec.tolist()
-            else:
-                out_dict[hemi].extend(meas_vec)
-        n_valid = np.sum(gid_idx_vec)
-        print('#subject of gid:', n_valid)
-        out_dict['gid'].extend([gid] * n_valid)
-
     out_df = pd.DataFrame(out_dict)
     out_df.to_csv(out_file, index=False)
 
@@ -697,19 +616,12 @@ def resave_FFA_indiv():
     save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
-def create_FFA_prob(space='32k_fs_LR'):
+def create_FFA_prob(src_file, out_file):
     """
     基于CIFTI文件中的个体FFA，为各FFA计算基于所有被试的概率图
     每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
     和calc_prob_map算出来的是一样的
-
-    Args:
-        space (str, optional): Defaults to '32k_fs_LR'.
-            surface mesh
     """
-    src_file = pjoin(work_dir, f'HCP-YA_FFA-indiv.{space}.dlabel.nii')
-    out_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
-
     reader = CiftiReader(src_file)
     bms = reader.brain_models()
     map_names = ('pFus-faces', 'mFus-faces')
@@ -731,7 +643,7 @@ def create_FFA_prob(space='32k_fs_LR'):
     save2cifti(out_file, out_data, bms, map_names)
 
 
-def create_FFA_mpm(space='32k_fs_LR', thr=0.25):
+def create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.25):
     """
     基于CIFTI文件中的概率图，为各FFA计算最大概率图。
     包含各FFA的名称(name)与值(key)，以及对应的颜色(rgba)。
@@ -747,8 +659,8 @@ def create_FFA_mpm(space='32k_fs_LR', thr=0.25):
     Hemi2stru = {
         'L': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'R': 'CIFTI_STRUCTURE_CORTEX_RIGHT'}
-    src_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
-    out_file = pjoin(work_dir, f'HCP-YA_FFA-MPM_thr-{int(thr*100)}.{space}.dlabel.nii')
+    src_file = pjoin(out_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(out_dir, f'HCP-YA_FFA-MPM_thr-{int(thr*100)}.{space}.dlabel.nii')
 
     reader = CiftiReader(src_file)
     bms = reader.brain_models()
@@ -776,7 +688,7 @@ def create_FFA_mpm(space='32k_fs_LR', thr=0.25):
     save2cifti(out_file, out_data, bms, label_tables=[lbl_tb])
 
 
-def split_FFC(space='32k_fs_LR'):
+def split_FFC(out_dir=work_dir, space='32k_fs_LR'):
     """
     根据pFus和mFus概率图，把FFC中的顶点分配为概率高的一方。
     包含通过拆分HCP FFC得到的FFA；各FFA的名称(name)与值(key)，以及对应的颜色(rgba) 。
@@ -787,8 +699,8 @@ def split_FFC(space='32k_fs_LR'):
             surface mesh
     """
     Hemi2FFC_key = {'L': 198, 'R': 18}
-    src_file = pjoin(work_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
-    out_file = pjoin(work_dir, f'HCP-YA_FFA-split.{space}.dlabel.nii')
+    src_file = pjoin(out_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(out_dir, f'HCP-YA_FFA-split.{space}.dlabel.nii')
     if space == '32k_fs_LR':
         mmp_map = nib.load(mmp_map_file).get_fdata()[0]
     elif space == '164k_fsavg_LR':
@@ -839,14 +751,7 @@ if __name__ == '__main__':
     # calc_gdist(method='max')
     # plot_gdist()
     # compare_gdist_paired()
-    # compare_gdist_grouping(
-    #     gid=2, items=('pFus-mFus',), t_type='t',
-    #     data_file=pjoin(work_dir, 'gdist_min1.csv'))
-    # compare_gdist_grouping(
-    #     gid=2, items=('pFus-mFus',), t_type='pair-t',
-    #     data_file=pjoin(work_dir, 'gdist_min1.csv'))
     # pre_ANOVA_gdist_peak()
-    pre_ANOVA_gdist_peak_mix()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
@@ -857,15 +762,58 @@ if __name__ == '__main__':
     # ===整理需要发布的数据===
     # neaten_FFA_indiv()
     # resave_FFA_indiv()
-    # create_FFA_prob(space='32k_fs_LR')
-    # create_FFA_prob(space='164k_fsavg_LR')
-    # create_FFA_mpm(space='32k_fs_LR', thr=0)
-    # create_FFA_mpm(space='32k_fs_LR', thr=0.1)
-    # create_FFA_mpm(space='32k_fs_LR', thr=0.25)
-    # create_FFA_mpm(space='32k_fs_LR', thr=0.50)
-    # create_FFA_mpm(space='164k_fsavg_LR', thr=0)
-    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.1)
-    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.25)
-    # create_FFA_mpm(space='164k_fsavg_LR', thr=0.50)
-    # split_FFC(space='32k_fs_LR')
-    # split_FFC(space='164k_fsavg_LR')
+
+    # create_FFA_prob(
+    #     src_file=pjoin(work_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+    #     out_file=pjoin(work_dir, 'HCP-YA_FFA-prob.32k_fs_LR.dscalar.nii'))
+    # create_FFA_prob(
+    #     src_file=pjoin(work_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii'),
+    #     out_file=pjoin(work_dir, 'HCP-YA_FFA-prob.164k_fsavg_LR.dscalar.nii'))
+    create_FFA_prob(
+        src_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+        out_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob.32k_fs_LR.dscalar.nii'))
+    create_FFA_prob(
+        src_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii'),
+        out_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob.164k_fsavg_LR.dscalar.nii'))
+
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.1)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.25)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.50)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.1)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.25)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.50)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.1)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.25)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.50)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.1)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.25)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.50)
+
+    # split_FFC(out_dir=work_dir, space='32k_fs_LR')
+    # split_FFC(out_dir=work_dir, space='164k_fsavg_LR')
+    split_FFC(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR')
+    split_FFC(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR')
