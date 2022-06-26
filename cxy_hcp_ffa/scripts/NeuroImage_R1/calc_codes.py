@@ -350,14 +350,14 @@ def select_data(subj_mask, out_dir):
         os.makedirs(out_dir)
 
     data_files1 = [
-        pjoin(anal_dir, 'gdist_peak.csv'),
-        pjoin(anal_dir, 'gdist_min1.csv'),
-        pjoin(anal_dir, 'structure/FFA_va.csv'),
-        pjoin(anal_dir, 'structure/FFA_myelin.csv'),
-        pjoin(anal_dir, 'structure/FFA_thickness.csv'),
-        pjoin(anal_dir, 'tfMRI/FFA_activ-emo.csv'),
-        pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole-mean.csv'),
-        pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
+        # pjoin(anal_dir, 'gdist_peak.csv'),
+        # pjoin(anal_dir, 'gdist_min1.csv'),
+        # pjoin(anal_dir, 'structure/FFA_va.csv'),
+        # pjoin(anal_dir, 'structure/FFA_myelin.csv'),
+        # pjoin(anal_dir, 'structure/FFA_thickness.csv'),
+        # pjoin(anal_dir, 'tfMRI/FFA_activ-emo.csv'),
+        # pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole-mean.csv'),
+        # pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
     ]
     for data_file1 in data_files1:
         out_file1 = os.path.basename(data_file1)
@@ -368,7 +368,8 @@ def select_data(subj_mask, out_dir):
         df1.to_csv(out_file1, index=False)
 
     data_files2 = [
-        pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+        # pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+        pjoin(anal_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii')
     ]
     for data_file2 in data_files2:
         out_file2 = os.path.basename(data_file2)
@@ -384,8 +385,8 @@ def select_data(subj_mask, out_dir):
                    reader2.volume, lbl_tabs2)
 
     data_files3 = [
-        pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
-        pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
+        # pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
+        # pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
     ]
     for data_file3 in data_files3:
         rois3 = ['lh_pFus', 'lh_mFus', 'rh_pFus', 'rh_mFus']

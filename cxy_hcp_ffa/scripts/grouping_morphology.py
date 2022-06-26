@@ -1,7 +1,6 @@
 from os.path import join as pjoin
 from cxy_hcp_ffa.lib.predefine import proj_dir
-from cxy_hcp_ffa.lib.algo import pre_ANOVA_3factors, \
-    pre_ANOVA_3factors_mix
+from cxy_hcp_ffa.lib.algo import pre_ANOVA_3factors
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'grouping/structure')
@@ -132,13 +131,6 @@ def plot_bar(gid=1, morph='thickness'):
 
 
 if __name__ == '__main__':
-    # pre_ANOVA_3factors(meas_name='thickness')
-    # pre_ANOVA_3factors(meas_name='myelin')
-    # pre_ANOVA_3factors(meas_name='va')
-    # pre_ANOVA_3factors_mix(meas_name='thickness')
-    # pre_ANOVA_3factors_mix(meas_name='myelin')
-    # pre_ANOVA_3factors_mix(meas_name='va')
-
     # pre_ANOVA_3factors(
     #     meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
     #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
@@ -163,25 +155,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
-
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_thickness_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_myelin.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_myelin_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'structure/FFA_va.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2.csv'),
-        out_file=pjoin(work_dir, 'FFA_va_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
 
     # old
     # pre_ANOVA(gid=1, morph='thickness')
