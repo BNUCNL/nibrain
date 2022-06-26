@@ -1,7 +1,11 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle as pkl
 from os.path import join as pjoin
+from scipy.stats import pearsonr
+from matplotlib import pyplot as plt
+from magicbox.io.io import CiftiReader, save2cifti
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
@@ -76,8 +80,6 @@ def count_subject(subj_mask=None):
 
 
 def roi_stats(gid=1, hemi='lh'):
-    import numpy as np
-    import pandas as pd
     import nibabel as nib
     import pickle as pkl
     from cxy_hcp_ffa.lib.predefine import roi2label
@@ -165,34 +167,74 @@ def plot_roi_info(gid=1, hemi='lh'):
     plt.show()
 
 
-def calc_prob_map_similarity():
+def create_FFA_prob(src_file, gid_file, out_file):
+    """
+    基于CIFTI文件中的个体FFA，为各FFA计算在各组内的概率图
+    每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
+    和roi_stats算出来的是一样的
+    """
+    Hemis = ('L', 'R')
+    Hemi2hemi = {'L': 'lh', 'R': 'rh'}
+    gids = (0, 1, 2)
+    rois = ('pFus-faces', 'mFus-faces')
+    key2name = {0: '???', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
+                3: 'L_pFus-faces', 4: 'L_mFus-faces'}
+    name2key = {}
+    for k, n in key2name.items():
+        name2key[n] = k
+
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    data = reader.get_data()
+    df = pd.read_csv(gid_file)
+
+    out_dict = {}
+    for Hemi in Hemis:
+        gid_vec = np.array(df[Hemi2hemi[Hemi]])
+        for gid in gids:
+            gid_idx_vec = gid_vec == gid
+            data_g = data[gid_idx_vec]
+            for roi in rois:
+                name = f'{Hemi}_{roi}'
+                idx_arr = data_g == name2key[name]
+                idx_vec = np.any(idx_arr, 1)
+                idx_arr = idx_arr[idx_vec]
+                out_dict[f'{Hemi}_G{gid}_{roi}'] = np.mean(idx_arr, 0)
+
+    out_data = []
+    map_names = []
+    for gid in gids:
+        for roi in rois:
+            map_name = f'G{gid}_{roi}'
+            out_data.append(out_dict[f'L_{map_name}'] + out_dict[f'R_{map_name}'])
+            map_names.append(map_name)
+    out_data = np.asarray(out_data)
+
+    save2cifti(out_file, out_data, bms, map_names)
+
+
+def calc_prob_map_similarity(src_file, out_file):
     """
     为每个ROI概率图计算组间dice系数和pearson相关
     """
-    import numpy as np
-    import nibabel as nib
-    import pickle as pkl
-    from scipy.stats import pearsonr
-
-    # inputs
     hemis = ('lh', 'rh')
+    hemi2stru = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'}
     gids = (0, 1, 2)
-    roi2idx = {'pFus': 1, 'mFus': 2}
-    prob_file = pjoin(work_dir, 'prob_maps_{}_{}.nii.gz')
+    rois = ('pFus', 'mFus')
 
-    # outputs
-    out_file = pjoin(work_dir, 'prob_map_similarity.pkl')
+    reader = CiftiReader(src_file)
+    prob_maps = reader.get_data()
+    map_names = reader.map_names()
 
     # calculate
     n_gid = len(gids)
     data = {'shape': 'n_gid x n_gid',
             'gid': gids}
     for hemi in hemis:
-        gid2prob_map = {}
-        for gid in gids:
-            gid2prob_map[gid] = nib.load(
-                prob_file.format(gid, hemi)).get_fdata().squeeze().T
-        for roi, prob_idx in roi2idx.items():
+        prob_maps = reader.get_data(hemi2stru[hemi], True)
+        for roi in rois:
             roi_dice = f"{hemi}_{roi}_dice"
             roi_corr = f"{hemi}_{roi}_corr"
             roi_corr_p = f"{hemi}_{roi}_corr_p"
@@ -201,8 +243,10 @@ def calc_prob_map_similarity():
             data[roi_corr_p] = np.ones((n_gid, n_gid)) * np.nan
             for idx1, gid1 in enumerate(gids[:-1]):
                 for idx2, gid2 in enumerate(gids[idx1+1:], idx1+1):
-                    prob_map1 = gid2prob_map[gid1][prob_idx]
-                    prob_map2 = gid2prob_map[gid2][prob_idx]
+                    prob_idx1 = map_names.index(f'G{gid1}_{roi}-faces')
+                    prob_idx2 = map_names.index(f'G{gid2}_{roi}-faces')
+                    prob_map1 = prob_maps[prob_idx1]
+                    prob_map2 = prob_maps[prob_idx2]
                     idx_map1 = prob_map1 != 0
                     idx_map2 = prob_map2 != 0
                     idx_map = np.logical_and(idx_map1, idx_map2)
@@ -273,34 +317,28 @@ def calc_prob_map_similarity1():
     pkl.dump(data, open(out_file, 'wb'))
 
 
-def plot_prob_map_similarity():
+def plot_prob_map_similarity(src_file, meas):
     """
     References:
         1. https://blog.csdn.net/qq_27825451/article/details/105652244
         2. https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
         3. https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
     """
-    import numpy as np
-    import pickle as pkl
-    from matplotlib import pyplot as plt
-
     # inputs
     rois = ('pFus', 'mFus')
     hemis = ('lh', 'rh')
-    meas = 'corr'  # corr or dice
-    data_file = pjoin(work_dir, 'prob_map_similarity1.pkl')
-    gid2name = {
-        0: 'single',
-        1: 'two-C',
-        2: 'two-S'}
+    fname = os.path.basename(src_file).split('.')[0]
+    out_dir = os.path.dirname(src_file)
+    out_file = pjoin(out_dir, f'{fname}_{meas}.jpg')
+    gid2name = {0: 'single', 1: 'continuous', 2: 'separate'}
 
     # prepare
-    data = pkl.load(open(data_file, 'rb'))
+    data = pkl.load(open(src_file, 'rb'))
     n_gid = len(data['gid'])
     ticks = np.arange(n_gid)
     gid_names = [gid2name[gid] for gid in data['gid']]
 
-    _, axes = plt.subplots(len(rois), len(hemis))
+    _, axes = plt.subplots(len(rois), len(hemis), figsize=(6.4, 6.4))
     for roi_idx, roi in enumerate(rois):
         for hemi_idx, hemi in enumerate(hemis):
             ax = axes[roi_idx, hemi_idx]
@@ -332,16 +370,16 @@ def plot_prob_map_similarity():
                     ax.text(j, i, '{:.2f}'.format(arr[i, j]),
                             ha="center", va="center", color="k")
             ax.set_title(f'{hemi}_{roi}')
-    # plt.show()
-    plt.savefig(pjoin(work_dir, 'prob_map_similarity.jpg'))
+
+    plt.savefig(out_file)
 
 
 if __name__ == '__main__':
     # merge_group()
     # count_subject()
-    count_subject(
-        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy'))
-    )
+    # count_subject(
+    #     subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy'))
+    # )
     # npy2csv(
     #     lh_file=pjoin(work_dir, 'old_group_id_lh.npy'),
     #     rh_file=pjoin(work_dir, 'old_group_id_rh.npy'),
@@ -370,6 +408,30 @@ if __name__ == '__main__':
     # plot_roi_info(gid=1, hemi='rh')
     # plot_roi_info(gid=2, hemi='lh')
     # plot_roi_info(gid=2, hemi='rh')
-    # calc_prob_map_similarity()
+
+    # create_FFA_prob(
+    #     src_file=pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+    #     gid_file=pjoin(work_dir, 'group_id_v2_012.csv'),
+    #     out_file=pjoin(work_dir, 'HCP-YA_FFA-prob_grouping.32k_fs_LR.dscalar.nii'))
+    # calc_prob_map_similarity(
+    #     src_file=pjoin(work_dir, 'HCP-YA_FFA-prob_grouping.32k_fs_LR.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'prob_map_similarity.pkl'))
+    create_FFA_prob(
+        src_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+        out_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob_grouping.32k_fs_LR.dscalar.nii'))
+    calc_prob_map_similarity(
+        src_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob_grouping.32k_fs_LR.dscalar.nii'),
+        out_file=pjoin(anal_dir, 'NI_R1/data_1053/prob_map_similarity.pkl'))
+
     # calc_prob_map_similarity1()
-    # plot_prob_map_similarity()
+
+    # plot_prob_map_similarity(
+    #     src_file=pjoin(work_dir, 'prob_map_similarity.pkl'),
+    #     meas='corr')
+    # plot_prob_map_similarity(
+    #     src_file=pjoin(work_dir, 'prob_map_similarity.pkl'),
+    #     meas='dice')
+    plot_prob_map_similarity(
+        src_file=pjoin(anal_dir, 'NI_R1/data_1053/prob_map_similarity.pkl'),
+        meas='corr')
