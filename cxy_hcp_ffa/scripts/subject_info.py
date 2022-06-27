@@ -90,6 +90,31 @@ def screen_subj1():
     open(out_file2, 'w').write('\n'.join(subj_ids))
 
 
+def screen_subj2():
+    """
+    只保留subject_id1.txt中拥有4个'ok=(1200, 91282)'的静息run的被试
+    得到文件subject_id2.txt存放选中的被试号
+    """
+    runs = ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    subj_ids_1053_file = pjoin(work_dir, 'subject_id1.txt')
+    rfMRI_check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(work_dir, 'subject_id2.txt')
+
+    subj_ids_1053 = open(subj_ids_1053_file).read().splitlines()
+    df = pd.read_csv(rfMRI_check_file, sep='\t')
+    subj_ids_1206 = df['subID'].to_list()
+    row_indices = [subj_ids_1206.index(int(i)) for i in subj_ids_1053]
+    df = df.loc[row_indices]
+    run_idx_vec = np.all(np.array(df[runs] == 'ok=(1200, 91282)'), 1)
+
+    subj_ids = []
+    for sidx, sid in enumerate(subj_ids_1053):
+        if run_idx_vec[sidx]:
+            subj_ids.append(sid)
+
+    open(out_file, 'w').write('\n'.join(subj_ids))
+
+
 if __name__ == '__main__':
     # basic_info(subj_file=pjoin(proj_dir, 'analysis/s2/subject_id'))
     # make_subj_idx_vec(
@@ -97,4 +122,5 @@ if __name__ == '__main__':
     #     out_fname='subject_id_MSMAll')
     # basic_info(subj_file=pjoin(work_dir, 'subject_id_MSMAll.txt'))
     # screen_subj1()
-    basic_info(subj_file=pjoin(work_dir, 'subject_id1.txt'))
+    # basic_info(subj_file=pjoin(work_dir, 'subject_id1.txt'))
+    screen_subj2()

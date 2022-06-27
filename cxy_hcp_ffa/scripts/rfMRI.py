@@ -1,7 +1,12 @@
+import time
 import numpy as np
 import pandas as pd
+import pickle as pkl
+import nibabel as nib
 from os.path import join as pjoin
 from scipy.io import loadmat
+from scipy.spatial.distance import cdist
+from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
@@ -176,18 +181,73 @@ def prepare_series_ind(sess=1, run='LR'):
     pkl.dump(hemi2seed_dict['rh'], open(out_seed_rh, 'wb'))
 
 
+def prepare_series_mpm(sess=1, run='LR'):
+
+    # prepare seeds
+    seed2label = {
+        'rh_pFus-face': 1, 'rh_mFus-face': 2,
+        'lh_pFus-face': 3, 'lh_mFus-face': 4}
+    seeds = ['pFus-face', 'mFus-face']
+    n_seed = len(seeds)
+    seed_mask_file = pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii')
+    seed_map = nib.load(seed_mask_file).get_fdata()[0]
+    n_vtx = seed_map.shape[0]
+
+    # prepare series dictionary
+    subj_id_file = pjoin(work_dir, 'rfMRI_REST_id')
+    subj_ids = open(subj_id_file).read().splitlines()
+    n_subj = len(subj_ids)
+    n_tp = 1200  # the number of time points
+
+    seed_lh_dict = {
+        'shape': 'n_subject x n_seed x n_time_point',
+        'subject': subj_ids,
+        'seed': seeds,
+        'rfMRI': np.ones((n_subj, n_seed, n_tp)) * np.nan
+    }
+    seed_rh_dict = {
+        'shape': 'n_subject x n_seed x n_time_point',
+        'subject': subj_ids,
+        'seed': seeds,
+        'rfMRI': np.ones((n_subj, n_seed, n_tp)) * np.nan
+    }
+    hemi2seed_dict = {
+        'lh': seed_lh_dict,
+        'rh': seed_rh_dict
+    }
+    out_lh = pjoin(work_dir, 'rfMRI_1053mpm_lh_{}_{}.pkl'.format(sess, run))
+    out_rh = pjoin(work_dir, 'rfMRI_1053mpm_rh_{}_{}.pkl'.format(sess, run))
+
+    # start
+    maps_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/rfMRI_REST{1}_{2}/rfMRI_REST{1}_{2}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    for subj_idx, subj_id in enumerate(subj_ids):
+        time1 = time.time()
+
+        # prepare maps
+        maps_file = maps_files.format(subj_id, sess, run)
+        maps_reader = CiftiReader(maps_file)
+        maps = maps_reader.get_data()[:, :n_vtx]
+        for hemi in ['lh', 'rh']:
+            for seed_idx, seed in enumerate(seeds):
+                seed_mask = seed_map == seed2label[f'{hemi}_{seed}']
+                hemi2seed_dict[hemi]['rfMRI'][subj_idx, seed_idx] = np.mean(maps[:, seed_mask], 1)
+        print(f'Finished: {subj_idx+1}/{n_subj}, cost: {time.time()-time1}')
+
+    pkl.dump(hemi2seed_dict['lh'], open(out_lh, 'wb'))
+    pkl.dump(hemi2seed_dict['rh'], open(out_rh, 'wb'))
+
+
 def rsfc(hemi='lh', sess=1, run='LR'):
-    import numpy as np
-    import pickle as pkl
-    from scipy.spatial.distance import cdist
 
     # parameters
-    seed_file = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_{hemi}.pkl')
+    # seed_file = pjoin(work_dir, f'rfMRI{sess}_{run}_ROIv3_{hemi}.pkl')
+    # out_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_{sess}_{run}.pkl')
+
+    seed_file = pjoin(work_dir, f'rfMRI_1053mpm_{hemi}_{sess}_{run}.pkl')
+    out_file = pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}_{sess}_{run}.pkl')
+
     trg_file = pjoin(work_dir, f'rfMRI_trg_{sess}_{run}.pkl')
     subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
-
-    # outputs
-    out_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_{sess}_{run}.pkl')
 
     # load data
     seed_dict = pkl.load(open(seed_file, 'rb'))
@@ -222,19 +282,24 @@ def rsfc(hemi='lh', sess=1, run='LR'):
 
 
 def fc_mean_among_run(hemi='lh'):
-    import pickle as pkl
-
     # parameters
-    files = [
-        pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_1_LR.pkl'),
-        pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_1_RL.pkl'),
-        pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_2_LR.pkl'),
-        pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_2_RL.pkl'),
-    ]
-    rois = ['IOG-face', 'pFus-face', 'mFus-face']
+    # files = [
+    #     pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_1_LR.pkl'),
+    #     pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_1_RL.pkl'),
+    #     pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_2_LR.pkl'),
+    #     pjoin(work_dir, f'rsfc_individual2MMP_{hemi}_2_RL.pkl'),
+    # ]
+    # rois = ['IOG-face', 'pFus-face', 'mFus-face']
+    # out_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}.pkl')
 
-    # outputs
-    out_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}.pkl')
+    files = [
+        pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}_1_LR.pkl'),
+        pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}_1_RL.pkl'),
+        pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}_2_LR.pkl'),
+        pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}_2_RL.pkl'),
+    ]
+    rois = ['pFus-face', 'mFus-face']
+    out_file = pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}.pkl')
 
     rsfc_dict = dict()
     for idx, f in enumerate(files):
@@ -261,17 +326,17 @@ def fc_merge_MMP(hemi='lh'):
     """
     用ColeAnticevicNetPartition将MMP合并成12个网络
     """
-    import numpy as np
-    import pickle as pkl
-    from scipy.io import loadmat
-
     # parameters
-    rsfc_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}.pkl')
+    # seeds = ('IOG-face', 'pFus-face', 'mFus-face')
+    # rsfc_file = pjoin(work_dir, f'rsfc_individual2MMP_{hemi}.pkl')
+    # out_file = pjoin(work_dir, f'rsfc_individual2Cole_{hemi}.pkl')
+
+    seeds = ('pFus-face', 'mFus-face')
+    rsfc_file = pjoin(work_dir, f'rsfc_1053mpm2MMP_{hemi}.pkl')
+    out_file = pjoin(work_dir, f'rsfc_1053mpm2Cole_{hemi}.pkl')
+
     roi2net_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
                    'cortex_parcel_network_assignments.mat'
-
-    # outputs
-    out_file = pjoin(work_dir, f'rsfc_individual2Cole_{hemi}.pkl')
 
     rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
     roi2net = loadmat(roi2net_file)['netassignments'][:, 0]
@@ -279,7 +344,6 @@ def fc_merge_MMP(hemi='lh'):
     net_labels = sorted(set(roi2net))
     n_net = len(net_labels)
 
-    seeds = ('IOG-face', 'pFus-face', 'mFus-face')
     for seed in seeds:
         data = np.zeros((rsfc_dict[seed].shape[0], n_net))
         for net_idx, net_lbl in enumerate(net_labels):
@@ -686,6 +750,10 @@ if __name__ == '__main__':
     # prepare_series_ind(sess=1, run='RL')
     # prepare_series_ind(sess=2, run='LR')
     # prepare_series_ind(sess=2, run='RL')
+    # prepare_series_mpm(sess=1, run='LR')
+    # prepare_series_mpm(sess=1, run='RL')
+    # prepare_series_mpm(sess=2, run='LR')
+    # prepare_series_mpm(sess=2, run='RL')
     # rsfc(hemi='lh', sess=1, run='LR')
     # rsfc(hemi='lh', sess=1, run='RL')
     # rsfc(hemi='lh', sess=2, run='LR')
@@ -696,8 +764,8 @@ if __name__ == '__main__':
     # rsfc(hemi='rh', sess=2, run='RL')
     # fc_mean_among_run(hemi='lh')
     # fc_mean_among_run(hemi='rh')
-    # fc_merge_MMP(hemi='lh')
-    # fc_merge_MMP(hemi='rh')
+    fc_merge_MMP(hemi='lh')
+    fc_merge_MMP(hemi='rh')
     # pkl2mat(
     #     lh_file=pjoin(work_dir, 'rsfc_individual2Cole_lh.pkl'),
     #     rh_file=pjoin(work_dir, 'rsfc_individual2Cole_rh.pkl'),
@@ -711,7 +779,7 @@ if __name__ == '__main__':
     #     seeds=('pFus-face', 'mFus-face'),
     #     exclude_trg_labels=(18, 198)
     # )
-    fc_merge_Cole()
+    # fc_merge_Cole()
     # pre_ANOVA_rm()
     # roi_ttest()
     # multitest_correct_ttest(fname='rsfc_individual2Cole_pFus_vs_mFus_ttest.csv')
