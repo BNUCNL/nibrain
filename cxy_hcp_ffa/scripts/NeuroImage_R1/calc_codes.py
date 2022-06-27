@@ -7,6 +7,7 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.io import loadmat, savemat
 from scipy.spatial.distance import cdist
+from sklearn.linear_model import LinearRegression
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_hcp_ffa.lib.predefine import proj_dir, L_offset_32k,\
     L_count_32k, R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file,\
@@ -369,7 +370,7 @@ def select_data(subj_mask, out_dir):
 
     data_files2 = [
         # pjoin(anal_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
-        pjoin(anal_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii')
+        # pjoin(anal_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii')
     ]
     for data_file2 in data_files2:
         out_file2 = os.path.basename(data_file2)
@@ -398,6 +399,68 @@ def select_data(subj_mask, out_dir):
         for roi3 in rois3:
             out_data3[roi3] = data3[roi3][subj_mask]
         savemat(out_file3, out_data3)  # 验证一下
+    
+    data_files4 = [
+        pjoin(anal_dir, 'NI_R1/TSNR2.pkl')
+    ]
+    for data_file4 in data_files4:
+        rois4 = ['L_pFus', 'L_mFus', 'R_pFus', 'R_mFus']
+        out_file4 = os.path.basename(data_file4)
+        print(f'Doing: {out_file4}')
+        out_file4 = pjoin(out_dir, out_file4)
+        data4 = pkl.load(open(data_file4, 'rb'))
+        for roi4 in rois4:
+            data4[roi4] = data4[roi4][subj_mask]
+        pkl.dump(data4, open(out_file4, 'wb'))
+
+
+def snr_regression(src_file, snr_file, out_file):
+    """
+    将snr的个体变异从数据中回归掉，四个ROI做所有个体上的值连在一起做。
+    这是为了在回归掉snr之后也能使得组间，半球间，roi间的比较是有意义的。
+
+    Args:
+        src_file (_type_): _description_
+        snr_file (_type_): _description_
+        out_file (_type_): _description_
+    """
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    rois = ('pFus', 'mFus')
+
+    df = pd.read_csv(src_file)
+    snr_data = pkl.load(open(snr_file, 'rb'))
+    col2mask = {}
+    col2indices = {}
+    meas = np.zeros(0)
+    snr = np.zeros((0, 1))
+    start_idx = 0
+    for hemi in hemis:
+        Hemi = hemi2Hemi[hemi]
+        for roi in rois:
+            col = f'{hemi}_{roi}'
+            meas_vec = np.array(df[col])
+            mask = ~np.isnan(meas_vec)
+            snr_vec = np.nanmean(snr_data[f'{Hemi}_{roi}'], 1, keepdims=True)
+
+            meas = np.r_[meas, meas_vec[mask]]
+            snr = np.r_[snr, snr_vec[mask]]
+            col2mask[col] = mask
+            end_idx = start_idx + np.sum(mask)
+            col2indices[col] = (start_idx, end_idx)
+            start_idx = end_idx
+    assert np.all(~np.isnan(snr))
+
+    reg = LinearRegression().fit(snr, meas)
+    meas_reg = meas - reg.predict(snr)
+
+    for hemi in hemis:
+        for roi in rois:
+            col = f'{hemi}_{roi}'
+            start_idx, end_idx = col2indices[col]
+            df.loc[col2mask[col], col] = meas_reg[start_idx:end_idx]
+    
+    df.to_csv(out_file, index=False)
 
 
 if __name__ == '__main__':
@@ -411,6 +474,14 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
     # MT_gradient()
-    select_data(
-        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
-        out_dir=pjoin(work_dir, 'data_1053'))
+    # select_data(
+    #     subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
+    #     out_dir=pjoin(work_dir, 'data_1053'))
+    # snr_regression(
+    #     src_file=pjoin(work_dir, 'data_1053/FFA_activ-emo.csv'),
+    #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
+    #     out_file=pjoin(work_dir, 'data_1053/FFA_activ-emo_clean-TSNR2.csv'))
+    # snr_regression(
+    #     src_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean.csv'),
+    #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
+    #     out_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'))

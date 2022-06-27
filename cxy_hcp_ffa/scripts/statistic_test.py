@@ -323,11 +323,11 @@ if __name__ == '__main__':
     #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
     #     out_file=pjoin(anal_dir, 'gdist_peak_preANOVA_mix.csv')
     # )
-    pre_ANOVA_gdist_peak_mix(
-        data_file=pjoin(anal_dir, 'NI_R1/data_1053/gdist_peak.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/gdist_peak_preANOVA_mix.csv')
-    )
+    # pre_ANOVA_gdist_peak_mix(
+    #     data_file=pjoin(anal_dir, 'NI_R1/data_1053/gdist_peak.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/gdist_peak_preANOVA_mix.csv')
+    # )
 
     # pre_ANOVA_3factors_mix(
     #     meas_file=pjoin(anal_dir, 'structure/FFA_thickness.csv'),
@@ -347,34 +347,40 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'grouping/structure/FFA_va_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole-mean.csv'),
+    #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2Cole-mean_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_thickness.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_thickness_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_myelin.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_myelin_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_va.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_va_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
     pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole-mean.csv'),
-        gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2Cole-mean_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_thickness.csv'),
+        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'),
         gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_thickness_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_myelin.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_myelin_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_va.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_va_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_preANOVA-3factor-mix.csv'),
+        out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2_preANOVA-3factor-mix.csv'),
         gids=(1, 2), rois=('pFus', 'mFus')
     )
 
@@ -390,10 +396,16 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'grouping/tfMRI/FFA_activ-emo_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
     pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo.csv'),
+        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2.csv'),
         gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_preANOVA-3factor-mix.csv'),
+        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2_preANOVA-3factor-mix.csv'),
         gids=(1, 2), rois=('pFus', 'mFus')
     )
 
@@ -442,47 +454,47 @@ if __name__ == '__main__':
     #     work_dir=pjoin(anal_dir, 'grouping/rfMRI'),
     #     fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
 
-    roi_pair_ttest(
-        src_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP.mat'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        gid=1, trg_name2label=mmp_name2label)
-    roi_pair_ttest(
-        src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP.mat'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        gid=2, trg_name2label=mmp_name2label)
-    roi_pair_ttest(
-        src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole.mat'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        gid=1, trg_name2label=net2label_cole)
-    roi_pair_ttest(
-        src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole.mat'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        gid=2, trg_name2label=net2label_cole)
-    multitest_correct_ttest(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired.csv')
-    multitest_correct_ttest(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired.csv')
-    multitest_correct_ttest(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest-paired.csv')
-    multitest_correct_ttest(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired.csv')
-    ttest_stats(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired_mtc.csv')
-    ttest_stats(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
-    ttest_stats(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest-paired_mtc.csv')
-    ttest_stats(
-        work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
-        fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
+    # roi_pair_ttest(
+    #     src_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP.mat'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     gid=1, trg_name2label=mmp_name2label)
+    # roi_pair_ttest(
+    #     src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP.mat'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     gid=2, trg_name2label=mmp_name2label)
+    # roi_pair_ttest(
+    #     src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole.mat'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     gid=1, trg_name2label=net2label_cole)
+    # roi_pair_ttest(
+    #     src_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole.mat'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     gid=2, trg_name2label=net2label_cole)
+    # multitest_correct_ttest(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired.csv')
+    # multitest_correct_ttest(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired.csv')
+    # multitest_correct_ttest(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest-paired.csv')
+    # multitest_correct_ttest(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired.csv')
+    # ttest_stats(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired_mtc.csv')
+    # ttest_stats(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
+    # ttest_stats(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest-paired_mtc.csv')
+    # ttest_stats(
+    #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
+    #     fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
