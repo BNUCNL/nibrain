@@ -6,8 +6,9 @@ from scipy.io import loadmat
 from scipy.stats.stats import ttest_rel, ttest_ind
 from statsmodels.stats.multitest import multipletests
 from magicbox.stats import EffectSize
+from magicbox.io.io import CiftiReader, save2cifti
 from cxy_hcp_ffa.lib.predefine import proj_dir, net2label_cole,\
-    mmp_name2label
+    mmp_name2label, mmp_map_file, LR_count_32k
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 
@@ -300,6 +301,30 @@ def ttest_stats(work_dir, fname):
     wf.close()
 
 
+def mtc_file2cifti(gnames, fpaths, out_file):
+
+    hemis = ('lh', 'rh')
+    reader = CiftiReader(mmp_map_file)
+    mmp_map = reader.get_data()[0]
+    data = np.ones((4, LR_count_32k), np.float64) * np.nan
+    map_names = []
+    row_idx = 0
+    for f_idx, fpath in enumerate(fpaths):
+        df = pd.read_csv(fpath, index_col='target_name')
+        for hemi in hemis:
+            es_col = f'CohenD_{hemi}'
+            p_col = f'P_{hemi}(fdr_bh)'
+            map_names.append(f'{hemi}_{gnames[f_idx]}')
+            for idx in df.index:
+                if df.loc[idx, p_col] >= 0.05:
+                    continue
+                roi_idx_map = mmp_map == mmp_name2label[idx]
+                data[row_idx, roi_idx_map] = df.loc[idx, es_col]
+            row_idx += 1
+
+    save2cifti(out_file, data, reader.brain_models(), map_names)
+
+
 if __name__ == '__main__':
     # compare_gdist_grouping(
     #     gid_file=pjoin(anal_dir, 'grouping/group_id_v2_012.csv'),
@@ -377,12 +402,12 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
 
     # pre_ANOVA_3factors_mix(
     #     meas_file=pjoin(anal_dir, 'tfMRI/FFA_activ.csv'),
@@ -402,12 +427,12 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
-    pre_ANOVA_3factors_mix(
-        meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2.csv'),
-        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
-        out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2_preANOVA-3factor-mix.csv'),
-        gids=(1, 2), rois=('pFus', 'mFus')
-    )
+    # pre_ANOVA_3factors_mix(
+    #     meas_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2.csv'),
+    #     gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2_preANOVA-3factor-mix.csv'),
+    #     gids=(1, 2), rois=('pFus', 'mFus')
+    # )
 
     # roi_pair_ttest(
     #     src_file=pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
@@ -498,3 +523,18 @@ if __name__ == '__main__':
     # ttest_stats(
     #     work_dir=pjoin(anal_dir, 'NI_R1/data_1053'),
     #     fname='rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest-paired_mtc.csv')
+
+    # mtc_file2cifti(
+    #     gnames = ('continuous', 'separate'),
+    #     fpaths = (
+    #         pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'),
+    #         pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv')),
+    #     out_file = pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2MMP_pFus_vs_mFus_ttest_mtc_cohenD.dscalar.nii')
+    # )
+    mtc_file2cifti(
+        gnames = ('continuous', 'separate'),
+        fpaths = (
+            pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired_mtc.csv'),
+            pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired_mtc.csv')),
+        out_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_pFus_vs_mFus_ttest-paired_mtc_cohenD.dscalar.nii')
+    )
