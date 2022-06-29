@@ -202,39 +202,6 @@ def ttest_stats(src_file):
     wf.close()
 
 
-def mtc_file2cifti():
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_visual_dev.lib.predefine import Atlas, mmp_map_file
-
-    hemis = ('lh', 'rh')
-    fpaths = (
-        pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'),
-        pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv')
-    )
-    gnames = ('continuous', 'separate')
-    out_file = pjoin(work_dir, 'rsfc_FFA2MMP_pFus_vs_mFus_ttest_mtc_cohenD.dscalar.nii')
-
-    atlas = Atlas('HCP_MMP1')
-    reader = CiftiReader(mmp_map_file)
-    data = np.ones((4, atlas.maps.shape[1]), np.float64) * np.nan
-    map_names = []
-    row_idx = 0
-    for f_idx, fpath in enumerate(fpaths):
-        df = pd.read_csv(fpath, index_col='target_name')
-        for hemi in hemis:
-            es_col = f'CohenD_{hemi}'
-            p_col = f'P_{hemi}(fdr_bh)'
-            map_names.append(f'{hemi}_{gnames[f_idx]}')
-            for idx in df.index:
-                if df.loc[idx, p_col] >= 0.05:
-                    continue
-                roi_idx_map = atlas.maps[0] == atlas.roi2label[idx]
-                data[row_idx, roi_idx_map] = df.loc[idx, es_col]
-            row_idx += 1
-
-    save2cifti(out_file, data, reader.brain_models(), map_names)
-
-
 # ---old---
 def prepare_plot(gid=1, hemi='lh'):
     import numpy as np
@@ -315,7 +282,6 @@ if __name__ == '__main__':
     ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G0_pFus_vs_mFus_ttest_mtc.csv'))
     ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'))
     ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv'))
-    # mtc_file2cifti()
 
     # old
     # prepare_plot(gid=1, hemi='lh')

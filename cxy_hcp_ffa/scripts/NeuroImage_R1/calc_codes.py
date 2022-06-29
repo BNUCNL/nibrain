@@ -401,7 +401,7 @@ def select_data(subj_mask, out_dir):
         savemat(out_file3, out_data3)  # 验证一下
     
     data_files4 = [
-        pjoin(anal_dir, 'NI_R1/TSNR2.pkl')
+        # pjoin(anal_dir, 'NI_R1/TSNR2.pkl')
     ]
     for data_file4 in data_files4:
         rois4 = ['L_pFus', 'L_mFus', 'R_pFus', 'R_mFus']
@@ -412,6 +412,18 @@ def select_data(subj_mask, out_dir):
         for roi4 in rois4:
             data4[roi4] = data4[roi4][subj_mask]
         pkl.dump(data4, open(out_file4, 'wb'))
+
+    data_files5 = [
+        pjoin(anal_dir, 'NI_R1/Fus-pattern-corr_MMP1_curv.pkl')
+    ]
+    for data_file5 in data_files5:
+        out_file5 = os.path.basename(data_file5)
+        print(f'Doing: {out_file5}')
+        out_file5 = pjoin(out_dir, out_file5)
+        data5 = pkl.load(open(data_file5, 'rb'))
+        for k, v in data5.items():
+            data5[k] = v[subj_mask][:, subj_mask]
+        pkl.dump(data5, open(out_file5, 'wb'))
 
 
 def snr_regression(src_file, snr_file, out_file):
@@ -474,9 +486,9 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
     # MT_gradient()
-    # select_data(
-    #     subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
-    #     out_dir=pjoin(work_dir, 'data_1053'))
+    select_data(
+        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
+        out_dir=pjoin(work_dir, 'data_1053'))
     # snr_regression(
     #     src_file=pjoin(work_dir, 'data_1053/FFA_activ-emo.csv'),
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
