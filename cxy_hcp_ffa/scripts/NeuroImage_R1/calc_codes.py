@@ -475,6 +475,61 @@ def snr_regression(src_file, snr_file, out_file):
     df.to_csv(out_file, index=False)
 
 
+def MT_random_maps(meas_name, subj_file):
+    """
+    计算subj_file中所有被试的平均map，并随机挑选
+    20个被试的个体map
+    """
+    n = 20
+    meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+    meas2file = {
+        'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                     'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                     'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii',
+        'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                  'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'}
+
+    subj_ids = open(subj_file).read().splitlines()
+    n_subj = len(subj_ids)
+    reader = CiftiReader(meas2file[meas_name])
+    meas_ids = open(meas_id_file).read().splitlines()
+    meas_indices = [meas_ids.index(i) for i in subj_ids]
+    meas_maps = reader.get_data()[meas_indices]
+
+    avg_map = np.mean(meas_maps, 0, keepdims=True)
+    subj_selected_indices = np.random.choice(range(n_subj), n, replace=False)
+    subj_selected_ids = [subj_ids[i] for i in subj_selected_indices]
+    ind_maps = meas_maps[subj_selected_indices]
+    
+    out_maps = np.r_[avg_map, ind_maps]
+    map_names = [f'{n_subj}_avg'] + subj_selected_ids
+    out_file = pjoin(work_dir, f'avg+ind_{meas_name}_{n_subj}.dscalar.nii')
+    save2cifti(out_file, out_maps, reader.brain_models(), map_names, reader.volume)
+
+
+def get_MMP_area(rois, out_file):
+    """
+    从HCP MMP中选取rois
+    """
+    Hemis = ('L', 'R')
+    reader = CiftiReader(mmp_map_file)
+    mmp_map = reader.get_data()
+    lbl_tab_mmp = reader.label_tables()[0]
+
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = lbl_tab_mmp[0]
+    out_map = np.zeros_like(mmp_map, dtype=np.uint16)
+    for Hemi in Hemis:
+        for roi in rois:
+            k = mmp_name2label[f'{Hemi}_{roi}']
+            lbl_tab[k] = lbl_tab_mmp[k]
+            out_map[mmp_map == k] = k
+
+    save2cifti(out_file, out_map, reader.brain_models(),
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # calc_snr2(meas_name='TSNR')
     # make_fus_mask(mask_name='union1')
@@ -486,9 +541,9 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
     # MT_gradient()
-    select_data(
-        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
-        out_dir=pjoin(work_dir, 'data_1053'))
+    # select_data(
+    #     subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
+    #     out_dir=pjoin(work_dir, 'data_1053'))
     # snr_regression(
     #     src_file=pjoin(work_dir, 'data_1053/FFA_activ-emo.csv'),
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
@@ -497,3 +552,13 @@ if __name__ == '__main__':
     #     src_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean.csv'),
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
     #     out_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'))
+
+    # MT_random_maps(
+    #     meas_name='myelin',
+    #     subj_file=pjoin(anal_dir, 'subj_info/subject_id1.txt'))
+    # MT_random_maps(
+    #     meas_name='thickness',
+    #     subj_file=pjoin(anal_dir, 'subj_info/subject_id1.txt'))
+    get_MMP_area(
+        rois=['VVC', 'FFC', 'V8', 'PIT'],
+        out_file=pjoin(work_dir, '4areas_around-Fus.32k_fs_LR.dlabel.nii'))

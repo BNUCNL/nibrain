@@ -120,11 +120,9 @@ def filter_twinsID_G1G2():
             h2.count_twins_id(trg_file_tmp)
 
 
-def count_gender():
-    import pandas as pd
+def count_gender(twin_file):
 
     # inputs
-    twin_file = pjoin(work_dir, 'twins_id_1080.csv')
     gender_file = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
 
     # prepare
@@ -984,7 +982,10 @@ if __name__ == '__main__':
     #     subjs_file=pjoin(anal_dir, 'subj_info/subject_id2.txt'),
     #     trg_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_id_rfMRI.csv'))
     # filter_twinsID_G1G2()
-    # count_gender()
+    # count_gender(
+    #     twin_file=pjoin(work_dir, 'twins_id_1080.csv'))
+    count_gender(
+        twin_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv'))
     # map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
     # count_twin_pair_same_group()
@@ -1031,9 +1032,9 @@ if __name__ == '__main__':
     #     subj_id_file=pjoin(proj_dir, 'analysis/s2/subject_id'),
     #     twins_id_file=pjoin(work_dir, 'twins_id_rfMRI.csv'),
     #     rsfc_file=pjoin(anal_dir, 'rfMRI/rsfc_mpm2Cole_{hemi}.pkl'),
-    #     out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc_new.csv'))
-    calc_pattern_corr_between_twins_rsfc(
-        subj_id_file=pjoin(proj_dir, 'analysis/s2/subject_id'),
-        twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_rfMRI.csv'),
-        rsfc_file=pjoin(anal_dir, 'rfMRI/rsfc_1053mpm2Cole_{hemi}.pkl'),
-        out_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_rsfc.csv'))
+    #     out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc.csv'))
+    # calc_pattern_corr_between_twins_rsfc(
+    #     subj_id_file=pjoin(proj_dir, 'analysis/s2/subject_id'),
+    #     twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_rfMRI.csv'),
+    #     rsfc_file=pjoin(anal_dir, 'rfMRI/rsfc_1053mpm2Cole_{hemi}.pkl'),
+    #     out_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_rsfc.csv'))
