@@ -5,6 +5,7 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
+from scipy.spatial.distance import cdist
 from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
@@ -758,6 +759,35 @@ def calc_RSM9():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM10():
+    """
+    计算stru-C1/2和各时间点map的相关
+    """
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+    out_file = pjoin(work_dir, 'RSM10.pkl')
+
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2, mask]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = map_stru_pc
+
+    # 100307的run-1_LR的时间序列
+    run_file = '/nfs/m1/hcp/100307/MNINonLinear/Results/rfMRI_REST1_LR/'\
+        'rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    t_series = nib.load(run_file).get_fdata()[:, :LR_count_32k]
+    t_series = t_series[:, mask]
+
+    # calculation
+    out_dict = {'mean': np.mean(t_series, 1)}
+    for map_idx, map_name in enumerate(map_names):
+        out_dict[map_name] = 1 - cdist(maps[[map_idx]], t_series, 'correlation')[0]
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # calc_RSM1_main(mask_name='MMP-vis3-R')
 
@@ -793,4 +823,5 @@ if __name__ == '__main__':
     # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
-    calc_RSM9()
+    # calc_RSM9()
+    calc_RSM10()
