@@ -475,12 +475,14 @@ def snr_regression(src_file, snr_file, out_file):
     df.to_csv(out_file, index=False)
 
 
-def MT_random_maps(meas_name, subj_file):
+def MT_random_maps():
     """
     计算subj_file中所有被试的平均map，并随机挑选
-    20个被试的个体map
+    20个被试的个体map(包括thickness, myelin, FFA)
     """
     n = 20
+    meas_names = ('thickness', 'myelin')
+    subj_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
     meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
     meas2file = {
         'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
@@ -489,23 +491,51 @@ def MT_random_maps(meas_name, subj_file):
         'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
                   'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
                   'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'}
+    mpm_file = pjoin(work_dir, 'data_1053/HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii')
+    roi_file = pjoin(work_dir, 'data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
 
+    # prepare subject information
     subj_ids = open(subj_file).read().splitlines()
     n_subj = len(subj_ids)
-    reader = CiftiReader(meas2file[meas_name])
     meas_ids = open(meas_id_file).read().splitlines()
     meas_indices = [meas_ids.index(i) for i in subj_ids]
-    meas_maps = reader.get_data()[meas_indices]
 
-    avg_map = np.mean(meas_maps, 0, keepdims=True)
+    # random choices
     subj_selected_indices = np.random.choice(range(n_subj), n, replace=False)
     subj_selected_ids = [subj_ids[i] for i in subj_selected_indices]
-    ind_maps = meas_maps[subj_selected_indices]
-    
-    out_maps = np.r_[avg_map, ind_maps]
     map_names = [f'{n_subj}_avg'] + subj_selected_ids
-    out_file = pjoin(work_dir, f'avg+ind_{meas_name}_{n_subj}.dscalar.nii')
-    save2cifti(out_file, out_maps, reader.brain_models(), map_names, reader.volume)
+
+    # select thickness and myelin maps
+    for meas_name in meas_names:
+        reader = CiftiReader(meas2file[meas_name])
+        meas_maps = reader.get_data()[meas_indices]
+        avg_map = np.mean(meas_maps, 0, keepdims=True)
+        ind_maps = meas_maps[subj_selected_indices]
+        out_maps = np.r_[avg_map, ind_maps]
+        out_file = pjoin(work_dir, f'avg+ind_{meas_name}_{n_subj}.dscalar.nii')
+        save2cifti(out_file, out_maps, reader.brain_models(), map_names, reader.volume)
+
+    # select FFA maps
+    out_file = pjoin(work_dir, f'avg+ind_FFA_{n_subj}.dlabel.nii')
+    reader = CiftiReader(mpm_file)
+    out_maps = reader.get_data()
+    lbl_tabs = reader.label_tables()
+    reader = CiftiReader(roi_file)
+    assert subj_ids == reader.map_names()
+    out_maps = np.r_[out_maps, reader.get_data()[subj_selected_indices]]
+    lbl_tabs_tmp = reader.label_tables()
+    lbl_tabs.extend([lbl_tabs_tmp[i] for i in subj_selected_indices])
+    for lbl_tab in lbl_tabs:
+        for k, lbl in lbl_tab.items():
+            if 'pFus' in lbl.label:
+                lbl_tab[k].red = 0.0
+                lbl_tab[k].green = 0.0
+                lbl_tab[k].blue = 0.0
+            elif 'mFus' in lbl.label:
+                lbl_tab[k].red = 1.0
+                lbl_tab[k].green = 1.0
+                lbl_tab[k].blue = 1.0
+    save2cifti(out_file, out_maps, reader.brain_models(), map_names, reader.volume, lbl_tabs)
 
 
 def get_MMP_area(rois, out_file):
@@ -553,12 +583,7 @@ if __name__ == '__main__':
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
     #     out_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'))
 
-    # MT_random_maps(
-    #     meas_name='myelin',
-    #     subj_file=pjoin(anal_dir, 'subj_info/subject_id1.txt'))
-    # MT_random_maps(
-    #     meas_name='thickness',
-    #     subj_file=pjoin(anal_dir, 'subj_info/subject_id1.txt'))
-    get_MMP_area(
-        rois=['VVC', 'FFC', 'V8', 'PIT'],
-        out_file=pjoin(work_dir, '4areas_around-Fus.32k_fs_LR.dlabel.nii'))
+    MT_random_maps()
+    # get_MMP_area(
+    #     rois=['VVC', 'FFC', 'V8', 'PIT'],
+    #     out_file=pjoin(work_dir, '4areas_around-Fus.32k_fs_LR.dlabel.nii'))
