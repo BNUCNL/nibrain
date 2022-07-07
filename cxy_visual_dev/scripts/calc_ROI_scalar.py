@@ -4,7 +4,8 @@ import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
 from magicbox.algorithm.array import summary_across_col_by_mask
-from cxy_visual_dev.lib.predefine import proj_dir, Atlas
+from cxy_visual_dev.lib.predefine import proj_dir, Atlas, s1200_avg_RFsize,\
+    s1200_avg_eccentricity, s1200_avg_angle, LR_count_32k, get_rois
 from magicbox.io.io import CiftiReader
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -56,6 +57,52 @@ def ROI_scalar(src_file, mask, values, metric, out_file, zscore_flag=False,
         out_df.to_csv(out_file, index=True)
 
 
+def ROI_scalar1():
+    """
+    为各map计算视觉ROI内的各种metric
+    """
+    atlas = Atlas('HCP-MMP')
+    rois = get_rois('MMP-vis3-R')
+    values = [atlas.roi2label[i] for i in rois]
+    metrics = ['mean', 'std', 'sem', 'cv', 'sum']
+    out_file = pjoin(work_dir, 'ROI_scalar1.csv')
+
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    map_stru_pc = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2]
+    map_names = ['stru-C1', 'stru-C2']
+    maps = [map_stru_pc]
+
+    # 离距状沟的距离: distFromCS;
+    map_dist_cs = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
+    )).get_fdata()
+    map_names.extend(['distFromCS'])
+    maps.extend([map_dist_cs])
+
+    # Eccentricity; PolarAngle; RFsize;
+    map_ecc = nib.load(s1200_avg_eccentricity).get_fdata()[0, :LR_count_32k][None, :]
+    map_ang = nib.load(s1200_avg_angle).get_fdata()[0, :LR_count_32k][None, :]
+    map_rfs = nib.load(s1200_avg_RFsize).get_fdata()[0, :LR_count_32k][None, :]
+    map_names.extend(['Eccentricity', 'Angle', 'RFsize'])
+    maps.extend([map_ecc, map_ang, map_rfs])
+
+    # calculate
+    maps = np.concatenate(maps, 0)
+    out_data = summary_across_col_by_mask(
+        data=maps, mask=atlas.maps[0], values=values, metrics=metrics,
+        tol_size=10, nan_mode=True, row_names=map_names, zscore_flag=False, out_dict=False)
+
+    # save out
+    out_data = np.concatenate(out_data, 0)
+    out_indices = []
+    for metric in metrics:
+        out_indices.extend([f'{metric}_{i}' for i in map_names])
+    out_df = pd.DataFrame(out_data, out_indices, rois)
+    out_df.to_csv(out_file, index=True)
+
+
 if __name__ == '__main__':
     # atlas = Atlas('HCP-MMP')
     # ROI_scalar(
@@ -88,3 +135,5 @@ if __name__ == '__main__':
     #     mask=mask_map, values=np.arange(1, N*N+1), metric='mean',
     #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     # )
+
+    ROI_scalar1()
