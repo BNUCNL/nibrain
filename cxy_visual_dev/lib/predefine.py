@@ -360,6 +360,8 @@ def get_rois(name):
 
     elif name == 'rPath7':
         rois = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
+    elif name == 'Hierarchy1':
+        rois = ['V1', 'V2', 'V3', 'V3B', 'V4', 'MT', 'VIP', 'FST', 'TF']
     # visual path way<<<
 
     else:
