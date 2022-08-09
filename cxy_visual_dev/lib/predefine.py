@@ -366,6 +366,8 @@ def get_rois(name):
         rois = ['V1', 'V2', 'V3', 'V4', 'PIT', 'VVC', 'FFC', 'TF', 'PeEc']
     elif name == 'Hierarchy3':
         rois = ['V1', 'V2', 'V3', 'V4', 'V8', 'PIT', 'VVC', 'FFC', 'TF', 'PeEc']
+    elif name == 'Hierarchy4':
+        rois = ['V1', 'V2', 'V3', 'V4', 'V8', 'PIT', 'VVC', 'FFA1', 'FFA2', 'TF', 'PeEc']
     # visual path way<<<
 
     else:
