@@ -148,7 +148,7 @@ def modify_benson2018():
 def process_HCPYA_grp_rsfc_mat():
     """
     对HCP_S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr.dconn.nii
-    中的数据进行一些处理。本次只是讲z值转回r值
+    中的数据进行一些处理。本次只是将z值转回r值
 
     References
     ----------
