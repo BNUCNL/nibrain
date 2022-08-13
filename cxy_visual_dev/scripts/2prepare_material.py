@@ -30,7 +30,7 @@ def get_calcarine_sulcus(hemi):
     faces_white = set(tuple(i) for i in gii_white.faces)
     assert faces_flat.issubset(faces_white)
     faces_splitted = faces_white.difference(faces_flat)
-    
+
     # get V1 mask
     mmp_map = mmp_reader.get_data(hemi2stru[hemi], True)[0]
     V1_mask = mmp_map == mmp_name2label[f'{Hemi}_V1']
@@ -41,7 +41,7 @@ def get_calcarine_sulcus(hemi):
         if np.all(V1_mask[list(face)]):
             vertices.update(face)
     vertices = np.array(list(vertices))
-    
+
     # save as .label file
     header = str(len(vertices))
     np.savetxt(out_file, vertices, fmt='%d', header=header,

@@ -215,6 +215,44 @@ def rfMRI_file_status(fpath):
     plt.show()
 
 
+def get_subject_info_for_HCPY():
+    """
+    从1071个Glasser认为具有valid MSMAll的被试中选出
+    至少包含一个状态为ok=(1200, 91282)的静息run的被试，
+    并证明这些被试都包含于S1200 GroupAvg发布的morphology数据的
+    1096名被试里。
+
+    得到HCPY_SubjInfo.csv:
+        存放被试号，年龄，性别，以及在1096个被试中的索引
+    """
+    fpath_1206 = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+    fpath_1096 = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+    fpath_1071 = pjoin(proj_dir, 'data/HCP/subject_id_1071')
+    fpath_check = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+
+    df_1206 = pd.read_csv(fpath_1206, index_col='Subject')
+    sids_1096 = [int(i) for i in open(fpath_1096).read().splitlines()]
+    sids_1071 = [int(i) for i in open(fpath_1071).read().splitlines()]
+    df_check = pd.read_csv(fpath_check, sep='\t', index_col='subID')
+
+    sids = [i for i in sids_1071
+            if np.any(df_check.loc[i] == 'ok=(1200, 91282)')]
+    assert set(sids).issubset(sids_1096)
+    s_indices = []
+    for sid in sids:
+        s_indices.append(sids_1096.index(sid))
+    assert sorted(s_indices) == s_indices
+
+    out_dict = {
+        'subID': sids,
+        'age in years': df_1206.loc[sids, 'Age_in_Yrs'],
+        'gender': df_1206.loc[sids, 'Gender'],
+        '1096_idx': s_indices
+    }
+    pd.DataFrame(out_dict).to_csv(out_file, index=False)
+
+
 def summary_subj_info(data_flag):
     """
     获取各类数据所涉及的被试信息
@@ -341,8 +379,9 @@ if __name__ == '__main__':
     # get_subject_info_from_completeness('HCPD')
     # get_subject_info_from_fmriresults01('HCPA')
     # get_subject_info_from_completeness('HCPA')
+    get_subject_info_for_HCPY()
 
     # summary_subj_info(data_flag='HCPY-myelin')
     # summary_subj_info(data_flag='HCPD-myelin')
-    summary_subj_info(data_flag='HCPA-myelin')
-    summary_subj_info(data_flag='HCPY-rfMRI')
+    # summary_subj_info(data_flag='HCPA-myelin')
+    # summary_subj_info(data_flag='HCPY-rfMRI')
