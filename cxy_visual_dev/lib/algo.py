@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file, proj_dir
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -108,62 +108,43 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
     return data, n_vertices, n_maps, reader
 
 
-def zscore_data(data_file, out_file):
+def zscore_cii_masked(src_file, mask, out_file):
     """
-    对每个被试做全脑zscore
+    zscore maps across vertices in the mask
 
     Args:
-        data_file (str): .dscalar.nii
-        out_file (str): .dscalar.nii
-    """
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
-    data = zscore(data, 1)
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
-
-
-def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
-    """
-    zscore data in the ROI for each map
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        mask (1D array)
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        roi_name (str): 决定选用哪个区域内的顶点来参与zscore
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
+    reader = CiftiReader(src_file)
     maps = reader.get_data()
-    n_map = maps.shape[0]
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
-    maps = maps[:, roi_idx_map]
 
-    # calculate
-    data = np.ones((n_map, LR_count_32k), np.float64) * np.nan
-    maps = zscore(maps, 1)
-    data[:, roi_idx_map] = maps
+    data = np.ones_like(maps) * np.nan
+    maps = maps[:, mask]
+    data[:, mask] = zscore(maps, 1)
 
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    save2cifti(out_file, data, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def zscore_map_subj(data_file, out_file):
+def zscore_cii(src_file, axis, out_file):
     """
-    zscore data along subjects
+    zscore across maps (axis=0) or vertices (axis=1)
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        axis (int): 0 | 1
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-    maps = zscore(maps, 0)
-    save2cifti(out_file, maps, reader.brain_models(), reader.map_names())
+    reader = CiftiReader(src_file)
+    maps = zscore(reader.get_data(), axis)
+    save2cifti(out_file, maps, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
 def stack_cii(src_files, out_file):

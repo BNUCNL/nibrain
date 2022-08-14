@@ -445,18 +445,17 @@ if __name__ == '__main__':
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 联合myelin和thickness做空间PCA
-    # atlas = Atlas('HCP-MMP')
-    # decompose(
-    #     fpaths=[s1200_1096_myelin, s1200_1096_thickness], cat_shape=(2, 1),
-    #     method='PCA', axis=0,
-    #     csv_files=[
-    #         pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
-    #         pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')],
-    #     cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-    #     pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    # )
+    decompose(
+        fpaths=[s1200_1096_myelin, s1200_1096_thickness], cat_shape=(2, 1),
+        method='PCA', axis=0,
+        csv_files=[
+            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
+            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')],
+        cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+        pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+        vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    )
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 分别对myelin做空间PCA
@@ -542,20 +541,20 @@ if __name__ == '__main__':
     # zscore0=True, n_component=20, random_state=7
     # )
 
-    pca_rsfc(
-    fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
-    out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'),
-    out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight.dscalar.nii'),
-    out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA.pkl'),
-    zscore0=False, n_component=20, random_state=7
-    )
-    pca_rsfc(
-    fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
-    out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'),
-    out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight.dscalar.nii'),
-    out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA.pkl'),
-    zscore0=True, n_component=20, random_state=7
-    )
+    # pca_rsfc(
+    #     fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
+    #     out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-comp.dscalar.nii'),
+    #     out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA-weight.dscalar.nii'),
+    #     out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_PCA.pkl'),
+    #     zscore0=False, n_component=20, random_state=7
+    # )
+    # pca_rsfc(
+    #     fpath=pjoin(proj_dir, 'data/HCP/HCPY-avg_RSFC-MMP-vis3-R2grayordinate.pkl'),
+    #     out_comp_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-comp.dscalar.nii'),
+    #     out_weight_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA-weight.dscalar.nii'),
+    #     out_model_file=pjoin(work_dir, 'HCPY-avg_RSFC-MMP-vis3-R2grayordinate_zscore_PCA.pkl'),
+    #     zscore0=True, n_component=20, random_state=7
+    # )
 
     # pca_HCPY_avg_rsfc_mat(
     #     mask_name0='MMP-vis3-R', mask_name1='grayordinate',
