@@ -7,7 +7,9 @@ from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
-    mmp_map_file, s1200_avg_RFsize, s1200_avg_R2
+    mmp_map_file, s1200_avg_RFsize, s1200_avg_R2,\
+    s1200_avg_curv, s1200_avg_myelin,\
+    s1200_avg_thickness, s1200_avg_corrThickness
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -15,36 +17,29 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def mask_maps(data_file, mask, out_file):
+def mask_cii(src_file, mask, out_file):
     """
     把data map在指定mask以外的部分全赋值为nan
 
     Args:
-        data_file (str): end with .dscalar.nii
+        src_file (str): end with .dscalar.nii/.dlabel.nii
             shape=(n_map, n_vtx)
         mask (1D index array)
-        out_file (str):
+        out_file (str): end with .dscalar.nii/.dlabel.nii
     """
     # prepare
-    reader1 = CiftiReader(mmp_map_file)
-    reader2 = CiftiReader(data_file)
-    data = reader2.get_data()
-    if data.shape[1] == All_count_32k:
-        data = data[:, :LR_count_32k]
-    elif data.shape[1] == LR_count_32k:
-        pass
-    else:
-        raise ValueError
+    reader = CiftiReader(src_file)
+    data = reader.get_data()
 
     # calculate
-    if data_file.endswith('.dlabel.nii'):
+    if src_file.endswith('.dlabel.nii'):
         data[:, ~mask] = 0
     else:
         data[:, ~mask] = np.nan
 
     # save
-    save2cifti(out_file, data, reader1.brain_models(),
-               reader2.map_names(), label_tables=reader2.label_tables())
+    save2cifti(out_file, data, reader.brain_models(),
+               reader.map_names(), reader.volume, reader.label_tables())
 
 
 def make_mask1(N):
@@ -221,8 +216,8 @@ def make_mask6():
 
 
 if __name__ == '__main__':
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -253,10 +248,26 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     # )
+    mask_cii(
+        src_file=s1200_avg_curv, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-curv_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_myelin, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-myelin_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_thickness, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-thickness_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_corrThickness, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-corrThickness_MMP-vis3.dscalar.nii')
+    )
 
     # make_mask1(N=2)
     # make_mask1(N=3)
-    make_mask1(N=5)
+    # make_mask1(N=5)
     # make_mask2()
     # make_mask3()
     # make_mask6()

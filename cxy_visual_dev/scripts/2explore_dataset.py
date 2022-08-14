@@ -219,7 +219,7 @@ def get_subject_info_for_HCPY():
     """
     从1071个Glasser认为具有valid MSMAll的被试中选出
     至少包含一个状态为ok=(1200, 91282)的静息run的被试，
-    并证明这些被试都包含于S1200 GroupAvg发布的morphology数据的
+    并证明这1071个被试都包含于S1200 GroupAvg发布的morphology数据的
     1096名被试里。
 
     得到HCPY_SubjInfo.csv:
@@ -235,10 +235,10 @@ def get_subject_info_for_HCPY():
     sids_1096 = [int(i) for i in open(fpath_1096).read().splitlines()]
     sids_1071 = [int(i) for i in open(fpath_1071).read().splitlines()]
     df_check = pd.read_csv(fpath_check, sep='\t', index_col='subID')
+    assert set(sids_1071).issubset(sids_1096)
 
     sids = [i for i in sids_1071
             if np.any(df_check.loc[i] == 'ok=(1200, 91282)')]
-    assert set(sids).issubset(sids_1096)
     s_indices = []
     for sid in sids:
         s_indices.append(sids_1096.index(sid))
