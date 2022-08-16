@@ -375,6 +375,67 @@ def pca_HCPDA_MT_SW_param_local(src_file, pc_names, local_name, out_file):
     pkl.dump(out_data, open(out_file, 'wb'))
 
 
+def get_MT_PC_individual():
+    """
+    在被试内拼接myelin和thickness (or corrThickness)进行空间PCA得到两个成分
+    得到：
+    1. HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC1.dscalar.nii
+        保存着所有被试的第1个成分
+    2. HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC2.dscalar.nii
+        保存着所有被试的第2个成分
+    3. HCPY-1069_MMP-vis3-R_M+corrT-zscore_PCA.csv
+        保存在所有被试中，各成分的方差占比率，以及M和T对各成分的贡献
+    """
+    m_file = pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')
+    t_file = pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')
+    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+    fname = 'HCPY-1069_MMP-vis3-R_M+corrT-zscore'
+    out_file1 = pjoin(work_dir, f'{fname}_PC1.dscalar.nii')
+    out_file2 = pjoin(work_dir, f'{fname}_PC2.dscalar.nii')
+    out_file3 = pjoin(work_dir, f'{fname}_PCA.csv')
+
+    reader = CiftiReader(m_file)
+    n_map, n_vtx = reader.full_data.shape
+    bms = reader.brain_models()
+    vol = reader.volume
+    map_names = reader.map_names()
+    m_maps = reader.get_data()[:, mask]
+    t_maps = nib.load(t_file).get_fdata()[:, mask]
+    m_maps = zscore(m_maps, 1)
+    t_maps = zscore(t_maps, 1)
+
+    c1_maps = np.ones((n_map, n_vtx)) * np.nan
+    c2_maps = np.ones((n_map, n_vtx)) * np.nan
+    csv_dict = {
+        'C1_explained_variance_ratio': np.zeros(n_map),
+        'C1_weight_M': np.zeros(n_map),
+        'C1_weight_T': np.zeros(n_map),
+        'C2_explained_variance_ratio': np.zeros(n_map),
+        'C2_weight_M': np.zeros(n_map),
+        'C2_weight_T': np.zeros(n_map)}
+    for map_idx in range(n_map):
+        pca = PCA(random_state=7)
+        X = np.array([m_maps[map_idx], t_maps[map_idx]]).T
+        pca.fit(X)
+        Y = pca.transform(X)
+
+        c1_maps[map_idx][mask] = Y[:, 0]
+        c2_maps[map_idx][mask] = Y[:, 1]
+        csv_dict['C1_explained_variance_ratio'][map_idx] = \
+            pca.explained_variance_ratio_[0]
+        csv_dict['C2_explained_variance_ratio'][map_idx] = \
+            pca.explained_variance_ratio_[1]
+        csv_dict['C1_weight_M'][map_idx] = pca.components_[0, 0]
+        csv_dict['C1_weight_T'][map_idx] = pca.components_[0, 1]
+        csv_dict['C2_weight_M'][map_idx] = pca.components_[1, 0]
+        csv_dict['C2_weight_T'][map_idx] = pca.components_[1, 1]
+        print(f'Finished: {map_idx+1}/{n_map}')
+
+    save2cifti(out_file1, c1_maps, bms, map_names, vol)
+    save2cifti(out_file2, c2_maps, bms, map_names, vol)
+    pd.DataFrame(csv_dict).to_csv(out_file3, index=False)
+
+
 if __name__ == '__main__':
     # ===左右V1~3拼一起做PCA，在此之前各ROI内部要做zscore===
     # atlas = Atlas('HCP-MMP')
@@ -445,43 +506,43 @@ if __name__ == '__main__':
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 联合myelin和thickness做空间PCA
+    # decompose(
+    #     fpaths=[
+    #         pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
+    #         pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
+    #     cat_shape=(2, 1), method='PCA', axis=0,
+    #     csv_files=[
+    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
+    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_corrT.csv')],
+    #     cii_files=[pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    # )
+
+    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
+    # 对myelin做空间PCA
+    fname = 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj'
     decompose(
-        fpaths=[s1200_1096_myelin, s1200_1096_thickness], cat_shape=(2, 1),
-        method='PCA', axis=0,
-        csv_files=[
-            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
-            pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')],
-        cii_files=[pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-        pkl_file=pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
+        fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')],
+        cat_shape=(1, 1), method='PCA', axis=0,
+        csv_files=[pjoin(work_dir, f'{fname}.csv')],
+        cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+        pkl_file=pjoin(work_dir, f'{fname}.pkl'),
         vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    )
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
-    # 分别对myelin做空间PCA
-    # atlas = Atlas('HCP-MMP')
-    # decompose(
-    #     fpaths=[s1200_1096_myelin], cat_shape=(1, 1),
-    #     method='PCA', axis=0,
-    #     csv_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.csv')],
-    #     cii_files=[pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-    #     pkl_file=pjoin(work_dir, 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    # )
-
-    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
-    # 分别对thickness做空间PCA
-    # atlas = Atlas('HCP-MMP')
-    # decompose(
-    #     fpaths=[s1200_1096_thickness], cat_shape=(1, 1),
-    #     method='PCA', axis=0,
-    #     csv_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.csv')],
-    #     cii_files=[pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-    #     pkl_file=pjoin(work_dir, 'HCPY-T_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-    #     vtx_masks=[atlas.get_mask(get_rois('MMP-vis3-R'))[0]],
-    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    # )
+    # 对thickness做空间PCA
+    fname = 'HCPY-corrT_MMP-vis3-R_zscore1_PCA-subj'
+    decompose(
+        fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
+        cat_shape=(1, 1), method='PCA', axis=0,
+        csv_files=[pjoin(work_dir, f'{fname}.csv')],
+        cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+        pkl_file=pjoin(work_dir, f'{fname}.pkl'),
+        vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
 
     # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）
     # info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
@@ -607,3 +668,26 @@ if __name__ == '__main__':
     #     pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
     #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
     # )
+
+    # get_MT_PC_individual()
+    # 对HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC1做空间PCA
+    # fname = 'HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC1'
+    # decompose(
+    #     fpaths=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+    #     cat_shape=(1, 1), method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, f'{fname}_PCA-subj.csv')],
+    #     cii_files=[pjoin(work_dir, f'{fname}_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, f'{fname}_PCA-subj.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1=None, n_component=20, random_state=7)
+
+    # 对HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC2做空间PCA
+    # fname = 'HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC2'
+    # decompose(
+    #     fpaths=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+    #     cat_shape=(1, 1), method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, f'{fname}_PCA-subj.csv')],
+    #     cii_files=[pjoin(work_dir, f'{fname}_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, f'{fname}_PCA-subj.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1=None, n_component=20, random_state=7)

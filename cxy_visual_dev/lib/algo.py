@@ -33,6 +33,8 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
             指定大脑区域
         map_mask (ndarray, optional): 1D index array
             指定使用的map
+            如果是bool类型，则长度为n_map
+            如果是int类型，则值域为[0, n_map-1]
         zscore0 (str, optional): split, whole
             split: do zscore across subjects of each row
             whole: do zscore across subjects of all rows

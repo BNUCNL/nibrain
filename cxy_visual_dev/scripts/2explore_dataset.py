@@ -379,9 +379,9 @@ if __name__ == '__main__':
     # get_subject_info_from_completeness('HCPD')
     # get_subject_info_from_fmriresults01('HCPA')
     # get_subject_info_from_completeness('HCPA')
-    get_subject_info_for_HCPY()
+    # get_subject_info_for_HCPY()
 
-    # summary_subj_info(data_flag='HCPY-myelin')
+    summary_subj_info(data_flag='HCPY-myelin')
     # summary_subj_info(data_flag='HCPD-myelin')
     # summary_subj_info(data_flag='HCPA-myelin')
     # summary_subj_info(data_flag='HCPY-rfMRI')

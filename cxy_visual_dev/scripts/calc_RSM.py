@@ -65,7 +65,7 @@ def calc_RSM1(mask, out_file):
     """
     # 结构梯度的PC1, PC2: stru-C1, stru-C2;
     map_stru_pc = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
     )).get_fdata()[:2, mask]
     map_names = ['stru-C1', 'stru-C2']
     maps = [map_stru_pc]
@@ -760,7 +760,7 @@ def calc_RSM9():
 
 
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2

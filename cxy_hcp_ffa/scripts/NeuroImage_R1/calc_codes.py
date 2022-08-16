@@ -464,6 +464,11 @@ def snr_regression(src_file, snr_file, out_file):
     将snr的个体变异从数据中回归掉，四个ROI做所有个体上的值连在一起做。
     这是为了在回归掉snr之后也能使得组间，半球间，roi间的比较是有意义的。
 
+    注意：目前这里的回归是连带着截距也减掉了，只要在做拟合之前去掉regressor（此处指tSNR），
+    在做拟合时带着截距，最后从因变量（此处为src_file中的数据）中只减去需要被
+    回归掉的regressor和其系数的乘积（即保留截距）。这样似乎可以保留因变量原来的scale。
+    HCP从thickness中回归curvature时就是这样做的。
+
     Args:
         src_file (_type_): _description_
         snr_file (_type_): _description_
