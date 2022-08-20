@@ -41,7 +41,7 @@ def calc_snr1(meas_name):
         '{run}/{run}_Atlas_stats.dscalar.nii'
     log_file = pjoin(work_dir, f'{meas_name}1_log')
     out_file = pjoin(work_dir, f'{meas_name}1.pkl')
-    
+
     reader = CiftiReader(roi_file)
     subj_ids = reader.map_names()
     lbl_tabs = reader.label_tables()
@@ -468,6 +468,7 @@ def snr_regression(src_file, snr_file, out_file):
     在做拟合时带着截距，最后从因变量（此处为src_file中的数据）中只减去需要被
     回归掉的regressor和其系数的乘积（即保留截距）。这样似乎可以保留因变量原来的scale。
     HCP从thickness中回归curvature时就是这样做的。
+    在拟合的时候去掉截距项是无法保留原来的scale的。
 
     Args:
         src_file (_type_): _description_
@@ -509,7 +510,7 @@ def snr_regression(src_file, snr_file, out_file):
             col = f'{hemi}_{roi}'
             start_idx, end_idx = col2indices[col]
             df.loc[col2mask[col], col] = meas_reg[start_idx:end_idx]
-    
+
     df.to_csv(out_file, index=False)
 
 
