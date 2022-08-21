@@ -5,8 +5,7 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     s1200_avg_thickness, s1200_avg_myelin, get_rois
 from cxy_visual_dev.lib.algo import ROI_analysis_on_PC,\
     calc_map_corr, vtx_corr_col, polyfit, row_corr_row,\
-    col_operate_col, map_operate_map, zscore_map, concate_map,\
-    zscore_map_subj
+    col_operate_col, map_operate_map
 
 work_dir = pjoin(proj_dir, 'analysis/structure')
 if not os.path.isdir(work_dir):
@@ -15,25 +14,6 @@ if not os.path.isdir(work_dir):
 
 if __name__ == '__main__':
     # HCP_MMP1 atlas 包含 Cole_visual_ROI
-
-    # zscore_map(
-    #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),
-    #     out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
-    #     atlas_name='Cole_visual_LR', roi_name='R_cole_visual'
-    # )
-
-    # concate_map(
-    #     data_files=[
-    #         pjoin(work_dir, 'HCPD-myelin_zscore-R_cole_visual.dscalar.nii'),
-    #         pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii')
-    #     ],
-    #     out_file=pjoin(work_dir, 'HCPD-myelin+thickness_zscore-R_cole_visual.dscalar.nii')
-    # )
-
-    # zscore_map_subj(
-    #     data_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual.dscalar.nii'),
-    #     out_file=pjoin(work_dir, 'HCPD-thickness_zscore-R_cole_visual-subj.dscalar.nii')
-    # )
 
     # ROI_analysis_on_PC(
     #     data_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness_4mm.dscalar.nii'),

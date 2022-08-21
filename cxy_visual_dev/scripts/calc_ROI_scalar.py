@@ -57,15 +57,22 @@ def ROI_scalar(src_file, mask, values, metric, out_file, zscore_flag=False,
         out_df.to_csv(out_file, index=True)
 
 
-def ROI_scalar1():
+def ROI_scalar1(roi_type):
     """
     为各map计算视觉ROI内的各种metric
     """
-    atlas = Atlas('HCP-MMP')
-    rois = get_rois('MMP-vis3-R')
+    if roi_type == 'MMP-vis3-R':
+        atlas = Atlas('HCP-MMP')
+        rois = get_rois('MMP-vis3-R')
+    elif roi_type == 'Wang2015-R':
+        atlas = Atlas('Wang2015')
+        rois = get_rois('Wang2015-R')
+    else:
+        raise ValueError('unsupported roi_type:', roi_type)
+
     values = [atlas.roi2label[i] for i in rois]
     metrics = ['mean', 'std', 'sem', 'cv', 'sum']
-    out_file = pjoin(work_dir, 'ROI_scalar1.csv')
+    out_file = pjoin(work_dir, f'ROI_scalar1_{roi_type}.csv')
 
     # 结构梯度的PC1, PC2: stru-C1, stru-C2;
     map_stru_pc = nib.load(pjoin(
@@ -136,4 +143,5 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     # )
 
-    ROI_scalar1()
+    # ROI_scalar1(roi_type='MMP-vis3-R')
+    ROI_scalar1(roi_type='Wang2015-R')

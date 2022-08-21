@@ -178,8 +178,10 @@ s1200_avg_R2 = '/nfs/z1/HCP/HCPYA/S1200_7T_Retinotopy_Pr_9Zkk/'\
 
 
 # >>>dataset
-s1200_avg_dir = '/nfs/p1/public_dataset/datasets/hcp/DATA/'\
-    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1'
+s1200_avg_dir = '/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1'
+s1200_avg_corrThickness = pjoin(
+    s1200_avg_dir, 'S1200.corrThickness_MSMAll.32k_fs_LR.dscalar.nii'
+)
 s1200_avg_thickness = pjoin(
     s1200_avg_dir, 'S1200.thickness_MSMAll.32k_fs_LR.dscalar.nii'
 )
@@ -188,6 +190,9 @@ s1200_avg_myelin = pjoin(
 )
 s1200_avg_curv = pjoin(
     s1200_avg_dir, 'S1200.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+)
+s1200_1096_corrThickness = pjoin(
+    s1200_avg_dir, 'S1200.All.corrThickness_MSMAll.32k_fs_LR.dscalar.nii'
 )
 s1200_1096_thickness = pjoin(
     s1200_avg_dir, 'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii'
@@ -360,6 +365,14 @@ def get_rois(name):
 
     elif name == 'rPath7':
         rois = ['R_V1', 'R_V2', 'R_V3', 'R_V3A', 'R_V7', 'R_IPS1', 'R_VIP']
+    elif name == 'Hierarchy1':
+        rois = ['V1', 'V2', 'V3', 'V3B', 'V4', 'MT', 'VIP', 'FST', 'TF']
+    elif name == 'Hierarchy2':
+        rois = ['V1', 'V2', 'V3', 'V4', 'PIT', 'VVC', 'FFC', 'TF', 'PeEc']
+    elif name == 'Hierarchy3':
+        rois = ['V1', 'V2', 'V3', 'V4', 'V8', 'PIT', 'VVC', 'FFC', 'TF', 'PeEc']
+    elif name == 'Hierarchy4':
+        rois = ['V1', 'V2', 'V3', 'V4', 'V8', 'PIT', 'VVC', 'FFA1', 'FFA2', 'TF', 'PeEc']
     # visual path way<<<
 
     else:

@@ -13,7 +13,8 @@ from sklearn.metrics import pairwise_distances
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
     mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
-    L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru
+    L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru,\
+    s1200_1096_myelin, s1200_1096_corrThickness
 from cxy_visual_dev.lib.algo import calc_alff
 
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -30,6 +31,7 @@ def merge_data(dataset_name, meas_name):
         meas_name (str): thickness | myelin
     """
     # outputs
+    info_file = pjoin(work_dir, f'{dataset_name}_SubjInfo.csv')
     out_file = pjoin(work_dir, f'{dataset_name}_{meas_name}.dscalar.nii')
 
     # prepare
@@ -44,25 +46,33 @@ def merge_data(dataset_name, meas_name):
             dataset_dir,
             'fmriresults01/{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
             '{sid}_V1_MR.thickness_MSMAll.32k_fs_LR.dscalar.nii'
+        ),
+        'corrThickness': pjoin(
+            dataset_dir,
+            'fmriresults01/{sid}_V1_MR/MNINonLinear/fsaverage_LR32k/'
+            '{sid}_V1_MR.corrThickness_MSMAll.32k_fs_LR.dscalar.nii'
         )
     }
-
-    df = pd.read_csv(dataset_name2info[dataset_name])
+    df = pd.read_csv(info_file)
     n_subj = df.shape[0]
 
-    data = np.zeros((n_subj, LR_count_32k), np.float64)
-
     # calculate
+    bms = None
+    data = None
     for subj_idx, subj_id in enumerate(df['subID']):
         time1 = time.time()
         meas_file = meas2file[meas_name].format(sid=subj_id)
-        data[subj_idx] = nib.load(meas_file).get_fdata()[0]
+        reader = CiftiReader(meas_file)
+        assert reader.full_data.shape[0] == 1
+        if data is None:
+            bms = reader.brain_models()
+            data = np.zeros((n_subj, reader.full_data.shape[1]))
+        data[subj_idx] = reader.get_data()[0]
         print(f'Finished: {subj_idx+1}/{n_subj},'
               f'cost: {time.time() - time1} seconds.')
 
     # save
-    mmp_reader = CiftiReader(mmp_map_file)
-    save2cifti(out_file, data, mmp_reader.brain_models(), df['subID'])
+    save2cifti(out_file, data, bms, df['subID'])
 
 
 def smooth_data(dataset_name, meas_name, sigma):
@@ -562,6 +572,22 @@ def fc_strength_mine_merge():
     save2cifti(out_file, data, reader.brain_models(), subj_ids)
 
 
+def get_HCPY_morph(src_file, out_file):
+    """
+    从S1200 GroupAvg发布的1096个被试的morphology数据中
+    摘出出我们需要的那些被试的数据。
+    """
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    reader = CiftiReader(src_file)
+
+    info_df = pd.read_csv(info_file)
+    indices = info_df['1096_idx'].values
+    data = reader.get_data()[indices]
+    map_names = [str(i) for i in info_df['subID']]
+
+    save2cifti(out_file, data, reader.brain_models(), map_names, reader.volume)
+
+
 def get_HCPY_rsfc_mat_old(hemi='rh'):
     """
     这个函数只运行了一次，就是做了前两个被试，后面不再动了。
@@ -998,7 +1024,7 @@ def get_HCPY_rsfc_mat_roi():
             t_series_sub[:, s_idx:e_idx] = t_series_run.T
         for roi_idx, roi in enumerate(rois):
             t_series_roi[roi_idx] = np.mean(t_series_sub[roi2indices[roi]], 0)
-        
+
         rs_sub = 1 - cdist(t_series_roi, t_series_roi, 'correlation')
         rs = rs + rs_sub
         n_subj_valid += 1
@@ -1012,8 +1038,11 @@ def get_HCPY_rsfc_mat_roi():
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
+    # merge_data(dataset_name='HCPD', meas_name='corrThickness')
     # merge_data(dataset_name='HCPA', meas_name='thickness')
     # merge_data(dataset_name='HCPA', meas_name='myelin')
+    # merge_data(dataset_name='HCPA', meas_name='corrThickness')
+
     # smooth_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
     # smooth_data(dataset_name='HCPD', meas_name='myelin', sigma=4)
     # merge_smoothed_data(dataset_name='HCPD', meas_name='thickness', sigma=4)
@@ -1064,6 +1093,14 @@ if __name__ == '__main__':
 
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
+    get_HCPY_morph(
+        src_file=s1200_1096_myelin,
+        out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
+    )
+    get_HCPY_morph(
+        src_file=s1200_1096_corrThickness,
+        out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
+    )
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')
@@ -1076,4 +1113,4 @@ if __name__ == '__main__':
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
     # get_HCPY_rsfc_mat(Hemi='R')
-    get_HCPY_rsfc_mat_roi()
+    # get_HCPY_rsfc_mat_roi()

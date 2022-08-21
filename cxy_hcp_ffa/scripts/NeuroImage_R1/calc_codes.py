@@ -41,7 +41,7 @@ def calc_snr1(meas_name):
         '{run}/{run}_Atlas_stats.dscalar.nii'
     log_file = pjoin(work_dir, f'{meas_name}1_log')
     out_file = pjoin(work_dir, f'{meas_name}1.pkl')
-    
+
     reader = CiftiReader(roi_file)
     subj_ids = reader.map_names()
     lbl_tabs = reader.label_tables()
@@ -194,7 +194,7 @@ def make_fus_mask(mask_name='union1'):
                 fus_mask[mmp_mask] = Hemi_idx
     else:
         raise ValueError
-    
+
     save2cifti(out_file, fus_mask, CiftiReader(mmp_map_file).brain_models(),
                label_tables=[lbl_tab])
 
@@ -341,7 +341,8 @@ def MT_gradient():
 
 def select_data(subj_mask, out_dir):
     """
-    把指定被试的数据节选出来
+    把指定被试的数据节选出来(目前限定于从1080中取出1053个被试)
+    也有部分是从1096中取出1053个，都已经额外写好在它们各自的模块里了
 
     Args:
         subj_mask (bool vector):
@@ -399,7 +400,7 @@ def select_data(subj_mask, out_dir):
         for roi3 in rois3:
             out_data3[roi3] = data3[roi3][subj_mask]
         savemat(out_file3, out_data3)  # 验证一下
-    
+
     data_files4 = [
         # pjoin(anal_dir, 'NI_R1/TSNR2.pkl')
     ]
@@ -414,7 +415,7 @@ def select_data(subj_mask, out_dir):
         pkl.dump(data4, open(out_file4, 'wb'))
 
     data_files5 = [
-        pjoin(anal_dir, 'NI_R1/Fus-pattern-corr_MMP1_curv.pkl')
+        # pjoin(anal_dir, 'NI_R1/Fus-pattern-corr_MMP1_curv.pkl')
     ]
     for data_file5 in data_files5:
         out_file5 = os.path.basename(data_file5)
@@ -425,11 +426,49 @@ def select_data(subj_mask, out_dir):
             data5[k] = v[subj_mask][:, subj_mask]
         pkl.dump(data5, open(out_file5, 'wb'))
 
+    data_files6 = [
+        pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
+    ]
+    for data_file6 in data_files6:
+        print(f'Doing: {os.path.basename(data_file6)}')
+        out_file6 = pjoin(out_dir, 'S1200_1053_tfMRI_WM_level2_FACE-AVG_hp200_s2_MSMAll.32k_fs_LR.dscalar.nii')
+        reader6 = CiftiReader(data_file6)
+        map_names6 = [j for i, j in enumerate(reader6.map_names()) if subj_mask[i]]
+        data6 = reader6.get_data()[subj_mask]
+        save2cifti(out_file6, data6, reader6.brain_models(), map_names6, reader6.volume)
+
+    data_files7 = [
+        '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/'
+        'HCP_S1200_GroupAvg_v1/S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii'
+    ]
+    for data_file7 in data_files7:
+        out_file7 = os.path.basename(data_file7)
+        print(f'Doing: {out_file7}')
+        out_file7 = pjoin(out_dir, out_file7.replace('.All.', '_1053_'))
+        subj_file7 = pjoin(proj_dir, 'analysis/s2/subject_id')
+        meas_id_file7 = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+
+        reader7 = CiftiReader(data_file7)
+        subj_ids7 = open(subj_file7).read().splitlines()
+        meas_ids7 = open(meas_id_file7).read().splitlines()
+        meas_indices7 = [meas_ids7.index(i) for i in subj_ids7]
+        map_names7 = reader7.map_names()
+        map_names7 = [map_names7[i] for i in meas_indices7]
+        map_names7 = [j for i, j in enumerate(map_names7) if subj_mask[i]]
+        data7 = reader7.get_data()[meas_indices7][subj_mask]
+        save2cifti(out_file7, data7, reader7.brain_models(), map_names7, reader7.volume)
+
 
 def snr_regression(src_file, snr_file, out_file):
     """
     将snr的个体变异从数据中回归掉，四个ROI做所有个体上的值连在一起做。
     这是为了在回归掉snr之后也能使得组间，半球间，roi间的比较是有意义的。
+
+    注意：目前这里的回归是连带着截距也减掉了，只要在做拟合之前去掉regressor（此处指tSNR），
+    在做拟合时带着截距，最后从因变量（此处为src_file中的数据）中只减去需要被
+    回归掉的regressor和其系数的乘积（即保留截距）。这样似乎可以保留因变量原来的scale。
+    HCP从thickness中回归curvature时就是这样做的。
+    在拟合的时候去掉截距项是无法保留原来的scale的。
 
     Args:
         src_file (_type_): _description_
@@ -471,7 +510,7 @@ def snr_regression(src_file, snr_file, out_file):
             col = f'{hemi}_{roi}'
             start_idx, end_idx = col2indices[col]
             df.loc[col2mask[col], col] = meas_reg[start_idx:end_idx]
-    
+
     df.to_csv(out_file, index=False)
 
 
@@ -571,9 +610,9 @@ if __name__ == '__main__':
     # calc_fus_pattern_corr(mask_name='union1', meas_name='activ')
     # calc_fus_pattern_corr(mask_name='MMP1', meas_name='curv')
     # MT_gradient()
-    # select_data(
-    #     subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
-    #     out_dir=pjoin(work_dir, 'data_1053'))
+    select_data(
+        subj_mask=np.load(pjoin(anal_dir, 'subj_info/subject_id1.npy')),
+        out_dir=pjoin(work_dir, 'data_1053'))
     # snr_regression(
     #     src_file=pjoin(work_dir, 'data_1053/FFA_activ-emo.csv'),
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
@@ -583,7 +622,7 @@ if __name__ == '__main__':
     #     snr_file=pjoin(work_dir, 'data_1053/TSNR2.pkl'),
     #     out_file=pjoin(work_dir, 'data_1053/rsfc_FFA2Cole-mean_clean-TSNR2.csv'))
 
-    MT_random_maps()
+    # MT_random_maps()
     # get_MMP_area(
     #     rois=['VVC', 'FFC', 'V8', 'PIT'],
     #     out_file=pjoin(work_dir, '4areas_around-Fus.32k_fs_LR.dlabel.nii'))

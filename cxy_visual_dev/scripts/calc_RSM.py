@@ -65,7 +65,7 @@ def calc_RSM1(mask, out_file):
     """
     # 结构梯度的PC1, PC2: stru-C1, stru-C2;
     map_stru_pc = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
     )).get_fdata()[:2, mask]
     map_names = ['stru-C1', 'stru-C2']
     maps = [map_stru_pc]
@@ -759,37 +759,8 @@ def calc_RSM9():
     pkl.dump(data, open(out_file, 'wb'))
 
 
-def calc_RSM10():
-    """
-    计算stru-C1/2和各时间点map的相关
-    """
-    mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
-    out_file = pjoin(work_dir, 'RSM10.pkl')
-
-    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
-    map_stru_pc = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
-    )).get_fdata()[:2, mask]
-    map_names = ['stru-C1', 'stru-C2']
-    maps = map_stru_pc
-
-    # 100307的run-1_LR的时间序列
-    run_file = '/nfs/m1/hcp/100307/MNINonLinear/Results/rfMRI_REST1_LR/'\
-        'rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    t_series = nib.load(run_file).get_fdata()[:, :LR_count_32k]
-    t_series = t_series[:, mask]
-
-    # calculation
-    out_dict = {'mean': np.mean(t_series, 1)}
-    for map_idx, map_name in enumerate(map_names):
-        out_dict[map_name] = 1 - cdist(maps[[map_idx]], t_series, 'correlation')[0]
-
-    # save out
-    pkl.dump(out_dict, open(out_file, 'wb'))
-
-
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -824,4 +795,3 @@ if __name__ == '__main__':
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
     # calc_RSM9()
-    calc_RSM10()

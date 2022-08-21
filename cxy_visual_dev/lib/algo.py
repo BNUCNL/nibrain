@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, mmp_map_file, proj_dir
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -33,6 +33,8 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
             指定大脑区域
         map_mask (ndarray, optional): 1D index array
             指定使用的map
+            如果是bool类型，则长度为n_map
+            如果是int类型，则值域为[0, n_map-1]
         zscore0 (str, optional): split, whole
             split: do zscore across subjects of each row
             whole: do zscore across subjects of all rows
@@ -108,138 +110,63 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
     return data, n_vertices, n_maps, reader
 
 
-def zscore_data(data_file, out_file):
+def zscore_cii_masked(src_file, mask, out_file):
     """
-    对每个被试做全脑zscore
+    zscore maps across vertices in the mask
 
     Args:
-        data_file (str): .dscalar.nii
-        out_file (str): .dscalar.nii
-    """
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
-    data = zscore(data, 1)
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
-
-
-def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
-    """
-    zscore data in the ROI for each map
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        mask (1D array)
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        roi_name (str): 决定选用哪个区域内的顶点来参与zscore
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
+    reader = CiftiReader(src_file)
     maps = reader.get_data()
-    n_map = maps.shape[0]
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
-    maps = maps[:, roi_idx_map]
 
-    # calculate
-    data = np.ones((n_map, LR_count_32k), np.float64) * np.nan
-    maps = zscore(maps, 1)
-    data[:, roi_idx_map] = maps
+    data = np.ones_like(maps) * np.nan
+    maps = maps[:, mask]
+    data[:, mask] = zscore(maps, 1)
 
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    save2cifti(out_file, data, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def zscore_map_subj(data_file, out_file):
+def zscore_cii(src_file, axis, out_file):
     """
-    zscore data along subjects
+    zscore across maps (axis=0) or vertices (axis=1)
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        axis (int): 0 | 1
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-    maps = zscore(maps, 0)
-    save2cifti(out_file, maps, reader.brain_models(), reader.map_names())
+    reader = CiftiReader(src_file)
+    maps = zscore(reader.get_data(), axis)
+    save2cifti(out_file, maps, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def concate_map(data_files, out_file):
+def stack_cii(src_files, out_file):
     """
+    Stack maps from multiple CIFTI files.
+
     Args:
-        data_files (strings): Each string is end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_files (strings): Each string is end with .dscalar.nii
+            shape=(n_map, n_vtx)
         out_file (str): end with .dscalar.nii
-            shape=(n_map_total, LR_count_32k)
+            shape=(n_map_all, n_vtx)
     """
-    reader = CiftiReader(data_files[0])
+    reader = CiftiReader(src_files[0])
     maps = reader.get_data()
     map_names = reader.map_names()
-    for data_file in data_files[1:]:
-        reader_tmp = CiftiReader(data_file)
-        maps_tmp = reader_tmp.get_data()
-        maps = np.r_[maps, maps_tmp]
+    for src_file in src_files[1:]:
+        reader_tmp = CiftiReader(src_file)
+        maps = np.r_[maps, reader_tmp.get_data()]
         map_names.extend(reader_tmp.map_names())
-    save2cifti(out_file, maps, reader.brain_models(), map_names)
-
-
-def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
-    """
-    对n_subj x n_vtx形状的矩阵进行PCA降维
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        roi_name (str): 决定选用哪个区域内的顶点来参与PCA
-        n_component (int): the number of components
-        axis (str): vertex | subject
-            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
-            观察某个主成分在各顶点上的权重，刻画其空间分布。
-            subject: 对被试数量进行降维，得到几个主成分map，
-            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
-        out_name (str): output name
-            1. n_subj x n_component out_name.csv
-            2. n_component x LR_count_32k out_name.dscalar.nii
-            3. out_name.pkl with fitted PCA model
-    """
-    # prepare
-    component_names = [f'C{i}' for i in range(1, n_component+1)]
-
-    meas_maps = nib.load(data_file).get_fdata()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
-    meas_maps = meas_maps[:, roi_idx_map]
-
-    bms = CiftiReader(mmp_map_file).brain_models()
-
-    # calculate
-    pca = PCA(n_components=n_component)
-    data = np.ones((n_component, LR_count_32k), np.float64) * np.nan
-    if axis == 'vertex':
-        X = meas_maps
-        pca.fit(X)
-        Y = pca.transform(X)
-        df = pd.DataFrame(data=Y, columns=component_names)
-        data[:, roi_idx_map] = pca.components_
-
-    elif axis == 'subject':
-        X = meas_maps.T
-        pca.fit(X)
-        Y = pca.transform(X)
-        df = pd.DataFrame(data=pca.components_.T, columns=component_names)
-        data[:, roi_idx_map] = Y.T
-
-    else:
-        raise ValueError('Invalid axis:', axis)
-
-    # save
-    df.to_csv(f'{out_name}.csv', index=False)
-    save2cifti(f'{out_name}.dscalar.nii', data, bms, component_names)
-    pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
+    save2cifti(out_file, maps, reader.brain_models(), map_names, reader.volume)
 
 
 def decompose(fpaths, cat_shape, method, axis, csv_files, cii_files,

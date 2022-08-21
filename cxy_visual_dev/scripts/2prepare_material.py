@@ -30,7 +30,7 @@ def get_calcarine_sulcus(hemi):
     faces_white = set(tuple(i) for i in gii_white.faces)
     assert faces_flat.issubset(faces_white)
     faces_splitted = faces_white.difference(faces_flat)
-    
+
     # get V1 mask
     mmp_map = mmp_reader.get_data(hemi2stru[hemi], True)[0]
     V1_mask = mmp_map == mmp_name2label[f'{Hemi}_V1']
@@ -41,7 +41,7 @@ def get_calcarine_sulcus(hemi):
         if np.all(V1_mask[list(face)]):
             vertices.update(face)
     vertices = np.array(list(vertices))
-    
+
     # save as .label file
     header = str(len(vertices))
     np.savetxt(out_file, vertices, fmt='%d', header=header,
@@ -120,16 +120,35 @@ def modify_wang2015():
             out_data2[mask] = key2
             lbl_tab2[key2] = nib.cifti2.Cifti2Label(key2, f'{Hemi}_{part}', *part2rgba[part])
             key2 += 1
-    
+
     bms = CiftiReader(mmp_map_file).brain_models()
     save2cifti(out_file1, out_data1, bms, label_tables=[lbl_tab1])
     save2cifti(out_file2, out_data2, bms, label_tables=[lbl_tab2])
 
 
+def modify_benson2018():
+    """
+    https://osf.io/knb5g/wiki/Data/:
+    The retinotopic prior (also called the anatomical atlas of retinotopy) that
+    was used in this project can be found in the analyses/fsaverage/ directory.
+    This prior is essentially a version of the anatomical template reported by
+    Benson et al., (2014) that has been updated using the newer HCP 181-subject
+    group average data published by Benson et al., (2018).
+
+    这些retinotopic prior已经被我下载到proj_dir下的data/benson2018/analyses/fsaverage中，
+    此处就是将mgz格式转换成CIFTI格式
+    """
+    work_dir = pjoin(proj_dir, 'data/benson2018/analyses/fsaverage')
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    param_names = ['angle', 'eccen', 'sigma']
+    # suspend
+
+
 def process_HCPYA_grp_rsfc_mat():
     """
     对HCP_S1200_1003_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr.dconn.nii
-    中的数据进行一些处理。本次只是讲z值转回r值
+    中的数据进行一些处理。本次只是将z值转回r值
 
     References
     ----------

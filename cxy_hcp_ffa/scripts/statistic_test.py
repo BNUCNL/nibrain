@@ -408,6 +408,12 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean_clean-TSNR2_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
+    pre_ANOVA_3factors_mix(
+        meas_file=pjoin(anal_dir, 'NI_R2/CNR/rsfc_FFA2Cole-mean_clean-CNR.csv'),
+        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+        out_file=pjoin(anal_dir, 'NI_R2/CNR/rsfc_FFA2Cole-mean_clean-CNR_preANOVA-3factor-mix.csv'),
+        gids=(1, 2), rois=('pFus', 'mFus')
+    )
 
     # pre_ANOVA_3factors_mix(
     #     meas_file=pjoin(anal_dir, 'tfMRI/FFA_activ.csv'),
@@ -433,6 +439,12 @@ if __name__ == '__main__':
     #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/FFA_activ-emo_clean-TSNR2_preANOVA-3factor-mix.csv'),
     #     gids=(1, 2), rois=('pFus', 'mFus')
     # )
+    pre_ANOVA_3factors_mix(
+        meas_file=pjoin(anal_dir, 'NI_R2/CNR/FFA_activ-emo_clean-CNR.csv'),
+        gid_file=pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv'),
+        out_file=pjoin(anal_dir, 'NI_R2/CNR/FFA_activ-emo_clean-CNR_preANOVA-3factor-mix.csv'),
+        gids=(1, 2), rois=('pFus', 'mFus')
+    )
 
     # roi_pair_ttest(
     #     src_file=pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
@@ -531,10 +543,10 @@ if __name__ == '__main__':
     #         pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv')),
     #     out_file = pjoin(anal_dir, 'grouping/rfMRI/rsfc_FFA2MMP_pFus_vs_mFus_ttest_mtc_cohenD.dscalar.nii')
     # )
-    mtc_file2cifti(
-        gnames = ('continuous', 'separate'),
-        fpaths = (
-            pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired_mtc.csv'),
-            pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired_mtc.csv')),
-        out_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_pFus_vs_mFus_ttest-paired_mtc_cohenD.dscalar.nii')
-    )
+    # mtc_file2cifti(
+    #     gnames = ('continuous', 'separate'),
+    #     fpaths = (
+    #         pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest-paired_mtc.csv'),
+    #         pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest-paired_mtc.csv')),
+    #     out_file = pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2MMP_pFus_vs_mFus_ttest-paired_mtc_cohenD.dscalar.nii')
+    # )

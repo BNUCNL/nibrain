@@ -1,12 +1,15 @@
 import os
 import numpy as np
+import pandas as pd
 import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
-    mmp_map_file, s1200_avg_RFsize, s1200_avg_R2
+    mmp_map_file, s1200_avg_RFsize, s1200_avg_R2,\
+    s1200_avg_curv, s1200_avg_myelin,\
+    s1200_avg_thickness, s1200_avg_corrThickness
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -14,44 +17,36 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def mask_maps(data_file, mask, out_file):
+def mask_cii(src_file, mask, out_file):
     """
     把data map在指定mask以外的部分全赋值为nan
 
     Args:
-        data_file (str): end with .dscalar.nii
+        src_file (str): end with .dscalar.nii/.dlabel.nii
             shape=(n_map, n_vtx)
         mask (1D index array)
-        out_file (str):
+        out_file (str): end with .dscalar.nii/.dlabel.nii
     """
     # prepare
-    reader1 = CiftiReader(mmp_map_file)
-    reader2 = CiftiReader(data_file)
-    data = reader2.get_data()
-    if data.shape[1] == All_count_32k:
-        data = data[:, :LR_count_32k]
-    elif data.shape[1] == LR_count_32k:
-        pass
-    else:
-        raise ValueError
+    reader = CiftiReader(src_file)
+    data = reader.get_data()
 
     # calculate
-    if data_file.endswith('.dlabel.nii'):
+    if src_file.endswith('.dlabel.nii'):
         data[:, ~mask] = 0
     else:
         data[:, ~mask] = np.nan
 
     # save
-    save2cifti(out_file, data, reader1.brain_models(),
-               reader2.map_names(), label_tables=reader2.label_tables())
+    save2cifti(out_file, data, reader.brain_models(),
+               reader.map_names(), reader.volume, reader.label_tables())
 
 
-def make_mask1():
+def make_mask1(N):
     """
     将HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj的PC1和PC2分段
     以值排序，然后切割成N段顶点数量基本相同的片段
     """
-    N = 2
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
     map_names = ['C1', 'C2']
     mask = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
@@ -182,6 +177,44 @@ def make_mask3():
                volume=reader.volume, label_tables=[lbl_tab])
 
 
+def make_mask6():
+    """
+    依据各ROI在HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中的PC1的值排序分成4级
+    """
+    n_level = 4
+    fpath = pjoin(anal_dir, 'ROI_scalar/ROI_scalar1_MMP-vis3-R.csv')
+    atlas = Atlas('HCP-MMP')
+    out_file = pjoin(work_dir, 'HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_4level-ROI.dlabel.nii')
+
+    df = pd.read_csv(fpath, index_col=0)
+    idx = 'mean_stru-C1'
+    rois_list = [[] for _ in range(n_level)]
+    rois_list[0].append('R_V1')
+
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, n_level)
+    out_map = np.zeros((1, LR_count_32k), np.uint8)
+    for roi in df.columns:
+        x = df.loc[idx, roi]
+        if df.loc[idx, 'R_V2'] <= x <= df.loc[idx, 'R_MT']:
+            rois_list[1].append(roi)
+        elif df.loc[idx, 'R_MT'] < x < df.loc[idx, 'R_PIT']:
+            rois_list[2].append(roi)
+        elif df.loc[idx, 'R_PIT'] <= x < df.loc[idx, 'R_TF']:
+            rois_list[3].append(roi)
+
+    for key, rois in enumerate(rois_list, 1):
+        out_map[atlas.get_mask(rois)] = key
+        lbl = nib.cifti2.Cifti2Label(key, f'level{key}',
+                                     *cmap(color_indices[key-1]))
+        lbl_tab[key] = lbl
+
+    reader = CiftiReader(mmp_map_file)
+    save2cifti(out_file, out_map, reader.brain_models(), label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     atlas = Atlas('HCP-MMP')
     mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
@@ -210,15 +243,34 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OpMt_MMP-vis3.dscalar.nii')
     # )
-    mask_maps(
-        data_file=pjoin(anal_dir, 'variation/MMP-vis3_ring1-CS1_R_width5.dlabel.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
+    # mask_maps(
+    #     data_file=pjoin(anal_dir, 'variation/MMP-vis3_ring1-CS1_R_width5.dlabel.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
+    # )
+    mask_cii(
+        src_file=s1200_avg_curv, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-curv_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_myelin, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-myelin_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_thickness, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-thickness_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_corrThickness, mask=mask,
+        out_file=pjoin(work_dir, 's1200-avg-corrThickness_MMP-vis3.dscalar.nii')
     )
 
-    # make_mask1()
+    # make_mask1(N=2)
+    # make_mask1(N=3)
+    # make_mask1(N=5)
     # make_mask2()
     # make_mask3()
+    # make_mask6()
 
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
