@@ -1,5 +1,6 @@
 import os
 import time
+import gdist
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -7,9 +8,13 @@ import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats.stats import pearsonr
 from sklearn.linear_model import LinearRegression
-from magicbox.io.io import CiftiReader, save2cifti
+from magicbox.io.io import CiftiReader, save2cifti, GiftiReader,\
+    save2nifti
+from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor,\
+    label_edge_detection
 from cxy_hcp_ffa.lib.predefine import proj_dir, LR_count_32k,\
-    mmp_map_file, mmp_name2label
+    mmp_map_file, mmp_name2label, hemi2stru, MedialWall,\
+    s1200_midthickness_L, s1200_midthickness_R
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'NI_R2')
@@ -252,6 +257,249 @@ def zstat_corr_beta():
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def get_non_FFA_prob():
+    """
+    基于separate组做出FFC中Non_FFA的概率图
+    """
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    ffa_file = pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+    gid_file = pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv')
+    out_file = pjoin(work_dir, 'nonFFA-in-FFC_prob.dscalar.nii')
+
+    df = pd.read_csv(gid_file)
+    reader = CiftiReader(ffa_file)
+    mmp_reader = CiftiReader(mmp_map_file)
+    data = []
+    for hemi in hemis:
+        g2_idx_vec = df[hemi] == 2
+        ffa_maps, _, _ = reader.get_data(hemi2stru[hemi])
+        prob_map = np.mean(ffa_maps[g2_idx_vec] == 0, 0, keepdims=True)
+        mmp_map, _, _ = mmp_reader.get_data(hemi2stru[hemi])
+        ffc_mask = mmp_map == mmp_name2label[f'{hemi2Hemi[hemi]}_FFC']
+        prob_map[~ffc_mask] = np.nan
+        data.append(prob_map)
+
+    data = np.concatenate(data, axis=1)
+    save2cifti(out_file, data, reader.brain_models())
+
+
+def get_grp_FFA_gap(thr):
+    """
+    给基于separate组做出的FFC中Non_FFA的概率图加个阈限(thr)得到gap ROI
+    """
+    hemis = ('lh', 'rh')
+    prob_file = pjoin(work_dir, 'nonFFA-in-FFC_prob.dscalar.nii')
+    out_files = pjoin(work_dir, 'FFA-gap_thr-{thr}_{hemi}.nii.gz')
+
+    reader = CiftiReader(prob_file)
+    for hemi in hemis:
+        prob_map = reader.get_data(hemi2stru[hemi], True)[0]
+        data = (prob_map > thr).astype(np.uint8)
+        save2nifti(out_files.format(thr=thr, hemi=hemi),
+                   np.expand_dims(data, (1, 2)))
+
+
+def get_FFA_gap():
+    """
+    在各个被试上，用组gap area减去pFus和mFus的点，剩下的就是个体特异的gap area。
+    结果保存在.dlabel.nii文件中：
+    1. 包括所有至少有一个半脑属于separate组的被试
+    2. 不属于separate组的半脑的数值置为0；在属于separate组的半脑中计算gap area
+    3. 某个被试的左/右半脑属于separate组，并且gap area顶点数量不为0，则对应map name带上l/r的标记
+    """
+    gap_files = pjoin(work_dir, 'FFA-gap_{hemi}.nii.gz')
+    out_file = pjoin(work_dir, 'FFA+gap_indiv.32k_fs_LR.dlabel.nii')
+
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    ffa_file = pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+    gid_file = pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv')
+
+    roi2key = {
+        '???': 0,
+        'R_pFus-faces': 1,
+        'R_mFus-faces': 2,
+        'L_pFus-faces': 3,
+        'L_mFus-faces': 4,
+        'R_FFA-gap': 5,
+        'L_FFA-gap': 6}
+    gap_rgba = [1., 0., 0., 1.]
+
+    df = pd.read_csv(gid_file)
+    g2_idx_vec = np.logical_or(df['lh'] == 2, df['rh'] == 2)
+    df = df.loc[g2_idx_vec].reset_index(drop=True)
+    reader = CiftiReader(ffa_file)
+    bms = reader.brain_models()
+    mns = [j for i, j in enumerate(reader.map_names()) if g2_idx_vec[i]]
+    lbl_tabs = [j for i, j in enumerate(reader.label_tables()) if g2_idx_vec[i]]
+    data = []
+    for hemi in hemis:
+        data_hemi, _, idx2vtx = reader.get_data(hemi2stru[hemi])
+        data_hemi = data_hemi[g2_idx_vec]
+
+        gap_mask_grp = nib.load(
+            gap_files.format(hemi=hemi)).get_fdata().squeeze()[idx2vtx]
+        gap_name = f'{hemi2Hemi[hemi]}_FFA-gap'
+        gap_key = roi2key[gap_name]
+        for idx, lbl_tab in enumerate(lbl_tabs):
+            if df.loc[idx, hemi] == 2:
+                gap_mask = np.logical_and(data_hemi[idx] == 0, gap_mask_grp)
+                if not np.any(gap_mask):
+                    continue
+                data_hemi[idx][gap_mask] = gap_key
+                lbl_tab[gap_key] = \
+                    nib.cifti2.Cifti2Label(gap_key, gap_name, *gap_rgba)
+                mns[idx] = mns[idx] + hemi[0]
+            else:
+                data_hemi[idx] = 0
+                invalid_keys = []
+                for k, v in lbl_tab.items():
+                    assert roi2key[v.label] == k
+                    if v.label.startswith(f'{hemi2Hemi[hemi]}_'):
+                        invalid_keys.append(k)
+                for k in invalid_keys:
+                    lbl_tab.pop(k)
+        data.append(data_hemi)
+
+    data = np.concatenate(data, axis=1)
+    save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
+
+
+def get_FFA_gap1():
+    """
+    在各个separate组半脑上，以一定规则扩张pFus和mFus，
+    取两者扩张部分的交集作为它们之间的gap area。扩张过程以pFus为例：
+    1. 以pFus的内轮廓为扩张的起点
+    2. 遍历各扩张起点，对于每个起点，合并1环近邻中距离mFus比它更近的，
+        并且既不属于pFus，也不属于mFus的点，同时作为下一步扩张的起点。
+    3. 重复第2步，直到没有扩张起点为止。
+
+    结果保存在.dlabel.nii文件中：
+    1. 包括所有至少有一个半脑属于separate组的被试
+    2. 不属于separate组的半脑的数值置为0；在属于separate组的半脑中计算gap area
+    3. 某个被试的左/右半脑属于separate组，并且gap area顶点数量不为0，
+        则对应map name带上l/r的标记。（结果表明不存在gap area顶点数量为0的情况）
+    """
+    # settings
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    hemi2gii = {'lh': s1200_midthickness_L, 'rh': s1200_midthickness_R}
+    ffa_file = pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+    gid_file = pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv')
+    out_file = pjoin(work_dir, 'FFA+gap1_indiv.32k_fs_LR.dlabel.nii')
+    log_file = pjoin(work_dir, 'FFA+gap1_indiv_log')
+
+    roi2key = {
+        '???': 0,
+        'R_pFus-faces': 1,
+        'R_mFus-faces': 2,
+        'L_pFus-faces': 3,
+        'L_mFus-faces': 4,
+        'R_FFA-gap': 5,
+        'L_FFA-gap': 6}
+    gap_rgba = [1., 0., 0., 1.]
+
+    # loading
+    df = pd.read_csv(gid_file)
+    # g2_idx_vec = np.zeros(df.shape[0], dtype=bool)
+    # g2_idx_vec[:2] = True
+    g2_idx_vec = np.logical_or(df['lh'] == 2, df['rh'] == 2)
+    df = df.loc[g2_idx_vec].reset_index(drop=True)
+    n_subj = df.shape[0]
+    reader = CiftiReader(ffa_file)
+    bms = reader.brain_models()
+    mns = [j for i, j in enumerate(reader.map_names()) if g2_idx_vec[i]]
+    lbl_tabs = [j for i, j in enumerate(reader.label_tables()) if g2_idx_vec[i]]
+    data = []
+    mw = MedialWall()
+    log_writer = open(log_file, 'w')
+
+    # calculating
+    for hemi in hemis:
+        # prepare individual FFAs
+        data_hemi = reader.get_data(hemi2stru[hemi], True)
+        _, _, idx2vtx = reader.get_data(hemi2stru[hemi])
+        data_hemi = data_hemi[g2_idx_vec]
+
+        # prepare geometry infomation
+        gii = GiftiReader(hemi2gii[hemi])
+        coords = gii.coords.astype(np.float64)
+        faces = gii.faces.astype(np.int32)
+        faces = mw.remove_from_faces(hemi, faces)
+        vertices = np.arange(data_hemi.shape[1], dtype=np.int32)
+        neighbors_list = get_n_ring_neighbor(faces, 1)
+
+        # prepare FFA and gap names
+        pfus_name = f'{hemi2Hemi[hemi]}_pFus-faces'
+        mfus_name = f'{hemi2Hemi[hemi]}_mFus-faces'
+        ffa_pairs = [(pfus_name, mfus_name),  # expand pFus to mFus
+                     (mfus_name, pfus_name)]  # expand mFus to pFus
+        gap_name = f'{hemi2Hemi[hemi]}_FFA-gap'
+        gap_key = roi2key[gap_name]
+
+        # loop subjects
+        for idx, lbl_tab in enumerate(lbl_tabs):
+            time1 = time.time()
+            if df.loc[idx, hemi] == 2:
+                edge_mask = label_edge_detection(
+                    data_hemi[idx], faces, 'inner', neighbors_list)
+                roi2edge = {}
+                roi2gdist_map = {}
+                roi2lbl_map = {}
+                for roi in (pfus_name, mfus_name):
+                    roi2edge[roi] = np.where(
+                        edge_mask == roi2key[roi])[0].astype(np.int32)
+                    roi2gdist_map[roi] = gdist.compute_gdist(
+                            coords, faces, roi2edge[roi], vertices)
+                    roi2lbl_map[roi] = data_hemi[idx].copy()
+
+                # expand ffa_pair[0] to ffa_pair[1]
+                for ffa_pair in ffa_pairs:
+                    lbl_map = roi2lbl_map[ffa_pair[0]]
+                    base_vertices = roi2edge[ffa_pair[0]]
+                    gdist_map = roi2gdist_map[ffa_pair[1]]
+                    while len(base_vertices) > 0:
+                        base_vertices_tmp = []
+                        for base_vtx in base_vertices:
+                            for neigh_vtx in neighbors_list[base_vtx]:
+                                if lbl_map[neigh_vtx] != 0:
+                                    continue
+                                if gdist_map[neigh_vtx] < gdist_map[base_vtx]:
+                                    lbl_map[neigh_vtx] = gap_key
+                                    base_vertices_tmp.append(neigh_vtx)
+                        base_vertices = np.array(base_vertices_tmp, np.int32)
+
+                # get gap mask and assign gap key
+                gap_mask = np.logical_and(roi2lbl_map[pfus_name] == gap_key,
+                                          roi2lbl_map[mfus_name] == gap_key)
+                if not np.any(gap_mask):
+                    msg = f'No gap was found in {hemi}_{mns[idx][:6]}\n'
+                    print(msg)
+                    log_writer.write(msg)
+                    continue
+                data_hemi[idx][gap_mask] = gap_key
+                lbl_tab[gap_key] = \
+                    nib.cifti2.Cifti2Label(gap_key, gap_name, *gap_rgba)
+                mns[idx] = mns[idx] + hemi[0]
+            else:
+                data_hemi[idx] = 0
+                invalid_keys = []
+                for k, v in lbl_tab.items():
+                    assert roi2key[v.label] == k
+                    if v.label.startswith(f'{hemi2Hemi[hemi]}_'):
+                        invalid_keys.append(k)
+                for k in invalid_keys:
+                    lbl_tab.pop(k)
+            print(f'Finished {idx+1}/{n_subj}, '
+                  f'cost {time.time()-time1} seconds.')
+        data.append(data_hemi[:, idx2vtx])
+    log_writer.close()
+
+    data = np.concatenate(data, axis=1)
+    save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -263,4 +511,7 @@ if __name__ == '__main__':
     #     src_file=pjoin(anal_dir, 'NI_R1/data_1053/rsfc_FFA2Cole-mean.csv'),
     #     cnr_file=pjoin(work_dir, 'CNR/individual-FFA_BOLD-CNR.pkl'),
     #     out_file=pjoin(work_dir, 'CNR/rsfc_FFA2Cole-mean_clean-CNR.csv'))
-    zstat_corr_beta()
+    # zstat_corr_beta()
+    # get_non_FFA_prob()
+    # get_FFA_gap()
+    get_FFA_gap1()
