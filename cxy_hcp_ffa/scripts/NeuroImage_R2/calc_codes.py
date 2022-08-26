@@ -379,7 +379,7 @@ def get_FFA_gap1():
     1. 包括所有至少有一个半脑属于separate组的被试
     2. 不属于separate组的半脑的数值置为0；在属于separate组的半脑中计算gap area
     3. 某个被试的左/右半脑属于separate组，并且gap area顶点数量不为0，
-        则对应map name带上l/r的标记。（结果表明不存在gap area顶点数量为0的情况）
+        则对应map name带上l/r的标记。
     """
     # settings
     hemis = ('lh', 'rh')
@@ -504,7 +504,7 @@ def mask_FFA_gap():
     """
     将FFA gap限制在FFC之内
     如果有FFA gap与FFC没有交集，则会从对应被试的map name中去掉半脑标记（l or r）
-    以及去掉label table里的label。（结果表明不存在没有交集的情况）
+    以及去掉label table里的label。
     """
     # settings
     hemis = ('lh', 'rh')
@@ -544,6 +544,57 @@ def mask_FFA_gap():
     save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
 
 
+def thr_FFA_gap(thr):
+    """
+    将FFA gap限制在face-avg Z<thr之内
+    如果有所有点都不在Z<thr的范围内的FFA gap，
+    则会从对应被试的map name中去掉半脑标记（l or r）
+    以及去掉label table里的label。
+    """
+    # settings
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    src_file = pjoin(work_dir, 'FFA+gap1-in-FFC_indiv.32k_fs_LR.dlabel.nii')
+    activ_file = pjoin(anal_dir, 'NI_R1/data_1053/'
+                       'S1200_1053_tfMRI_WM_level2_FACE-AVG_hp200_s2_MSMAll.32k_fs_LR.dscalar.nii')
+    subj_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
+    out_file = pjoin(work_dir, f'FFA+gap1-in-FFC_thr{thr}_indiv.32k_fs_LR.dlabel.nii')
+    log_file = pjoin(work_dir, f'FFA+gap1-in-FFC_thr{thr}_indiv_log')
+    roi2key = {'R_FFA-gap': 5, 'L_FFA-gap': 6}
+
+    # loading
+    reader = CiftiReader(src_file)
+    data = reader.get_data()
+    bms = reader.brain_models()
+    mns = reader.map_names()
+    lbl_tabs = reader.label_tables()
+    thr_masks = nib.load(activ_file).get_fdata() < thr
+    subj_ids = open(subj_file).read().splitlines()
+
+    # calculating
+    log_writer = open(log_file, 'w')
+    for hemi in hemis:
+        gap_key = roi2key[f'{hemi2Hemi[hemi]}_FFA-gap']
+        for subj_idx, lbl_tab in enumerate(lbl_tabs):
+            if hemi[0] not in mns[subj_idx]:
+                continue
+            subj_id = mns[subj_idx][:6]
+            thr_mask_idx = subj_ids.index(subj_id)
+            thr_mask = thr_masks[thr_mask_idx]
+            gap_mask_old = data[subj_idx] == gap_key
+            data[subj_idx][gap_mask_old] = 0
+            gap_mask = np.logical_and(gap_mask_old, thr_mask)
+            if not np.any(gap_mask):
+                msg = f'No gap was found in {hemi}_{subj_id}\n'
+                print(msg)
+                log_writer.write(msg)
+                lbl_tab.pop(gap_key)
+                mns[subj_idx] = mns[subj_idx].replace(hemi[0], '')
+            else:
+                data[subj_idx][gap_mask] = gap_key
+    save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -557,4 +608,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'CNR/rsfc_FFA2Cole-mean_clean-CNR.csv'))
     # zstat_corr_beta()
     # get_FFA_gap1()
-    mask_FFA_gap()
+    # mask_FFA_gap()
+    # thr_FFA_gap(thr=0.5)
+    thr_FFA_gap(thr=0)
