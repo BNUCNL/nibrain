@@ -500,6 +500,50 @@ def get_FFA_gap1():
     save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
 
 
+def mask_FFA_gap():
+    """
+    将FFA gap限制在FFC之内
+    如果有FFA gap与FFC没有交集，则会从对应被试的map name中去掉半脑标记（l or r）
+    以及去掉label table里的label。（结果表明不存在没有交集的情况）
+    """
+    # settings
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    src_file = pjoin(work_dir, 'FFA+gap1_indiv.32k_fs_LR.dlabel.nii')
+    out_file = pjoin(work_dir, 'FFA+gap1-in-FFC_indiv.32k_fs_LR.dlabel.nii')
+    log_file = pjoin(work_dir, 'FFA+gap1-in-FFC_indiv_log')
+    roi2key = {'R_FFA-gap': 5, 'L_FFA-gap': 6}
+
+    # loading
+    reader = CiftiReader(src_file)
+    data = reader.get_data()
+    bms = reader.brain_models()
+    mns = reader.map_names()
+    lbl_tabs = reader.label_tables()
+    mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+
+    # calculating
+    log_writer = open(log_file, 'w')
+    for hemi in hemis:
+        ffc_mask = mmp_map == mmp_name2label[f'{hemi2Hemi[hemi]}_FFC']
+        gap_key = roi2key[f'{hemi2Hemi[hemi]}_FFA-gap']
+        for subj_idx, lbl_tab in enumerate(lbl_tabs):
+            if hemi[0] not in mns[subj_idx]:
+                continue
+            gap_mask_old = data[subj_idx] == gap_key
+            data[subj_idx][gap_mask_old] = 0
+            gap_mask = np.logical_and(gap_mask_old, ffc_mask)
+            if not np.any(gap_mask):
+                msg = f'No gap was found in {hemi}_{mns[subj_idx][:6]}\n'
+                print(msg)
+                log_writer.write(msg)
+                lbl_tab.pop(gap_key)
+                mns[subj_idx] = mns[subj_idx].replace(hemi[0], '')
+            else:
+                data[subj_idx][gap_mask] = gap_key
+    save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -512,6 +556,5 @@ if __name__ == '__main__':
     #     cnr_file=pjoin(work_dir, 'CNR/individual-FFA_BOLD-CNR.pkl'),
     #     out_file=pjoin(work_dir, 'CNR/rsfc_FFA2Cole-mean_clean-CNR.csv'))
     # zstat_corr_beta()
-    # get_non_FFA_prob()
-    # get_FFA_gap()
-    get_FFA_gap1()
+    # get_FFA_gap1()
+    mask_FFA_gap()
