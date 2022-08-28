@@ -595,6 +595,188 @@ def thr_FFA_gap(thr):
     save2cifti(out_file, data, bms, mns, label_tables=lbl_tabs)
 
 
+def prepare_mmp_series(sess=1, run='LR'):
+    """
+    为1053个被试提取360个HCP MMP脑区的静息时间序列
+    """
+    # settings
+    n_tp = 1200
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    rfmri_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/rfMRI_REST{1}_{2}/'\
+                  'rfMRI_REST{1}_{2}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    sid_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
+    out_dir = pjoin(work_dir, 'rfMRI')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    out_file = pjoin(out_dir, f'rfMRI_MMP_{sess}_{run}.pkl')
+
+    # loading
+    df_check = pd.read_csv(check_file, sep='\t', index_col='subID')
+    df_check = df_check == 'ok=(1200, 91282)'
+    sids = open(sid_file).read().splitlines()
+    n_sid = len(sids)
+
+    mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+    mmp_rois = list(mmp_name2label.keys())
+    mmp_roi2mask = {}
+    for mmp_roi in mmp_rois:
+        mmp_roi2mask[mmp_roi] = mmp_map == mmp_name2label[mmp_roi]
+
+    # calculating
+    out_dict = {
+        'subID': sids,
+        'shape': 'n_subject x n_roi x n_time_point',
+        'roi': mmp_rois,
+        'data': np.ones((n_sid, len(mmp_rois), n_tp)) * np.nan
+    }
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        if not df_check.loc[int(sid), f'rfMRI_REST{sess}_{run}']:
+            continue
+        rfmri_file = rfmri_files.format(sid, sess, run)
+        tseries = nib.load(rfmri_file).get_fdata()[:, :LR_count_32k]
+        for mmp_roi_idx, mmp_roi in enumerate(mmp_rois):
+            out_dict['data'][sidx, mmp_roi_idx] = \
+                np.mean(tseries[:, mmp_roi2mask[mmp_roi]], 1)
+        print(f'Finished {sess}-{run}-{sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def prepare_ffa_series(sess=1, run='LR'):
+    """
+    为1053个被试提取个体FFA的静息时间序列
+    """
+    # settings
+    n_tp = 1200
+    sid_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
+    ffa_names = ['R_pFus-faces', 'R_mFus-faces',
+                 'L_pFus-faces', 'L_mFus-faces']
+    ffa_file = pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    rfmri_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/rfMRI_REST{1}_{2}/'\
+                  'rfMRI_REST{1}_{2}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_dir = pjoin(work_dir, 'rfMRI')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    out_file = pjoin(out_dir, f'rfMRI_FFA_{sess}_{run}.pkl')
+
+    # loading
+    df_check = pd.read_csv(check_file, sep='\t', index_col='subID')
+    df_check = df_check == 'ok=(1200, 91282)'
+    sids = open(sid_file).read().splitlines()
+    n_sid = len(sids)
+
+    reader = CiftiReader(ffa_file)
+    assert sids == reader.map_names()
+    ffa_maps = reader.get_data()
+    lbl_tabs = reader.label_tables()
+
+    # calculating
+    out_dict = {
+        'subID': sids,
+        'shape': 'n_subject x n_roi x n_time_point',
+        'roi': ffa_names,
+        'data': np.ones((n_sid, len(ffa_names), n_tp)) * np.nan}
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        if not df_check.loc[int(sid), f'rfMRI_REST{sess}_{run}']:
+            continue
+        rfmri_file = rfmri_files.format(sid, sess, run)
+        tseries = nib.load(rfmri_file).get_fdata()[:, :LR_count_32k]
+        for ffa_key in np.unique(ffa_maps[sidx]):
+            if ffa_key == 0:
+                continue
+            roi_idx = ffa_names.index(lbl_tabs[sidx][ffa_key].label)
+            out_dict['data'][sidx, roi_idx] = \
+                np.mean(tseries[:, ffa_maps[sidx] == ffa_key], 1)
+        print(f'Finished {sess}-{run}-{sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def prepare_gap_series(sess=1, run='LR'):
+    """
+    为拥有gap的半脑提取gap的静息时间序列
+    """
+    # settings
+    n_tp = 1200
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    gap_types = ('gap1-in-FFC', 'gap1-in-FFC_thr0.5', 'gap1-in-FFC_thr0')
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    rfmri_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/rfMRI_REST{1}_{2}/'\
+                  'rfMRI_REST{1}_{2}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_dir = pjoin(work_dir, 'rfMRI')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    gap_maps_list = []
+    mns_list = []
+    out_files = []
+    out_dicts = []
+    sids = None
+    for gap_type in gap_types:
+        gap_file = pjoin(work_dir, f'FFA+{gap_type}_indiv.32k_fs_LR.dlabel.nii')
+        reader = CiftiReader(gap_file)
+        gap_maps_list.append(reader.get_data())
+
+        mns = reader.map_names()
+        mns_list.append(mns)
+        if sids is None:
+            sids = [mn[:6] for mn in mns]
+        else:
+            assert sids == [mn[:6] for mn in mns]
+
+        out_files.append(pjoin(out_dir, f'rfMRI_{gap_type}_{sess}_{run}.pkl'))
+        out_dict = {}
+        for hemi in hemis:
+            sids_hemi = [mn[:6] for mn in mns if hemi[0] in mn]
+            out_dict[hemi] = {
+                'subID': sids_hemi,
+                'shape': 'n_subject x n_time_point',
+                'data': np.ones((len(sids_hemi), n_tp)) * np.nan}
+        out_dicts.append(out_dict)
+    n_sid = len(sids)
+
+    roi2key = {'R_FFA-gap': 5, 'L_FFA-gap': 6}
+    df_check = pd.read_csv(check_file, sep='\t', index_col='subID')
+    df_check = df_check == 'ok=(1200, 91282)'
+
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        if not df_check.loc[int(sid), f'rfMRI_REST{sess}_{run}']:
+            continue
+        rfmri_file = rfmri_files.format(sid, sess, run)
+        tseries = nib.load(rfmri_file).get_fdata()[:, :LR_count_32k]
+        for hemi in hemis:
+            gap_key = roi2key[f'{hemi2Hemi[hemi]}_FFA-gap']
+            for gap_idx, mns in enumerate(mns_list):
+                if hemi[0] not in mns[sidx]:
+                    continue
+                gap_map = gap_maps_list[gap_idx][sidx]
+                sidx_hemi = out_dicts[gap_idx][hemi]['subID'].index(sid)
+                out_dicts[gap_idx][hemi]['data'][sidx_hemi] = \
+                    np.mean(tseries[:, gap_map == gap_key], 1)
+        print(f'Finished {sess}-{run}-{sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    for out_file, out_dict in zip(out_files, out_dicts):
+        pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def get_contrast_data():
+    """
+    为FFC及其周围的脑区，个体FFA和gap area提取各种contrast的值
+    """
+    grp_rois = ('FFC', )
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -610,4 +792,17 @@ if __name__ == '__main__':
     # get_FFA_gap1()
     # mask_FFA_gap()
     # thr_FFA_gap(thr=0.5)
-    thr_FFA_gap(thr=0)
+    # thr_FFA_gap(thr=0)
+
+    # prepare_mmp_series(sess=1, run='LR')
+    # prepare_mmp_series(sess=1, run='RL')
+    # prepare_mmp_series(sess=2, run='LR')
+    # prepare_mmp_series(sess=2, run='RL')
+    # prepare_ffa_series(sess=1, run='LR')
+    # prepare_ffa_series(sess=1, run='RL')
+    # prepare_ffa_series(sess=2, run='LR')
+    # prepare_ffa_series(sess=2, run='RL')
+    prepare_gap_series(sess=1, run='LR')
+    prepare_gap_series(sess=1, run='RL')
+    prepare_gap_series(sess=2, run='LR')
+    prepare_gap_series(sess=2, run='RL')
