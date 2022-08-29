@@ -7,6 +7,7 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats.stats import pearsonr
+from scipy.spatial.distance import cdist
 from sklearn.linear_model import LinearRegression
 from magicbox.io.io import CiftiReader, save2cifti, GiftiReader,\
     save2nifti
@@ -770,6 +771,104 @@ def prepare_gap_series(sess=1, run='LR'):
         pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def rsfc(sess=1, run='LR'):
+    """
+    为拥有gap的半脑计算gap，个体FFA，FFC
+    以及FFC周边脑区与360个HCP MMP脑区的静息态功能连接
+    """
+    n_tp = 1200
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    gap_type = 'gap1-in-FFC_thr0'
+    seeds = ['FFA-gap', 'pFus-faces', 'mFus-faces', 'FFC',
+             'V8', 'PIT', 'PH', 'TE2p', 'TF', 'VVC']
+    out_dir = pjoin(work_dir, 'rfMRI')
+    gap_tfile = pjoin(out_dir, f'rfMRI_{gap_type}_{sess}_{run}.pkl')
+    ffa_tfile = pjoin(out_dir, f'rfMRI_FFA_{sess}_{run}.pkl')
+    mmp_tfile = pjoin(out_dir, f'rfMRI_MMP_{sess}_{run}.pkl')
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(out_dir, f'rsfc_{gap_type}_{sess}_{run}.pkl')
+
+    gap_tdata = pkl.load(open(gap_tfile, 'rb'))
+    ffa_tdata = pkl.load(open(ffa_tfile, 'rb'))
+    mmp_tdata = pkl.load(open(mmp_tfile, 'rb'))
+    targets = mmp_tdata['roi']
+    n_trg = len(targets)
+    n_seed = len(seeds)
+    df_check = pd.read_csv(check_file, sep='\t', index_col='subID')
+    df_check = df_check == 'ok=(1200, 91282)'
+    out_dict = {}
+    for hemi in hemis:
+        Hemi = hemi2Hemi[hemi]
+        sids = gap_tdata[hemi]['subID']
+        n_sid = len(sids)
+        out_dict[hemi] = {
+            'subID': sids, 'seed': seeds, 'target': targets,
+            'shape': 'n_subject x n_seed x n_target',
+            'data': np.ones((n_sid, n_seed, n_trg)) * np.nan
+        }
+        for sidx, sid in enumerate(sids):
+            if not df_check.loc[int(sid), f'rfMRI_REST{sess}_{run}']:
+                continue
+            sidx_ffa = ffa_tdata['subID'].index(sid)
+            sidx_mmp = mmp_tdata['subID'].index(sid)
+
+            seed_tseries = np.zeros((n_seed, n_tp))
+            for seed_idx, seed in enumerate(seeds):
+                if seed == 'FFA-gap':
+                    seed_tseries[seed_idx] = gap_tdata[hemi]['data'][sidx]
+                elif seed in ('pFus-faces', 'mFus-faces'):
+                    roi_idx = ffa_tdata['roi'].index(f'{Hemi}_{seed}')
+                    seed_tseries[seed_idx] = \
+                        ffa_tdata['data'][sidx_ffa, roi_idx]
+                else:
+                    roi_idx = mmp_tdata['roi'].index(f'{Hemi}_{seed}')
+                    seed_tseries[seed_idx] = \
+                        mmp_tdata['data'][sidx_mmp, roi_idx]
+            trg_tseries = mmp_tdata['data'][sidx_mmp]
+            out_dict[hemi]['data'][sidx] = \
+                1 - cdist(seed_tseries, trg_tseries, 'correlation')
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def rsfc_mean_among_run():
+
+    sess = (1, 2)
+    runs = ('LR', 'RL')
+    hemis = ('lh', 'rh')
+    gap_type = 'gap1-in-FFC_thr0'
+    out_dir = pjoin(work_dir, 'rfMRI')
+    fpaths = pjoin(out_dir, 'rsfc_{gap_type}_{ses}_{run}.pkl')
+    out_file = pjoin(out_dir, f'rsfc_{gap_type}.pkl')
+
+    first_flag = True
+    rsfc_dict = dict()
+    for ses in sess:
+        for run in runs:
+            fpath = fpaths.format(gap_type=gap_type, ses=ses, run=run)
+            tmp_rsfc = pkl.load(open(fpath, 'rb'))
+            if first_flag:
+                for hemi in hemis:
+                    rsfc_dict[hemi] = {}
+                    rsfc_dict[hemi]['subID'] = tmp_rsfc[hemi]['subID']
+                    rsfc_dict[hemi]['seed'] = tmp_rsfc[hemi]['seed']
+                    rsfc_dict[hemi]['target'] = tmp_rsfc[hemi]['target']
+                    rsfc_dict[hemi]['shape'] = tmp_rsfc[hemi]['shape']
+                    rsfc_dict[hemi]['data'] = [tmp_rsfc[hemi]['data']]
+                first_flag = False
+            else:
+                for hemi in hemis:
+                    assert rsfc_dict[hemi]['subID'] == tmp_rsfc[hemi]['subID']
+                    assert rsfc_dict[hemi]['seed'] == tmp_rsfc[hemi]['seed']
+                    assert rsfc_dict[hemi]['target'] == tmp_rsfc[hemi]['target']
+                    assert rsfc_dict[hemi]['shape'] == tmp_rsfc[hemi]['shape']
+                    rsfc_dict[hemi]['data'].append(tmp_rsfc[hemi]['data'])
+
+    for hemi in hemis:
+        rsfc_dict[hemi]['data'] = np.nanmean(rsfc_dict[hemi]['data'], 0)
+    pkl.dump(rsfc_dict, open(out_file, 'wb'))
+
+
 def get_contrast_data():
     """
     为FFC及其周围的脑区，个体FFA和gap area提取各种contrast的值
@@ -802,7 +901,12 @@ if __name__ == '__main__':
     # prepare_ffa_series(sess=1, run='RL')
     # prepare_ffa_series(sess=2, run='LR')
     # prepare_ffa_series(sess=2, run='RL')
-    prepare_gap_series(sess=1, run='LR')
-    prepare_gap_series(sess=1, run='RL')
-    prepare_gap_series(sess=2, run='LR')
-    prepare_gap_series(sess=2, run='RL')
+    # prepare_gap_series(sess=1, run='LR')
+    # prepare_gap_series(sess=1, run='RL')
+    # prepare_gap_series(sess=2, run='LR')
+    # prepare_gap_series(sess=2, run='RL')
+    rsfc(sess=1, run='LR')
+    rsfc(sess=1, run='RL')
+    rsfc(sess=2, run='LR')
+    rsfc(sess=2, run='RL')
+    rsfc_mean_among_run()
