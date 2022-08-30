@@ -869,6 +869,129 @@ def rsfc_mean_among_run():
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def check_HCPY_tfMRI():
+    """
+    对各被试所有任务做以下检查并记录到一个表格中：
+    表格每一行是一个被试，对应被试号存在'subID'列，
+    其它列记录的是各任务各cope的状态，这些列的命名规则是
+    {task}_cope{cope_num}_{cope_name}；这些列中元素的赋值规则：
+    0. 初始值为''
+    1. 对应任务存在Contrasts.txt，增加字符'a'
+        已经证明对于所有任务：all exist Contrasts.txt files
+        can be loaded and have the same content
+    2. 对应任务存在{sid}_tfMRI_{task}_level2_hp200_s2_MSMAll.dscalar.nii,
+        并且数据可以顺利被加载，增加字符'b'；如果形状不是(n_cope, 91282)或
+        contrasts != contrasts_tmp，改为字符'B'
+    3. 存在zstat1.dtseries.nii，并且数据可以顺利被加载，增加字符'c'；
+        如果形状不是(1, 91282)或与all_cope_data中对应map不一致，
+        改为字符'C'
+    4. 存在cope1.dtseries.nii，并且数据可以顺利被加载，增加字符'd';
+        如果形状不是(1, 91282，改为字符'D'
+    """
+    info_file = '/nfs/m1/hcp/S1200_behavior.csv'
+    # tasks = ['EMOTION', 'GAMBLING', 'LANGUAGE', 'MOTOR',
+    #          'RELATIONAL', 'SOCIAL', 'WM']
+    tasks = ['WM']
+    feat_dir = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/tfMRI_{task}/'\
+        'tfMRI_{task}_hp200_s2_level2_MSMAll.feat'
+    contrast_files = pjoin(feat_dir, 'Contrasts.txt')
+    all_cope_files = pjoin(
+        feat_dir, '{sid}_tfMRI_{task}_level2_hp200_s2_MSMAll.dscalar.nii')
+    zstat_files = pjoin(
+        feat_dir, 'GrayordinatesStats/cope{c_num}.feat/zstat1.dtseries.nii')
+    cope_files = pjoin(
+        feat_dir, 'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
+    out_dir = pjoin(work_dir, 'tfMRI')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    # out_file = pjoin(out_dir, 'HCPY_tfMRI_check.tsv')
+    # log_file = pjoin(out_dir, 'HCPY_tfMRI_check_log')
+    out_file = pjoin(out_dir, 'HCPY_tfMRI-WM_check.tsv')
+    log_file = pjoin(out_dir, 'HCPY_tfMRI-WM_check_log')
+
+    df = pd.read_csv(info_file, usecols=['Subject'])
+    sids = df['Subject'].values
+    n_sid = len(sids)
+    out_dict = {'subID': sids}
+    log_handle = open(log_file, 'w')
+
+    task2contrasts = {}
+    for task in tasks:
+        contrast_text = None
+        for sid in sids:
+            contrast_file = contrast_files.format(sid=sid, task=task)
+            if os.path.isfile(contrast_file):
+                if contrast_text is None:
+                    contrast_text = open(contrast_file).read()
+                else:
+                    assert contrast_text == open(contrast_file).read()
+        task2contrasts[task] = contrast_text.splitlines()
+        log_handle.write(f'task-{task}: all exist Contrasts.txt files '
+                         'can be loaded and have the same content.\n')
+
+    for task in tasks:
+        contrasts = task2contrasts[task]
+        n_cope = len(contrasts)
+        for c_num, c_name in enumerate(contrasts, 1):
+            out_dict[f'{task}_cope{c_num}_{c_name}'] = []
+        for sidx, sid in enumerate(sids, 1):
+            time1 = time.time()
+            contrast_file = contrast_files.format(sid=sid, task=task)
+            if os.path.isfile(contrast_file):
+                status_code1 = 'a'
+            else:
+                status_code1 = ''
+
+            all_cope_file = all_cope_files.format(sid=sid, task=task)
+            try:
+                reader = CiftiReader(all_cope_file)
+                all_cope_data = reader.get_data()
+                contrasts_tmp = ['_'.join(i.split('_')[4:-3])
+                                 for i in reader.map_names()]
+                if all_cope_data.shape == (n_cope, 91282) and contrasts == contrasts_tmp:
+                    status_code1 += 'b'
+                else:
+                    status_code1 += 'B'
+            except Exception as err:
+                log_handle.write(f'Error in {task}-{sid}: {err}\n')
+
+            for c_num, c_name in enumerate(contrasts, 1):
+                status_code2 = status_code1
+
+                zstat_file = zstat_files.format(
+                    sid=sid, task=task, c_num=c_num)
+                try:
+                    zstat_map = nib.load(zstat_file).get_fdata()
+                    if zstat_map.shape == (1, 91282):
+                        if ('b' in status_code2) or ('B' in status_code2):
+                            if np.all(all_cope_data[c_num - 1] == zstat_map[0]):
+                                status_code2 += 'c'
+                            else:
+                                status_code2 += 'C'
+                        else:
+                            status_code2 += 'c'
+                    else:
+                        status_code2 += 'C'
+                except Exception as err:
+                    log_handle.write(f'Error in {task}-{sid}-{c_name}-zstat: {err}\n')
+
+                cope_file = cope_files.format(
+                    sid=sid, task=task, c_num=c_num)
+                try:
+                    cope_map = nib.load(cope_file).get_fdata()
+                    if cope_map.shape == (1, 91282):
+                        status_code2 += 'd'
+                    else:
+                        status_code2 += 'D'
+                except Exception as err:
+                    log_handle.write(f'Error in {task}-{sid}-{c_name}-cope: {err}\n')
+
+                out_dict[f'{task}_cope{c_num}_{c_name}'].append(status_code2)
+            print(f'Finish {task}-{sidx}/{n_sid}, '
+                  f'cost {time.time()-time1} seconds')
+    pd.DataFrame(out_dict).to_csv(out_file, index=False, sep='\t')
+
+
 def get_contrast_data():
     """
     为FFC及其周围的脑区，个体FFA和gap area提取各种contrast的值
@@ -905,8 +1028,10 @@ if __name__ == '__main__':
     # prepare_gap_series(sess=1, run='RL')
     # prepare_gap_series(sess=2, run='LR')
     # prepare_gap_series(sess=2, run='RL')
-    rsfc(sess=1, run='LR')
-    rsfc(sess=1, run='RL')
-    rsfc(sess=2, run='LR')
-    rsfc(sess=2, run='RL')
-    rsfc_mean_among_run()
+    # rsfc(sess=1, run='LR')
+    # rsfc(sess=1, run='RL')
+    # rsfc(sess=2, run='LR')
+    # rsfc(sess=2, run='RL')
+    # rsfc_mean_among_run()
+
+    check_HCPY_tfMRI()
