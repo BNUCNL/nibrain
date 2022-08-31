@@ -1141,6 +1141,75 @@ def get_cope_data_retest():
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def get_stru_data(meas='myelin', gap_type='gap1-in-FFC'):
+    """
+    为拥有gap的半脑计算gap，个体FFA，FFC
+    以及FFC周边脑区的myelin或thickness含量
+    """
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    gap_file = pjoin(work_dir, f'FFA+{gap_type}_indiv.32k_fs_LR.dlabel.nii')
+    rois = ['FFA-gap', 'pFus-faces', 'mFus-faces', 'FFC', 'V8',
+            'PIT', 'PH', 'TE2p', 'TF', 'VVC']
+    meas_id_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
+    meas2file = {
+        'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                     'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                     'S1200.All.thickness_MSMAll.32k_fs_LR.dscalar.nii',
+        'myelin': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
+                  'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+                  'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii'}
+    out_dir = pjoin(work_dir, 'structure')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    out_file = pjoin(out_dir, f'{meas}_{gap_type}.pkl')
+
+    reader = CiftiReader(gap_file)
+    gap_maps = reader.get_data()
+    mns = reader.map_names()
+    sids = [mn[:6] for mn in mns]
+    n_sid = len(sids)
+
+    meas_ids = open(meas_id_file).read().splitlines()
+    meas_maps = nib.load(meas2file[meas]).get_fdata()
+
+    n_roi = len(rois)
+    out_dict = {}
+    for hemi in hemis:
+        sids_hemi = [mn[:6] for mn in mns if hemi[0] in mn]
+        out_dict[hemi] = {
+            'subID': sids_hemi, 'roi': rois,
+            'shape': 'n_subject x n_roi',
+            'data': np.ones((len(sids_hemi), n_roi)) * np.nan}
+
+    roi2key = {'???': 0, 'R_pFus-faces': 1, 'R_mFus-faces': 2,
+               'L_pFus-faces': 3, 'L_mFus-faces': 4,
+               'R_FFA-gap': 5, 'L_FFA-gap': 6}
+    mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        gap_map = gap_maps[sidx]
+        meas_idx = meas_ids.index(sid)
+        meas_map = meas_maps[meas_idx]
+        for hemi in hemis:
+            if hemi[0] not in mns[sidx]:
+                continue
+            sidx_hemi = out_dict[hemi]['subID'].index(sid)
+            for roi_idx, roi in enumerate(rois):
+                roi = f'{hemi2Hemi[hemi]}_{roi}'
+                if roi in roi2key.keys():
+                    roi_mask = gap_map == roi2key[roi]
+                else:
+                    roi_mask = mmp_map == mmp_name2label[roi]
+                out_dict[hemi]['data'][sidx_hemi, roi_idx] = \
+                    np.mean(meas_map[roi_mask])
+        print(f'Finished {meas}-{gap_type}-{sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -1180,4 +1249,7 @@ if __name__ == '__main__':
     # get_cope_data(task='WM', gap_type='gap1-in-FFC')
     # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0.5')
     # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0')
-    get_cope_data_retest()
+    # get_cope_data_retest()
+
+    get_stru_data(meas='myelin', gap_type='gap1-in-FFC')
+    get_stru_data(meas='thickness', gap_type='gap1-in-FFC')
