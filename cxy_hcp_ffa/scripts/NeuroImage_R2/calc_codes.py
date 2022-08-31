@@ -992,11 +992,153 @@ def check_HCPY_tfMRI():
     pd.DataFrame(out_dict).to_csv(out_file, index=False, sep='\t')
 
 
-def get_contrast_data():
+def get_cope_data(task='WM', gap_type='gap1-in-FFC'):
     """
-    为FFC及其周围的脑区，个体FFA和gap area提取各种contrast的值
+    为拥有gap的半脑计算gap，个体FFA，FFC
+    以及FFC周边脑区在"task"任务中感兴趣条件的激活值(beta)
     """
-    grp_rois = ('FFC', )
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    gap_file = pjoin(work_dir, f'FFA+{gap_type}_indiv.32k_fs_LR.dlabel.nii')
+    rois = ['FFA-gap', 'pFus-faces', 'mFus-faces', 'FFC', 'V8',
+            'PIT', 'PH', 'TE2p', 'TF', 'VVC']
+    feat_dir = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/tfMRI_{task}/'\
+        'tfMRI_{task}_hp200_s2_level2_MSMAll.feat'
+    contrast_file = pjoin(feat_dir.format(sid='100307', task=task),
+                          'Contrasts.txt')
+    cope_files = pjoin(
+        feat_dir, 'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
+    out_dir = pjoin(work_dir, 'tfMRI')
+    out_file = pjoin(out_dir, f'tfMRI-{task}_{gap_type}.pkl')
+
+    task2copes = {
+        'WM': ['BODY', 'FACE', 'PLACE', 'TOOL',
+               'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG']}
+    copes = task2copes[task]
+    contrasts = open(contrast_file).read().splitlines()
+    c_nums = [contrasts.index(i) + 1 for i in copes]
+    n_cope = len(copes)
+
+    reader = CiftiReader(gap_file)
+    gap_maps = reader.get_data()
+    mns = reader.map_names()
+    sids = [mn[:6] for mn in mns]
+    n_sid = len(sids)
+
+    n_roi = len(rois)
+    out_dict = {}
+    for hemi in hemis:
+        sids_hemi = [mn[:6] for mn in mns if hemi[0] in mn]
+        out_dict[hemi] = {
+            'subID': sids_hemi, 'roi': rois, 'cope': copes,
+            'shape': 'n_subject x n_roi x n_cope',
+            'data': np.ones((len(sids_hemi), n_roi, n_cope)) * np.nan}
+
+    roi2key = {'???': 0, 'R_pFus-faces': 1, 'R_mFus-faces': 2,
+               'L_pFus-faces': 3, 'L_mFus-faces': 4,
+               'R_FFA-gap': 5, 'L_FFA-gap': 6}
+    mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        gap_map = gap_maps[sidx]
+        for cope_idx, c_num in enumerate(c_nums):
+            cope_file = cope_files.format(sid=sid, task=task, c_num=c_num)
+            try:
+                cope_map = nib.load(cope_file).get_fdata()[0, :LR_count_32k]
+            except Exception:
+                continue
+            for hemi in hemis:
+                if hemi[0] not in mns[sidx]:
+                    continue
+                sidx_hemi = out_dict[hemi]['subID'].index(sid)
+                for roi_idx, roi in enumerate(rois):
+                    roi = f'{hemi2Hemi[hemi]}_{roi}'
+                    if roi in roi2key.keys():
+                        roi_mask = gap_map == roi2key[roi]
+                    else:
+                        roi_mask = mmp_map == mmp_name2label[roi]
+                    out_dict[hemi]['data'][sidx_hemi, roi_idx, cope_idx] = \
+                        np.mean(cope_map[roi_mask])
+        print(f'Finished {task}-{gap_type}-{sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def get_cope_data_retest():
+    """
+    遍历所有test-retest被试，用在test被试上定出的gap，pFus，mFus在
+    retest被试上提取WM任务的body，face，place，tool四个条件的激活值(beta)，
+    得到3x4的矩阵。如果有被试不存在gap，则3x4的矩阵全为NAN，如果是缺失
+    某个cope数据，则对应cope列为NAN。
+    """
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    sid_file = '/nfs/m1/hcp/retest/3T_tfMRI_WM_analysis_s2_ID'
+    gap_file = pjoin(work_dir, 'FFA+gap1-in-FFC_indiv.32k_fs_LR.dlabel.nii')
+    rois = ['FFA-gap', 'pFus-faces', 'mFus-faces']
+    contrast_file = '/nfs/m1/hcp/100307/MNINonLinear/Results/tfMRI_WM/'\
+        'tfMRI_WM_hp200_s2_level2_MSMAll.feat/Contrasts.txt'
+    contrast_files = '/nfs/m1/hcp/retest/{sid}/MNINonLinear/Results/'\
+        'tfMRI_WM/tfMRI_WM_hp200_s2_level2_MSMAll.feat/Contrasts.txt'
+    copes = ['BODY', 'FACE', 'PLACE', 'TOOL']
+    cope_files = '/nfs/m1/hcp/retest/{sid}/MNINonLinear/Results/'\
+        'tfMRI_WM/tfMRI_WM_hp200_s2_level2_MSMAll.feat/'\
+        'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii'
+    out_dir = pjoin(work_dir, 'tfMRI')
+    out_file = pjoin(out_dir, 'tfMRI-WM-retest_gap1-in-FFC.pkl')
+
+    contrast_text = open(contrast_file).read()
+    contrasts = contrast_text.splitlines()
+    c_nums = [contrasts.index(i) + 1 for i in copes]
+    n_cope = len(copes)
+
+    reader = CiftiReader(gap_file)
+    gap_maps = reader.get_data()
+    mns = reader.map_names()
+    gap_sids = [mn[:6] for mn in mns]
+    sids = open(sid_file).read().splitlines()
+    n_sid = len(sids)
+
+    out_dict = {}
+    for hemi in hemis:
+        out_dict[hemi] = {
+            'subID': sids, 'roi': rois, 'cope': copes,
+            'shape': 'n_subject x n_roi x n_cope',
+            'data': np.ones((n_sid, len(rois), n_cope)) * np.nan}
+
+    roi2key = {'???': 0, 'R_pFus-faces': 1, 'R_mFus-faces': 2,
+               'L_pFus-faces': 3, 'L_mFus-faces': 4,
+               'R_FFA-gap': 5, 'L_FFA-gap': 6}
+    for sidx, sid in enumerate(sids):
+        time1 = time.time()
+        if sid not in gap_sids:
+            continue
+        assert contrast_text == open(contrast_files.format(sid=sid)).read()
+        gap_sidx = gap_sids.index(sid)
+        gap_map = gap_maps[gap_sidx]
+        for cope_idx, c_num in enumerate(c_nums):
+            cope_file = cope_files.format(sid=sid, c_num=c_num)
+            try:
+                cope_map = nib.load(cope_file).get_fdata()
+            except Exception:
+                continue
+            assert cope_map.shape == (1, 91282)
+            cope_map = cope_map[0, :LR_count_32k]
+            for hemi in hemis:
+                if hemi[0] not in mns[gap_sidx]:
+                    continue
+                for roi_idx, roi in enumerate(rois):
+                    roi = f'{hemi2Hemi[hemi]}_{roi}'
+                    roi_mask = gap_map == roi2key[roi]
+                    out_dict[hemi]['data'][sidx, roi_idx, cope_idx] = \
+                        np.mean(cope_map[roi_mask])
+        print(f'Finished {sidx+1}/{n_sid}, cost: '
+              f'{time.time()-time1} seconds.')
+
+    # save out
+    pkl.dump(out_dict, open(out_file, 'wb'))
 
 
 if __name__ == '__main__':
@@ -1034,4 +1176,8 @@ if __name__ == '__main__':
     # rsfc(sess=2, run='RL')
     # rsfc_mean_among_run()
 
-    check_HCPY_tfMRI()
+    # check_HCPY_tfMRI()
+    # get_cope_data(task='WM', gap_type='gap1-in-FFC')
+    # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0.5')
+    # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0')
+    get_cope_data_retest()
