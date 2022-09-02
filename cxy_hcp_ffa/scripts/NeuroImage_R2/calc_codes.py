@@ -831,15 +831,76 @@ def rsfc(sess=1, run='LR'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def rsfc_new(sess=1, run='LR'):
+    """
+    为拥有gap的半脑计算gap，个体FFA，FFC以及FFC周边脑区
+    与gap，个体FFA，360个HCP MMP脑区的静息态功能连接
+    """
+    n_tp = 1200
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    gap_type = 'gap1-in-FFC'
+    seeds = ['FFA-gap', 'pFus-faces', 'mFus-faces', 'FFC',
+             'V8', 'PIT', 'PH', 'TE2p', 'TF', 'VVC']
+    out_dir = pjoin(work_dir, 'rfMRI')
+    gap_tfile = pjoin(out_dir, f'rfMRI_{gap_type}_{sess}_{run}.pkl')
+    ffa_tfile = pjoin(out_dir, f'rfMRI_FFA_{sess}_{run}.pkl')
+    mmp_tfile = pjoin(out_dir, f'rfMRI_MMP_{sess}_{run}.pkl')
+    check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
+    out_file = pjoin(out_dir, f'rsfc_{gap_type}_{sess}_{run}_new.pkl')
+
+    gap_tdata = pkl.load(open(gap_tfile, 'rb'))
+    ffa_tdata = pkl.load(open(ffa_tfile, 'rb'))
+    mmp_tdata = pkl.load(open(mmp_tfile, 'rb'))
+    n_seed = len(seeds)
+    df_check = pd.read_csv(check_file, sep='\t', index_col='subID')
+    df_check = df_check == 'ok=(1200, 91282)'
+    out_dict = {}
+    for hemi in hemis:
+        Hemi = hemi2Hemi[hemi]
+        sids = gap_tdata[hemi]['subID']
+        n_sid = len(sids)
+        targets = [f'{Hemi}_{i}' for i in seeds[:3]] + mmp_tdata['roi']
+        out_dict[hemi] = {
+            'subID': sids, 'seed': seeds, 'target': targets,
+            'shape': 'n_subject x n_seed x n_target',
+            'data': np.ones((n_sid, n_seed, len(targets))) * np.nan
+        }
+        for sidx, sid in enumerate(sids):
+            if not df_check.loc[int(sid), f'rfMRI_REST{sess}_{run}']:
+                continue
+            sidx_ffa = ffa_tdata['subID'].index(sid)
+            sidx_mmp = mmp_tdata['subID'].index(sid)
+
+            seed_tseries = np.zeros((n_seed, n_tp))
+            for seed_idx, seed in enumerate(seeds):
+                if seed == 'FFA-gap':
+                    seed_tseries[seed_idx] = gap_tdata[hemi]['data'][sidx]
+                elif seed in ('pFus-faces', 'mFus-faces'):
+                    roi_idx = ffa_tdata['roi'].index(f'{Hemi}_{seed}')
+                    seed_tseries[seed_idx] = \
+                        ffa_tdata['data'][sidx_ffa, roi_idx]
+                else:
+                    roi_idx = mmp_tdata['roi'].index(f'{Hemi}_{seed}')
+                    seed_tseries[seed_idx] = \
+                        mmp_tdata['data'][sidx_mmp, roi_idx]
+
+            trg_tseries = np.r_[seed_tseries[:3, :],
+                                mmp_tdata['data'][sidx_mmp]]
+            out_dict[hemi]['data'][sidx] = \
+                1 - cdist(seed_tseries, trg_tseries, 'correlation')
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 def rsfc_mean_among_run():
 
     sess = (1, 2)
     runs = ('LR', 'RL')
     hemis = ('lh', 'rh')
-    gap_type = 'gap1-in-FFC_thr0'
+    gap_type = 'gap1-in-FFC'
     out_dir = pjoin(work_dir, 'rfMRI')
-    fpaths = pjoin(out_dir, 'rsfc_{gap_type}_{ses}_{run}.pkl')
-    out_file = pjoin(out_dir, f'rsfc_{gap_type}.pkl')
+    fpaths = pjoin(out_dir, 'rsfc_{gap_type}_{ses}_{run}_new.pkl')
+    out_file = pjoin(out_dir, f'rsfc_{gap_type}_new.pkl')
 
     first_flag = True
     rsfc_dict = dict()
@@ -1251,5 +1312,11 @@ if __name__ == '__main__':
     # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0')
     # get_cope_data_retest()
 
-    get_stru_data(meas='myelin', gap_type='gap1-in-FFC')
-    get_stru_data(meas='thickness', gap_type='gap1-in-FFC')
+    # get_stru_data(meas='myelin', gap_type='gap1-in-FFC')
+    # get_stru_data(meas='thickness', gap_type='gap1-in-FFC')
+
+    # rsfc_new(sess=1, run='LR')
+    # rsfc_new(sess=1, run='RL')
+    # rsfc_new(sess=2, run='LR')
+    # rsfc_new(sess=2, run='RL')
+    rsfc_mean_among_run()
