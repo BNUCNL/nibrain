@@ -6,6 +6,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.io import loadmat
 from scipy.stats.stats import pearsonr
 from scipy.spatial.distance import cdist
 from sklearn.linear_model import LinearRegression
@@ -15,7 +16,7 @@ from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor,\
     label_edge_detection
 from cxy_hcp_ffa.lib.predefine import proj_dir, LR_count_32k,\
     mmp_map_file, mmp_name2label, hemi2stru, MedialWall,\
-    s1200_midthickness_L, s1200_midthickness_R
+    s1200_midthickness_L, s1200_midthickness_R, mmp_label2name
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'NI_R2')
@@ -930,6 +931,50 @@ def rsfc_mean_among_run():
     pkl.dump(rsfc_dict, open(out_file, 'wb'))
 
 
+def rsfc_merge_MMP():
+    """
+    用ColeAnticevicNetPartition将MMP合并成12个网络
+    """
+    hemis = ('lh', 'rh')
+    out_dir = pjoin(work_dir, 'rfMRI')
+    rsfc_file = pjoin(out_dir, 'rsfc_gap1-in-FFC_new.pkl')
+    out_file = pjoin(out_dir, 'rsfc_trg-Cole_gap1-in-FFC.pkl')
+
+    roi2net_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
+                   'cortex_parcel_network_assignments.mat'
+
+    rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
+    roi2net = loadmat(roi2net_file)['netassignments'][:, 0]
+    roi2net = np.r_[roi2net[180:], roi2net[:180]]
+    net_labels = sorted(set(roi2net))
+    n_net = len(net_labels)
+
+    out_dict = {}
+    for hemi in hemis:
+        n_sid = len(rsfc_dict[hemi]['subID'])
+        n_seed = len(rsfc_dict[hemi]['seed'])
+        out_dict[hemi] = {
+            'subID': rsfc_dict[hemi]['subID'],
+            'seed': rsfc_dict[hemi]['seed'],
+            'target': net_labels,
+            'shape': rsfc_dict[hemi]['shape'],
+            'data': np.ones((n_sid, n_seed, n_net)) * np.nan}
+        for net_idx, net_lbl in enumerate(net_labels):
+            mmp_labels = np.where(roi2net == net_lbl)[0] + 1
+            mmp_names = [mmp_label2name[i] for i in mmp_labels]
+            trg_indices = [rsfc_dict[hemi]['target'].index(i) for i in mmp_names]
+            data = np.mean(rsfc_dict[hemi]['data'][:, :, trg_indices], 2)
+            out_dict[hemi]['data'][:, :, net_idx] = data
+
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def pre_ANOVA_rsfc_data():
+    """
+    
+    """
+
+
 def check_HCPY_tfMRI():
     """
     对各被试所有任务做以下检查并记录到一个表格中：
@@ -1388,6 +1433,7 @@ if __name__ == '__main__':
     # rsfc(sess=2, run='LR')
     # rsfc(sess=2, run='RL')
     # rsfc_mean_among_run()
+    rsfc_merge_MMP()
 
     # check_HCPY_tfMRI()
     # get_cope_data(task='WM', gap_type='gap1-in-FFC')
@@ -1398,8 +1444,8 @@ if __name__ == '__main__':
 
     # get_stru_data(meas='myelin', gap_type='gap1-in-FFC')
     # get_stru_data(meas='thickness', gap_type='gap1-in-FFC')
-    pre_ANOVA_stru_data(meas='myelin')
-    pre_ANOVA_stru_data(meas='thickness')
+    # pre_ANOVA_stru_data(meas='myelin')
+    # pre_ANOVA_stru_data(meas='thickness')
 
     # rsfc_new(sess=1, run='LR')
     # rsfc_new(sess=1, run='RL')
