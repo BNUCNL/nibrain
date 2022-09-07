@@ -1202,6 +1202,56 @@ def get_cope_data_retest():
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def pre_ANOVA_cope_data():
+    """
+    3-way repeated ANOVA with hemisphere (LH, RH),
+    region (pFus, gap, mFus), and condition (face, body, place, tool)
+    as factors
+    """
+    hemis = ('lh', 'rh')
+    rois = ['pFus-faces', 'FFA-gap', 'mFus-faces']
+    roi2name = {'pFus-faces': 'pFus', 'FFA-gap': 'gap',
+                'mFus-faces': 'mFus'}
+    conditions = ['FACE', 'BODY', 'PLACE', 'TOOL']
+    sid_1053_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
+    gid_file = pjoin(anal_dir, 'NI_R1/data_1053/group_id_v2_012.csv')
+    out_dir = pjoin(work_dir, 'tfMRI')
+    data_file = pjoin(out_dir, 'tfMRI-WM-retest_gap1-in-FFC.pkl')
+    out_file = pjoin(out_dir, 'tfMRI-WM-retest_gap1-in-FFC_pre-ANOVA.csv')
+
+    data = pkl.load(open(data_file, 'rb'))
+
+    # 找出左右脑同属于separate组的被试
+    sid_1053 = open(sid_1053_file).read().splitlines()
+    gid_df = pd.read_csv(gid_file)
+    sid_45 = data['lh']['subID']
+    assert sid_45 == data['rh']['subID']
+    indices_in_1053 = [sid_1053.index(i) for i in sid_45]
+    gid_df = gid_df.loc[indices_in_1053].reset_index(drop=True)
+    hemi2g2_idx_vec = {
+        'lh': gid_df['lh'] == 2,
+        'rh': gid_df['rh'] == 2}
+    g2_idx_vec = np.logical_and(hemi2g2_idx_vec['lh'], hemi2g2_idx_vec['rh'])
+    print('#g2_lh:', np.sum(hemi2g2_idx_vec['lh']))
+    print('#g2_rh:', np.sum(hemi2g2_idx_vec['rh']))
+    print('#g2_lr:', np.sum(g2_idx_vec))
+
+    out_dict = {}
+    for hemi in hemis:
+        data_hemi = data[hemi]['data'][g2_idx_vec]
+        data1 = data[hemi]['data'][hemi2g2_idx_vec[hemi]]
+        assert np.all(~np.isnan(data1))
+        data2 = data[hemi]['data'][~hemi2g2_idx_vec[hemi]]
+        assert np.all(np.isnan(data2))
+        for roi in rois:
+            roi_idx = data[hemi]['roi'].index(roi)
+            for c_name in conditions:
+                c_idx = data[hemi]['cope'].index(c_name)
+                meas_vec = data_hemi[:, roi_idx, c_idx]
+                out_dict[f'{hemi}_{roi2name[roi]}_{c_name}'] = meas_vec
+    pd.DataFrame(out_dict).to_csv(out_file, index=False)
+
+
 def get_stru_data(meas='myelin', gap_type='gap1-in-FFC'):
     """
     为拥有gap的半脑计算gap，个体FFA，FFC
@@ -1271,6 +1321,39 @@ def get_stru_data(meas='myelin', gap_type='gap1-in-FFC'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def pre_ANOVA_stru_data(meas='myelin'):
+    """
+    2-way repeated ANOVA with hemisphere (LH, RH),
+    region (pFus, gap, mFus) as factors
+    """
+    hemis = ('lh', 'rh')
+    rois = ['pFus-faces', 'FFA-gap', 'mFus-faces']
+    roi2name = {'pFus-faces': 'pFus', 'FFA-gap': 'gap',
+                'mFus-faces': 'mFus'}
+    out_dir = pjoin(work_dir, 'structure')
+    data_file = pjoin(out_dir, f'{meas}_gap1-in-FFC.pkl')
+    out_file = pjoin(out_dir, f'{meas}_gap1-in-FFC_pre-ANOVA.csv')
+
+    data = pkl.load(open(data_file, 'rb'))
+
+    # 找出左右脑同属于separate组的被试
+    sids = set(data['lh']['subID']).intersection(data['rh']['subID'])
+    sids = sorted(sids)
+    print('#sid_lh:', len(data['lh']['subID']))
+    print('#sid_rh:', len(data['rh']['subID']))
+    print('#sid_lr:', len(sids))
+
+    out_dict = {}
+    for hemi in hemis:
+        sub_indices = [data[hemi]['subID'].index(i) for i in sids]
+        data_hemi = data[hemi]['data'][sub_indices]
+        for roi in rois:
+            roi_idx = data[hemi]['roi'].index(roi)
+            meas_vec = data_hemi[:, roi_idx]
+            out_dict[f'{hemi}_{roi2name[roi]}'] = meas_vec
+    pd.DataFrame(out_dict).to_csv(out_file, index=False)
+
+
 if __name__ == '__main__':
     # get_CNR()
     # get_CNR_ind_FFA()
@@ -1311,12 +1394,15 @@ if __name__ == '__main__':
     # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0.5')
     # get_cope_data(task='WM', gap_type='gap1-in-FFC_thr0')
     # get_cope_data_retest()
+    # pre_ANOVA_cope_data()
 
     # get_stru_data(meas='myelin', gap_type='gap1-in-FFC')
     # get_stru_data(meas='thickness', gap_type='gap1-in-FFC')
+    pre_ANOVA_stru_data(meas='myelin')
+    pre_ANOVA_stru_data(meas='thickness')
 
     # rsfc_new(sess=1, run='LR')
     # rsfc_new(sess=1, run='RL')
     # rsfc_new(sess=2, run='LR')
     # rsfc_new(sess=2, run='RL')
-    rsfc_mean_among_run()
+    # rsfc_mean_among_run()
