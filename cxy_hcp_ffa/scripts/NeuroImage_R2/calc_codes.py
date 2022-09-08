@@ -971,8 +971,39 @@ def rsfc_merge_MMP():
 
 def pre_ANOVA_rsfc_data():
     """
-    
+    3-way repeated ANOVA with hemisphere (LH, RH),
+    region (pFus, gap, mFus), and network (12 networks)
+    as factors
     """
+    hemis = ('lh', 'rh')
+    rois = ['pFus-faces', 'FFA-gap', 'mFus-faces']
+    roi2name = {'pFus-faces': 'pFus', 'FFA-gap': 'gap',
+                'mFus-faces': 'mFus'}
+    net_labels = np.arange(1, 13)
+    out_dir = pjoin(work_dir, 'rfMRI')
+    data_file = pjoin(out_dir, 'rsfc_trg-Cole_gap1-in-FFC.pkl')
+    out_file = pjoin(out_dir, 'rsfc_trg-Cole_gap1-in-FFC_pre-ANOVA.csv')
+
+    data = pkl.load(open(data_file, 'rb'))
+
+    # 找出左右脑同属于separate组的被试
+    sids = set(data['lh']['subID']).intersection(data['rh']['subID'])
+    sids = sorted(sids)
+    print('#sid_lh:', len(data['lh']['subID']))
+    print('#sid_rh:', len(data['rh']['subID']))
+    print('#sid_lr:', len(sids))
+
+    out_dict = {}
+    for hemi in hemis:
+        sub_indices = [data[hemi]['subID'].index(i) for i in sids]
+        assert np.all(net_labels == data[hemi]['target'])
+        data_hemi = data[hemi]['data'][sub_indices]
+        for roi in rois:
+            roi_idx = data[hemi]['seed'].index(roi)
+            for net_idx, net_lbl in enumerate(net_labels):
+                meas_vec = data_hemi[:, roi_idx, net_idx]
+                out_dict[f'{hemi}_{roi2name[roi]}_{net_lbl}'] = meas_vec
+    pd.DataFrame(out_dict).to_csv(out_file, index=False)
 
 
 def check_HCPY_tfMRI():
@@ -1433,7 +1464,8 @@ if __name__ == '__main__':
     # rsfc(sess=2, run='LR')
     # rsfc(sess=2, run='RL')
     # rsfc_mean_among_run()
-    rsfc_merge_MMP()
+    # rsfc_merge_MMP()
+    pre_ANOVA_rsfc_data()
 
     # check_HCPY_tfMRI()
     # get_cope_data(task='WM', gap_type='gap1-in-FFC')
