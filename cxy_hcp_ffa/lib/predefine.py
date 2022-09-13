@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from os.path import join as pjoin
+from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
 
@@ -82,3 +84,78 @@ for name, lbl in zip(*get_name_label_of_MMP()):
     mmp_name2label[name] = lbl
     mmp_label2name[lbl] = name
 # HCP MMP1.0<<<
+
+s1200_avg_dir = '/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1'
+s1200_midthickness_L = pjoin(
+    s1200_avg_dir, 'S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_midthickness_R = pjoin(
+    s1200_avg_dir, 'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'
+)
+s1200_MedialWall = pjoin(
+    s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
+)
+
+
+class MedialWall:
+    """
+    medial wall in 32k_fs_LR space
+    """
+
+    def __init__(self, method=1):
+        """
+        Initialize medial wall vertices
+
+        Args:
+            method (int, optional): Defaults to 1.
+                1: 直接从存有MedialWall的dlabel文件中提取顶点号
+                2：找到HCP MMP1.0 atlas dlabel文件中略去的顶点号
+                这两种方法的结果是一致的
+        """
+        if method == 1:
+            reader = CiftiReader(s1200_MedialWall)
+            self.L_vertices = np.where(
+                reader.get_data(hemi2stru['lh'])[0][0] == 1
+            )[0].tolist()
+            self.R_vertices = np.where(
+                reader.get_data(hemi2stru['rh'])[0][0] == 1
+            )[0].tolist()
+        elif method == 2:
+            reader = CiftiReader(mmp_map_file)
+            _, L_shape, L_idx2vtx = reader.get_data(hemi2stru['lh'])
+            self.L_vertices = sorted(
+                set(range(L_shape[0])).difference(L_idx2vtx)
+            )
+            _, R_shape, R_idx2vtx = reader.get_data(hemi2stru['rh'])
+            self.R_vertices = sorted(
+                set(range(R_shape[0])).difference(R_idx2vtx)
+            )
+        else:
+            raise ValueError
+
+    def remove_from_faces(self, hemi, faces):
+        """
+        去除faces中的medial wall顶点
+
+        Args:
+            hemi (str): hemisphere
+                lh: left hemisphere
+                rh: right hemisphere
+            faces (ndarray): n_face x 3
+                surface mesh顶点的三角连边关系
+
+        Returns:
+            [ndarray]: 去除medial wall之后的faces
+        """
+        if hemi == 'lh':
+            medial_wall = self.L_vertices
+        elif hemi == 'rh':
+            medial_wall = self.R_vertices
+        else:
+            raise ValueError('hemi must be lh or rh')
+
+        row_indices = ~np.any(np.in1d(
+            faces.ravel(), medial_wall).reshape(faces.shape), 1)
+        faces = faces[row_indices]
+
+        return faces
