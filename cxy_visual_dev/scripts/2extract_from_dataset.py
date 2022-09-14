@@ -11,10 +11,12 @@ from scipy.stats.stats import zscore
 from scipy.spatial.distance import cdist, pdist
 from sklearn.metrics import pairwise_distances
 from magicbox.io.io import CiftiReader, save2cifti
+from magicbox.stats.regression import regress_nuisance
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
     mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
     L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru,\
-    s1200_1096_myelin, s1200_1096_corrThickness
+    s1200_1096_myelin, s1200_1096_corrThickness, s1200_1096_thickness,\
+    s1200_1096_curv
 from cxy_visual_dev.lib.algo import calc_alff
 
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -588,6 +590,32 @@ def get_HCPY_morph(src_file, out_file):
     save2cifti(out_file, data, reader.brain_models(), map_names, reader.volume)
 
 
+def get_HCPY_corrThickness_mine():
+    """
+    逐顶点用个体差异将curv从thickness中回归出去
+    """
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, 'HCPY_corrThickness_mine.dscalar.nii')
+
+    info_df = pd.read_csv(info_file)
+    indices = info_df['1096_idx'].values
+    map_names = [str(i) for i in info_df['subID']]
+    curv_data = nib.load(s1200_1096_curv).get_fdata()[indices]
+    reader = CiftiReader(s1200_1096_thickness)
+    thickness_data = reader.get_data()[indices]
+    assert curv_data.shape == thickness_data.shape
+    n_map, n_vtx = curv_data.shape
+
+    out_data = np.zeros((n_map, n_vtx))
+    for vtx_idx in range(n_vtx):
+        residual = regress_nuisance(
+            curv_data[:, [vtx_idx]],
+            thickness_data[:, [vtx_idx]])[:, 0]
+        out_data[:, vtx_idx] = residual
+
+    save2cifti(out_file, out_data, reader.brain_models(), map_names, reader.volume)
+
+
 def get_HCPY_rsfc_mat_old(hemi='rh'):
     """
     这个函数只运行了一次，就是做了前两个被试，后面不再动了。
@@ -1093,14 +1121,15 @@ if __name__ == '__main__':
 
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
-    get_HCPY_morph(
-        src_file=s1200_1096_myelin,
-        out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
-    )
-    get_HCPY_morph(
-        src_file=s1200_1096_corrThickness,
-        out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
-    )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_myelin,
+    #     out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
+    # )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_corrThickness,
+    #     out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
+    # )
+    get_HCPY_corrThickness_mine()
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')
