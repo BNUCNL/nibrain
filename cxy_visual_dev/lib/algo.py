@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA, FactorAnalysis, DictionaryLearning,\
     FastICA
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
@@ -38,9 +38,13 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
         zscore0 (str, optional): split, whole
             split: do zscore across subjects of each row
             whole: do zscore across subjects of all rows
+            split-minmax: do MinMaxScale across subjects of each row
+            whole-minmax: do MinMaxScale across subjects of all rows
         zscore1 (str, optional): split, whole
             split: do zscore across vertices of each mask of each column
             whole: do zscore across vertices of all columns
+            split-minmax: do MinMaxScale across vertices of each mask of each column
+            whole-minmax: do MinMaxScale across vertices of all columns
 
     Returns:
         [tuple]: (data, n_vertices, n_maps, reader)
@@ -76,6 +80,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
                 n_vertices.append(n_vertices[-1] + data2.shape[1])
                 if zscore1 == 'split':
                     data2 = zscore(data2, 1)
+                elif zscore1 == 'split-minmax':
+                    data2 = MinMaxScaler(
+                        feature_range=(0, 1)).fit_transform(data2.T).T
             else:
                 # extract masked data
                 data2 = []
@@ -84,6 +91,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
                     n_vertices.append(n_vertices[-1] + maps_mask.shape[1])
                     if zscore1 == 'split':
                         maps_mask = zscore(maps_mask, 1)
+                    elif zscore1 == 'split-minmax':
+                        maps_mask = MinMaxScaler(
+                            feature_range=(0, 1)).fit_transform(maps_mask.T).T
                     data2.append(maps_mask)
                 data2 = np.concatenate(data2, 1)
 
@@ -96,6 +106,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
             data1 = data1[map_mask]
         if zscore0 == 'split':
             data1 = zscore(data1, 0)
+        elif zscore0 == 'split-minmax':
+            data1 = MinMaxScaler(
+                feature_range=(0, 1)).fit_transform(data1)
         n_maps.append(n_maps[-1] + data1.shape[0])
 
         # update
@@ -104,8 +117,15 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
     data = np.concatenate(data, 0)
     if zscore1 == 'whole':
         data = zscore(data, 1)
+    elif zscore1 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data.T).T
+
     if zscore0 == 'whole':
         data = zscore(data, 0)
+    elif zscore0 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data)
 
     return data, n_vertices, n_maps, reader
 
