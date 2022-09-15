@@ -248,26 +248,30 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     # )
-    # mask_cii(
-    #     src_file=s1200_avg_curv, mask=mask,
-    #     out_file=pjoin(work_dir, 's1200-avg-curv_MMP-vis3.dscalar.nii')
-    # )
-    # mask_cii(
-    #     src_file=s1200_avg_myelin, mask=mask,
-    #     out_file=pjoin(work_dir, 's1200-avg-myelin_MMP-vis3.dscalar.nii')
-    # )
-    # mask_cii(
-    #     src_file=s1200_avg_thickness, mask=mask,
-    #     out_file=pjoin(work_dir, 's1200-avg-thickness_MMP-vis3.dscalar.nii')
-    # )
-    # mask_cii(
-    #     src_file=s1200_avg_corrThickness, mask=mask,
-    #     out_file=pjoin(work_dir, 's1200-avg-corrThickness_MMP-vis3.dscalar.nii')
-    # )
     mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY_corrThickness_mean_mine.dscalar.nii'),
+        src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean_mine.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPY_corrThickness_mean_MMP-vis3_mine.dscalar.nii')
+        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3_mine.dscalar.nii')
+    )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPY-myelin_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-myelin_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPY-thickness_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'summary_map/HCPY-curv_mean.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-curv_mean_MMP-vis3.dscalar.nii')
     )
 
     # make_mask1(N=2)

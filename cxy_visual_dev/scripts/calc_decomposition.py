@@ -520,29 +520,44 @@ if __name__ == '__main__':
     #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
     # )
 
-    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
-    # 对myelin做空间PCA
-    fname = 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj'
+    fname = 'HCPY-M+corrT1_MMP-vis3-R_zscore1_PCA-subj'
     decompose(
-        fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')],
-        cat_shape=(1, 1), method='PCA', axis=0,
-        csv_files=[pjoin(work_dir, f'{fname}.csv')],
+        fpaths=[
+            pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
+            pjoin(proj_dir, 'data/HCP/HCPY_corrThickness_mine.dscalar.nii')],
+        cat_shape=(2, 1), method='PCA', axis=0,
+        csv_files=[
+            pjoin(work_dir, f'{fname}_M.csv'),
+            pjoin(work_dir, f'{fname}_corrT1.csv')],
         cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
         pkl_file=pjoin(work_dir, f'{fname}.pkl'),
         vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
+    )
+
+    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
+    # 对myelin做空间PCA
+    # fname = 'HCPY-M_MMP-vis3-R_zscore1_PCA-subj'
+    # decompose(
+    #     fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')],
+    #     cat_shape=(1, 1), method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, f'{fname}.csv')],
+    #     cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, f'{fname}.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 对thickness做空间PCA
-    fname = 'HCPY-corrT_MMP-vis3-R_zscore1_PCA-subj'
-    decompose(
-        fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
-        cat_shape=(1, 1), method='PCA', axis=0,
-        csv_files=[pjoin(work_dir, f'{fname}.csv')],
-        cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
-        pkl_file=pjoin(work_dir, f'{fname}.pkl'),
-        vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
-        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
+    # fname = 'HCPY-corrT_MMP-vis3-R_zscore1_PCA-subj'
+    # decompose(
+    #     fpaths=[pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
+    #     cat_shape=(1, 1), method='PCA', axis=0,
+    #     csv_files=[pjoin(work_dir, f'{fname}.csv')],
+    #     cii_files=[pjoin(work_dir, f'{fname}.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, f'{fname}.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7)
 
     # >>>在HCPD数据上，去除5~7岁，做tPCA对MMP-vis3-R的顶点降维（分模态）
     # info_df = pd.read_csv(pjoin(proj_dir, 'data/HCP/HCPD_SubjInfo.csv'))
