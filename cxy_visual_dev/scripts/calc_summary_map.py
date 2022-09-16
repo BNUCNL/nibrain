@@ -132,10 +132,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
     # )
     make_mean_map(
-        src_file=pjoin(proj_dir, 'data/HCP/HCPY_corrThickness_mine.dscalar.nii'),
-        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_mine.dscalar.nii')
-    )
-    make_mean_map(
         src_file=pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii'),
         out_file=pjoin(work_dir, 'HCPY-corrThickness_mean.dscalar.nii')
     )

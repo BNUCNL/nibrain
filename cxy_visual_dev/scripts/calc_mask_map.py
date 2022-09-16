@@ -249,11 +249,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     # )
     mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean_mine.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3_mine.dscalar.nii')
-    )
-    mask_cii(
         src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean.dscalar.nii'),
         mask=mask,
         out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3.dscalar.nii')
