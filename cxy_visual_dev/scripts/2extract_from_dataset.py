@@ -11,7 +11,6 @@ from scipy.stats.stats import zscore
 from scipy.spatial.distance import cdist, pdist
 from sklearn.metrics import pairwise_distances
 from magicbox.io.io import CiftiReader, save2cifti
-from magicbox.stats.regression import regress_nuisance
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
     mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
     L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru,\
