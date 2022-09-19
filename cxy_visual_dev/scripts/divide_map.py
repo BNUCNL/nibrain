@@ -233,6 +233,90 @@ def get_lowest_seeds():
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
 
+def expand_seed_combo():
+    """
+    对每个seed region组合：
+    1. 以该组合包含的所有顶点为起点
+    2. 遍历各扩张起点，对于每个起点，合并1环近邻中大于它，
+        并且不属于该组合的顶点，同时作为下一步扩张的起点。
+    3. 重复第2步，直到没有扩张起点为止。
+    结果保存在.dlabel.nii文件中，每种组合存为其中一个map，
+    属于该组合的顶点标记为1，其它为0
+
+    目前只用于stru-C2
+    """
+    hemi = 'rh'
+    mask_name = 'MMP-vis3-R'
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    seed_key2lbl = {
+        1: 'early-1', 2: 'early-2', 3: 'early-3', 4: 'early-4',
+        5: 'dorsal-1', 6: 'dorsal-2', 7: 'dorsal-3',
+        8: 'ventral-1', 9: 'ventral-2'}
+    seed_combos = [(i,) for i in range(1, 10)] + \
+        [(2, 3, 4), (1, 2), (1, 2, 3, 4), (5, 6, 7), (6, 7), (8, 9)]
+    seed_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
+                     f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
+    out_file = pjoin(work_dir, f'seed-expansion_{mask_name}.dlabel.nii')
+
+    # prepare map information
+    reader = CiftiReader(seed_file)
+    assert reader.full_data.shape == (1, LR_count_32k)
+    bms = reader.brain_models()
+    lbl_tab = reader.label_tables()[0]
+    seed_map = reader.get_data(hemi2stru[hemi], True)[0]
+    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+
+    # get vertex neighbors
+    mmp_map = CiftiReader(mmp_map_file).get_data(
+        hemi2stru[hemi], True)[0]
+    mask = np.zeros(hemi_shape, np.uint8)
+    for roi in get_rois(mask_name):
+        mask[mmp_map == mmp_name2label[roi]] = 1
+    faces = GiftiReader(s1200_midthickness_R).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
+
+    # get source data
+    src_map = CiftiReader(src_file).get_data(
+        hemi2stru[hemi], True)[1]
+
+    # calculating
+    n_combo = len(seed_combos)
+    out_maps = np.zeros((n_combo, LR_count_32k), np.uint8)
+    map_names = []
+    lbl_tabs = []
+    offset, count = hemi2offset_count[hemi]
+    for combo_idx, combo in enumerate(seed_combos):
+        hemi_map = np.zeros(hemi_shape, np.uint8)
+        base_vertices = []
+        for seed_key in combo:
+            base_vertices.extend(np.where(seed_map == seed_key)[0])
+            assert seed_key2lbl[seed_key] == lbl_tab[seed_key].label
+        hemi_map[base_vertices] = 1
+        while len(base_vertices) > 0:
+            base_vertices_tmp = []
+            for base_vtx in base_vertices:
+                for neigh_vtx in vtx2neighbors[base_vtx]:
+                    if hemi_map[neigh_vtx] == 1:
+                        continue
+                    if src_map[neigh_vtx] > src_map[base_vtx]:
+                        hemi_map[neigh_vtx] = 1
+                        base_vertices_tmp.append(neigh_vtx)
+            base_vertices = base_vertices_tmp
+        out_maps[combo_idx, offset:(offset+count)] = hemi_map[idx2vtx]
+        map_names.append(str(combo))
+        lbl_tab_new = nib.cifti2.Cifti2LabelTable()
+        lbl_tab_new[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+        lbl_tab_new[1] = nib.cifti2.Cifti2Label(1, map_names[-1], 0, 0, 1, 1)
+        lbl_tabs.append(lbl_tab_new)
+
+    # save out
+    save2cifti(out_file, out_maps, bms, map_names, label_tables=lbl_tabs)
+
+
 if __name__ == '__main__':
     # get_lowest_vertices()
-    get_lowest_seeds()
+    # get_lowest_seeds()
+    expand_seed_combo()
