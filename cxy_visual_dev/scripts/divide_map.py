@@ -10,7 +10,8 @@ from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from magicbox.graph.triangular_mesh import get_n_ring_neighbor
 from cxy_visual_dev.lib.predefine import proj_dir, get_rois,\
     mmp_label2name, mmp_name2label, mmp_map_file, s1200_midthickness_R,\
-    hemi2stru
+    hemi2stru, Atlas, R_count_32k, R_offset_32k, LR_count_32k,\
+    L_count_32k, L_offset_32k
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'divide_map')
@@ -56,14 +57,15 @@ def find_roi_neighbors():
     return roi2neighbors
 
 
-def cluster_roi(connectivity='bidirection', linkage='ward'):
+def cluster_roi(connectivity='undirected', linkage='ward'):
     """
+    （最终结果不行，相关调用代码和结果已删）
     根据stru-C2对MMP-vis3-R所有脑区进行聚类
 
     Args:
-        connectivity (str, optional): Defaults to 'bidirection'.
+        connectivity (str, optional): Defaults to 'undirected'.
             unidirection: 当近邻脑区的值大于自己时，才视作有连接
-            bidirection: 只要是近邻脑区就都算是与自己有连接
+            undirected: 只要是近邻脑区就都算是与自己有连接
 
     References:
         1. https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html
@@ -124,19 +126,52 @@ def get_lowest_vertices():
     找出那些比自己的一环近邻都小的顶点。
     目前只用于stru-C2
     """
+    hemi = 'rh'
+    mask_name = 'MMP-vis3-R'
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
-                     'MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
-    
-    reader = CiftiReader(src_file)
-    src_map = reader.get_data()[1]
+                     f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
+    out_file = pjoin(work_dir, f'lowest-vtx_{mask_name}.dlabel.nii')
+
+    # prepare atlas information
+    reader = CiftiReader(mmp_map_file)
+    LR_shape = reader.full_data.shape
+    assert (1, LR_count_32k) == LR_shape
+    bms = reader.brain_models()
+    mmp_map = reader.get_data(hemi2stru[hemi], True)[0]
+    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    mask = np.zeros(hemi_shape, dtype=np.uint8)
+    for roi in get_rois(mask_name):
+        mask[mmp_map == mmp_name2label[roi]] = 1
+    mask_vertices = np.nonzero(mask)[0]
+
+    # get vertex neighbors
+    faces = GiftiReader(s1200_midthickness_R).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
+
+    # get source data
+    src_map = CiftiReader(src_file).get_data(
+        hemi2stru[hemi], True)[1]
+
+    # calculating
+    out_map = np.zeros(LR_shape, dtype=np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'lowest-vtx', 0, 0, 1, 1)
+    hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
+    for mask_vtx in mask_vertices:
+        neighbor_vertices = list(vtx2neighbors[mask_vtx])
+        assert len(neighbor_vertices) != 0
+        if np.all(src_map[neighbor_vertices] > src_map[mask_vtx]):
+            hemi_map[mask_vtx] = 1
+    offset, count = hemi2offset_count[hemi]
+    out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
+
+    # save out
+    save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
 
 if __name__ == '__main__':
-    cluster_roi(connectivity='bidirection', linkage='ward')
-    cluster_roi(connectivity='bidirection', linkage='complete')
-    cluster_roi(connectivity='bidirection', linkage='average')
-    cluster_roi(connectivity='bidirection', linkage='single')
-    cluster_roi(connectivity='unidirection', linkage='ward')
-    cluster_roi(connectivity='unidirection', linkage='complete')
-    cluster_roi(connectivity='unidirection', linkage='average')
-    cluster_roi(connectivity='unidirection', linkage='single')
+    get_lowest_vertices()
