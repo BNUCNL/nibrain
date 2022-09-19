@@ -8,9 +8,10 @@ from sklearn.cluster import AgglomerativeClustering
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from magicbox.graph.triangular_mesh import get_n_ring_neighbor
+from magicbox.graph.segmentation import connectivity_grow
 from cxy_visual_dev.lib.predefine import proj_dir, get_rois,\
     mmp_label2name, mmp_name2label, mmp_map_file, s1200_midthickness_R,\
-    hemi2stru, Atlas, R_count_32k, R_offset_32k, LR_count_32k,\
+    hemi2stru, R_count_32k, R_offset_32k, LR_count_32k,\
     L_count_32k, L_offset_32k
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -173,5 +174,65 @@ def get_lowest_vertices():
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
 
+def get_lowest_seeds():
+    """
+    参考get_lowest_vertices得到的局部最小值点，
+    选定几个区域作为后续扩张的种子区域。
+    目前只用于stru-C2和MMP-vis3-R
+    """
+    hemi = 'rh'
+    mask_name = 'MMP-vis3-R'
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    seed_vertices = [23175, 24938, 25131,
+                     25402, 1474, 12586,
+                     12394, 21501, 22485]
+    seed_names = ['early-1', 'early-2', 'early-3', 'early-4',
+                  'dorsal-1', 'dorsal-2', 'dorsal-3',
+                  'ventral-1', 'ventral-2']
+    ex_vertices = [12466, 12423, 12333, 12378, 12286, 12238, 12189]
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
+                     f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
+    out_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
+
+    # prepare map information
+    reader = CiftiReader(src_file)
+    LR_shape = (1, LR_count_32k)
+    assert reader.full_data.shape[1] == LR_count_32k
+    bms = reader.brain_models()
+    src_map = reader.get_data(hemi2stru[hemi], True)[1]
+    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    mask = (src_map < -13.6).astype(np.uint8)
+    mask[ex_vertices] = 0
+
+    # get vertex neighbors
+    faces = GiftiReader(s1200_midthickness_R).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
+
+    # get seed regions
+    n_seed = len(seed_vertices)
+    seeds_id = [[i] for i in seed_vertices]
+    seed_regions = connectivity_grow(seeds_id, vtx2neighbors)
+
+    # save out
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, n_seed)
+    out_map = np.zeros(LR_shape, dtype=np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
+    for seed_idx, seed_region in enumerate(seed_regions):
+        seed_key = seed_idx + 1
+        hemi_map[list(seed_region)] = seed_key
+        lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
+            seed_key, seed_names[seed_idx],
+            *cmap(color_indices[seed_idx]))
+    offset, count = hemi2offset_count[hemi]
+    out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
+    save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
-    get_lowest_vertices()
+    # get_lowest_vertices()
+    get_lowest_seeds()
