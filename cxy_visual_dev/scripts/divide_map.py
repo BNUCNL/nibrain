@@ -182,20 +182,32 @@ def get_lowest_seeds():
     """
     hemi = 'rh'
     mask_name = 'MMP-vis3-R'
+
+    # thr = -13.6
+    # seed_vertices = [23175, 24938, 25131,
+    #                  25402, 1474, 12586,
+    #                  12394, 21501, 22485]
+    # seed_names = ['early-1', 'early-2', 'early-3', 'early-4',
+    #               'dorsal-1', 'dorsal-2', 'dorsal-3',
+    #               'ventral-1', 'ventral-2']
+    # ex_vertices = [12466, 12423, 12333, 12378, 12286, 12238, 12189]
+    # out_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
+
+    thr = -10
+    seed_vertices = [25541, 23175, 24938, 25131, 25666,
+                     25841, 1474, 12394, 13797,
+                     21501, 22485, 22304, 26554]
+    seed_names = ['early-1', 'early-2', 'early-3', 'early-4', 'early-5',
+                  'dorsal-1', 'dorsal-2', 'dorsal-3', 'dorsal-4',
+                  'ventral-1', 'ventral-2', 'ventral-3', 'ventral-4']
+    ex_vertices = []
+    out_file = pjoin(work_dir, f'lowest-seed_thr-{thr}_{mask_name}.dlabel.nii')
+
     hemi2offset_count = {
         'lh': (L_offset_32k, L_count_32k),
         'rh': (R_offset_32k, R_count_32k)}
-    seed_vertices = [23175, 24938, 25131,
-                     25402, 1474, 12586,
-                     12394, 21501, 22485]
-    seed_names = ['early-1', 'early-2', 'early-3', 'early-4',
-                  'dorsal-1', 'dorsal-2', 'dorsal-3',
-                  'ventral-1', 'ventral-2']
-    ex_vertices = [12466, 12423, 12333, 12378, 12286, 12238, 12189]
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
-    out_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
-
     # prepare map information
     reader = CiftiReader(src_file)
     LR_shape = (1, LR_count_32k)
@@ -203,7 +215,7 @@ def get_lowest_seeds():
     bms = reader.brain_models()
     src_map = reader.get_data(hemi2stru[hemi], True)[1]
     _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
-    mask = (src_map < -13.6).astype(np.uint8)
+    mask = (src_map < thr).astype(np.uint8)
     mask[ex_vertices] = 0
 
     # get vertex neighbors
@@ -250,16 +262,26 @@ def expand_seed_combo():
     hemi2offset_count = {
         'lh': (L_offset_32k, L_count_32k),
         'rh': (R_offset_32k, R_count_32k)}
-    seed_key2lbl = {
-        1: 'early-1', 2: 'early-2', 3: 'early-3', 4: 'early-4',
-        5: 'dorsal-1', 6: 'dorsal-2', 7: 'dorsal-3',
-        8: 'ventral-1', 9: 'ventral-2'}
-    seed_combos = [(i,) for i in range(1, 10)] + \
-        [(2, 3, 4), (1, 2), (1, 2, 3, 4), (5, 6, 7), (6, 7), (8, 9)]
-    seed_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
-    out_file = pjoin(work_dir, f'seed-expansion_{mask_name}.dlabel.nii')
+
+    # seed_key2lbl = {
+    #     1: 'early-1', 2: 'early-2', 3: 'early-3', 4: 'early-4',
+    #     5: 'dorsal-1', 6: 'dorsal-2', 7: 'dorsal-3',
+    #     8: 'ventral-1', 9: 'ventral-2'}
+    # seed_combos = [(i,) for i in range(1, 10)] + \
+    #     [(2, 3, 4), (1, 2), (1, 2, 3, 4), (5, 6, 7), (6, 7), (8, 9)]
+    # seed_file = pjoin(work_dir, f'lowest-seed_{mask_name}.dlabel.nii')
+    # out_file = pjoin(work_dir, f'seed-expansion_{mask_name}.dlabel.nii')
+
+    thr = -10
+    seed_key2lbl = {
+        1: 'early-1', 2: 'early-2', 3: 'early-3', 4: 'early-4', 5: 'early-5',
+        6: 'dorsal-1', 7: 'dorsal-2', 8: 'dorsal-3', 9: 'dorsal-4',
+        10: 'ventral-1', 11: 'ventral-2', 12: 'ventral-3', 13: 'ventral-4'}
+    seed_combos = [(1, 2, 3, 4, 5), (6, 7, 8, 9), (10, 11, 12, 13)]
+    seed_file = pjoin(work_dir, f'lowest-seed_thr-{thr}_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'seed-expansion_thr-{thr}_{mask_name}.dlabel.nii')
 
     # prepare map information
     reader = CiftiReader(seed_file)
@@ -318,5 +340,5 @@ def expand_seed_combo():
 
 if __name__ == '__main__':
     # get_lowest_vertices()
-    # get_lowest_seeds()
+    get_lowest_seeds()
     expand_seed_combo()
