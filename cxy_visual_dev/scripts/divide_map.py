@@ -338,7 +338,55 @@ def expand_seed_combo():
     save2cifti(out_file, out_maps, bms, map_names, label_tables=lbl_tabs)
 
 
+def get_EDLV_seeds(Hemi='R'):
+    """
+    在EDLV四个通路中寻找stru-C2最小的那部分作为各通路的种子区域
+    """
+    props = list(range(1, 16))
+    edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
+                     f'MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    out_file = pjoin(work_dir, f'MMP-vis3-{Hemi}-EDLV-seed_bottom-proportion.dlabel.nii')
+
+    # get EDLV data
+    reader = CiftiReader(edlv_file)
+    lbl_tab = reader.label_tables()[0]
+    bms = reader.brain_models()
+    edlv_map = reader.get_data()[0]
+    assert len(edlv_map) == LR_count_32k
+
+    # get stru-C2 data
+    src_map = CiftiReader(src_file).get_data()[1]
+    assert len(src_map) == LR_count_32k
+
+    # calculating
+    n_prop = len(props)
+    out_maps = np.zeros((n_prop, LR_count_32k), np.uint8)
+    lbl_tab_new = nib.cifti2.Cifti2LabelTable()
+    lbl_tab_new[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    map_names = [f'{i}%' for i in props]
+    for k in lbl_tab.keys():
+        lbl = lbl_tab[k].label
+        if k == 0 or not lbl.startswith(f'{Hemi}_'):
+            continue
+        lbl_tab_new[k] = nib.cifti2.Cifti2Label(k, lbl, *lbl_tab[k].rgba)
+        mask = edlv_map == k
+        sorted_indices = np.argsort(src_map[mask])
+        n_vtx = len(sorted_indices)
+        for prop_idx, prop in enumerate(props):
+            local_seed_map = np.zeros(n_vtx, np.uint8)
+            n_bottom_vtx = int(n_vtx * prop / 100)
+            indices = sorted_indices[:n_bottom_vtx]
+            local_seed_map[indices] = k
+            out_maps[prop_idx, mask] = local_seed_map
+
+    # save out
+    lbl_tabs = [lbl_tab_new] * n_prop
+    save2cifti(out_file, out_maps, bms, map_names, label_tables=lbl_tabs)
+
+
 if __name__ == '__main__':
     # get_lowest_vertices()
-    get_lowest_seeds()
-    expand_seed_combo()
+    # get_lowest_seeds()
+    # expand_seed_combo()
+    get_EDLV_seeds(Hemi='R')
