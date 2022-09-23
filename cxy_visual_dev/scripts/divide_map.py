@@ -12,7 +12,7 @@ from magicbox.graph.segmentation import connectivity_grow
 from cxy_visual_dev.lib.predefine import proj_dir, get_rois,\
     mmp_label2name, mmp_name2label, mmp_map_file, s1200_midthickness_R,\
     hemi2stru, R_count_32k, R_offset_32k, LR_count_32k,\
-    L_count_32k, L_offset_32k
+    L_count_32k, L_offset_32k, hemi2Hemi
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'divide_map')
@@ -385,8 +385,101 @@ def get_EDLV_seeds(Hemi='R'):
     save2cifti(out_file, out_maps, bms, map_names, label_tables=lbl_tabs)
 
 
+def expand_EDLV_seeds(hemi='rh'):
+    """
+    对每种proportion，每个局部的seed region：
+    1. 以其所有顶点为起点
+    2. 遍历各扩张起点，对于每个起点，合并1环近邻中大于它，
+        并且不属于该region的顶点，同时作为下一步扩张的起点。
+    3. 重复第2步，直到没有扩张起点为止。
+    4. 结果存为一个map，属于region的顶点标记为1，其它为0
+    对每个局部的所有proportion计算概率图，存到.dscalar.nii中
+    """
+    Hemi = hemi2Hemi[hemi]
+    mask_name = f'MMP-vis3-{Hemi}'
+    hemi2offset_count = {
+        'lh': (L_offset_32k, L_count_32k),
+        'rh': (R_offset_32k, R_count_32k)}
+    src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
+                     f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
+
+    local_names = ('early', 'dorsal', 'lateral', 'ventral')
+    local_names = [f'{Hemi}_{i}' for i in local_names]
+    seed_file = pjoin(work_dir, f'{mask_name}-EDLV-seed_bottom-proportion.dlabel.nii')
+    out_file1 = pjoin(work_dir, f'{mask_name}-EDLV-seed-expansion.dlabel.nii')
+    out_file2 = pjoin(work_dir, f'{mask_name}-EDLV-seed-expansion_prob.dscalar.nii')
+
+    # prepare map information
+    reader = CiftiReader(seed_file)
+    assert reader.full_data.shape[1] == LR_count_32k
+    bms = reader.brain_models()
+    lbl_tab = reader.label_tables()[0]
+    local2key = {}
+    for k, v in lbl_tab.items():
+        local2key[v.label] = k
+    seed_maps = reader.get_data(hemi2stru[hemi], True)
+    props = reader.map_names()
+    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+
+    # get vertex neighbors
+    mmp_map = CiftiReader(mmp_map_file).get_data(
+        hemi2stru[hemi], True)[0]
+    mask = np.zeros(hemi_shape, np.uint8)
+    for roi in get_rois(mask_name):
+        mask[mmp_map == mmp_name2label[roi]] = 1
+    faces = GiftiReader(s1200_midthickness_R).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
+
+    # get source data
+    src_map = CiftiReader(src_file).get_data(
+        hemi2stru[hemi], True)[1]
+
+    # calculating
+    n_local = len(local_names)
+    n_prop = len(props)
+    out_maps1 = np.zeros((n_prop*n_local, LR_count_32k), np.uint8)
+    out_maps2 = np.ones((n_local, LR_count_32k)) * np.nan
+    map_idx = 0
+    lbl_tabs = []
+    map_names = []
+    offset, count = hemi2offset_count[hemi]
+    for local_idx, local_name in enumerate(local_names):
+        prob_map = np.zeros(hemi_shape)
+        for prop_idx, prop in enumerate(props):
+            hemi_map = np.zeros(hemi_shape, np.uint8)
+            base_vertices = np.where(
+                seed_maps[prop_idx] == local2key[local_name])[0]
+            hemi_map[base_vertices] = 1
+            while len(base_vertices) > 0:
+                base_vertices_tmp = []
+                for base_vtx in base_vertices:
+                    for neigh_vtx in vtx2neighbors[base_vtx]:
+                        if hemi_map[neigh_vtx] == 1:
+                            continue
+                        if src_map[neigh_vtx] > src_map[base_vtx]:
+                            hemi_map[neigh_vtx] = 1
+                            base_vertices_tmp.append(neigh_vtx)
+                base_vertices = base_vertices_tmp
+            prob_map = prob_map + hemi_map
+            out_maps1[map_idx, offset:(offset+count)] = hemi_map[idx2vtx]
+            map_name = f'{local_name}-{prop}'
+            lbl_tab_new = nib.cifti2.Cifti2LabelTable()
+            lbl_tab_new[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+            lbl_tab_new[1] = nib.cifti2.Cifti2Label(1, map_name, 0, 0, 1, 1)
+            lbl_tabs.append(lbl_tab_new)
+            map_names.append(map_name)
+            map_idx += 1
+        prob_map = prob_map / n_prop
+        out_maps2[local_idx, offset:(offset+count)] = prob_map[idx2vtx]
+
+    # save out
+    save2cifti(out_file1, out_maps1, bms, map_names, label_tables=lbl_tabs)
+    save2cifti(out_file2, out_maps2, bms, local_names)
+
+
 if __name__ == '__main__':
     # get_lowest_vertices()
     # get_lowest_seeds()
     # expand_seed_combo()
-    get_EDLV_seeds(Hemi='R')
+    # get_EDLV_seeds(Hemi='R')
+    expand_EDLV_seeds(hemi='rh')
