@@ -483,9 +483,14 @@ def get_observed_seeds(hemi='rh'):
     先在wb_view上选定点和线，然后加粗（合并1环近邻）
     """
     seed_name2vtx = {
-        'early': [24963, 24860, 24808, 24754, 24525, 24433, 24381,
-                  24295, 24233, 24168, 24100, 24028, 24030, 24032,
-                  24774, 24884, 24989, 25090, 25187, 25281, 24481],
+        'early': [25682, 25648, 25613, 25614, 25578, 25541, 25503,
+                  25463, 25422, 25380, 25338, 25295, 25251, 25206,
+                  25207, 25161, 25113, 25064, 25014, 24963, 24860,
+                  24808, 24754, 24525, 24433, 24381, 24295, 24233,
+                  24168, 24100, 24028, 24030, 24032, 24774, 24884,
+                  24989, 24481, 25089, 25137, 25184, 25230, 25275,
+                  25319, 25361, 25402, 25443, 25483, 25522, 25560,
+                  25596, 25631, 25666],
         'dorsal': [12772, 12701, 12625, 12586, 12505, 12463, 12376,
                    12333, 12381, 12383, 12384, 12431, 12433, 12434,
                    12436, 12437, 12483, 12528, 12530, 12573],
@@ -502,7 +507,7 @@ def get_observed_seeds(hemi='rh'):
     hemi2geo_file = {
         'lh': s1200_midthickness_L,
         'rh': s1200_midthickness_R}
-    out_file = pjoin(work_dir, f'observed-seed_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'observed-seed-v2_{mask_name}.dlabel.nii')
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
@@ -562,8 +567,8 @@ def expand_observed_seeds(hemi='rh'):
 
     local_names = ('early', 'dorsal', 'lateral', 'ventral')
     local_names = [f'{Hemi}_{i}' for i in local_names]
-    seed_file = pjoin(work_dir, f'observed-seed_{mask_name}.dlabel.nii')
-    out_file = pjoin(work_dir, f'observed-seed-expansion_{mask_name}.dlabel.nii')
+    seed_file = pjoin(work_dir, f'observed-seed-v2_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'observed-seed-v2-expansion_{mask_name}.dlabel.nii')
 
     # prepare map information
     reader = CiftiReader(seed_file)
@@ -635,5 +640,5 @@ if __name__ == '__main__':
     # get_EDLV_seeds(Hemi='R')
     # expand_EDLV_seeds(hemi='rh')
 
-    # get_observed_seeds(hemi='rh')
+    get_observed_seeds(hemi='rh')
     expand_observed_seeds(hemi='rh')
