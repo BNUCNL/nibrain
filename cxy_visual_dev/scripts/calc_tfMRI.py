@@ -140,9 +140,65 @@ def summary_category_prob_map(fpath, methods, thr=0.2):
                    volume=reader.volume, label_tables=[lbl_tab])
 
 
+def get_WM_cope_map():
+    """
+    提取1069名被试WM任务中'BODY', 'FACE', 'PLACE', 'TOOL',
+    'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map
+    """
+    subj_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    copes = ['BODY', 'FACE', 'PLACE', 'TOOL',
+             'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG']
+    feat_dir = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/tfMRI_WM/'\
+        'tfMRI_WM_hp200_s2_level2_MSMAll.feat'
+    contrast_file = pjoin(feat_dir.format(sid='100307'),
+                          'Contrasts.txt')
+    cope_files = pjoin(
+        feat_dir, 'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
+    out_file = pjoin(work_dir, 'tfMRI-WN-cope.dscalar.nii')
+    log_file = pjoin(work_dir, 'tfMRI-WN-cope_log')
+
+    sids = pd.read_csv(subj_file)['subID'].values
+    n_sid = len(sids)
+    contrasts = open(contrast_file).read().splitlines()
+    c_nums = [contrasts.index(i) + 1 for i in copes]
+
+    out_maps = []
+    bms = None
+    vol = None
+    log_handle = open(log_file, 'w')
+    for c_idx, c_num in enumerate(c_nums):
+        c_map = 0
+        n_sid_valid = 0
+        for sidx, sid in enumerate(sids, 1):
+            time1 = time.time()
+            cope_file = cope_files.format(sid=sid, c_num=c_num)
+            try:
+                cope_map = nib.load(cope_file).get_fdata()[0]
+            except Exception as err:
+                msg = f'{cope_file} meets error: {err}'
+                print(msg)
+                log_handle.write(msg + '\n')
+                continue
+            n_sid_valid += 1
+            if bms is None:
+                bms = CiftiReader(cope_file).brain_models()
+                vol = CiftiReader(cope_file).volume
+            c_map = c_map + cope_map
+            print(f'Finished {copes[c_idx]}-{sidx}/{n_sid}, cost: '
+                  f'{time.time()-time1} seconds.')
+        c_map = c_map / n_sid_valid
+        out_maps.append(c_map)
+        log_handle.write(f'n_sid_valid of {copes[c_idx]}: {n_sid_valid}\n')
+    out_maps = np.array(out_maps)
+
+    # save out
+    save2cifti(out_file, out_maps, bms, copes, vol)
+
+
 if __name__ == '__main__':
     # get_category_prob_map(thr=2.3)
-    summary_category_prob_map(
-        fpath=pjoin(work_dir, 'HCPY-category_prob-map_thr2.3.dscalar.nii'),
-        methods=['MPM', 'count', 'animate'], thr=0.2
-    )
+    # summary_category_prob_map(
+    #     fpath=pjoin(work_dir, 'HCPY-category_prob-map_thr2.3.dscalar.nii'),
+    #     methods=['MPM', 'count', 'animate'], thr=0.2
+    # )
+    get_WM_cope_map()

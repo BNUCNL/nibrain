@@ -759,8 +759,72 @@ def calc_RSM9():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM10():
+    """
+    计算PC1/2和WM任务中'BODY', 'FACE', 'PLACE', 'TOOL',
+    'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map
+    在整个以及EDLV局部视觉皮层的相关
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    out_file = pjoin(work_dir, f'RSM10_MMP-vis3-{Hemi}.pkl')
+
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    pc_maps = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2, mask]
+    pc_names = ['stru-C1', 'stru-C2']
+    n_pc = len(pc_names)
+
+    # WM任务的beta map
+    reader1 = CiftiReader(pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii'))
+    cope_maps = reader1.get_data()[:, :LR_count_32k][:, mask]
+    cope_names = reader1.map_names()
+    n_cope = len(cope_names)
+
+    # get EDLV data
+    reader2 = CiftiReader(pjoin(
+        proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii'))
+    lbl_tab = reader2.label_tables()[0]
+    local2key = {}
+    for k, v in lbl_tab.items():
+        if v.label.startswith(f'{Hemi}_'):
+            local2key[v.label] = k
+    print(local2key)
+    edlv_map = reader2.get_data()[0, mask]
+    n_local = len(local2key)
+
+    # calculating
+    r_arr = np.zeros((n_pc, n_cope*(n_local+1)))
+    p_arr = np.zeros((n_pc, n_cope*(n_local+1)))
+    col_names = []
+    for pc_idx, pc_name in enumerate(pc_names):
+        pc_map = pc_maps[pc_idx]
+        col_idx = 0
+        for cope_idx, cope_name in enumerate(cope_names):
+            cope_map = cope_maps[cope_idx]
+            r, p = pearsonr(pc_map, cope_map)
+            r_arr[pc_idx, col_idx] = r
+            p_arr[pc_idx, col_idx] = p
+            col_idx += 1
+            if pc_idx == 0:
+                col_names.append(cope_name)
+            for local_name, local_key in local2key.items():
+                local_mask = edlv_map == local_key
+                r, p = pearsonr(pc_map[local_mask], cope_map[local_mask])
+                r_arr[pc_idx, col_idx] = r
+                p_arr[pc_idx, col_idx] = p
+                col_idx += 1
+                if pc_idx == 0:
+                    col_names.append(f'{local_name}_{cope_name}')
+
+    data = {'row_name': pc_names, 'col_name': col_names}
+    data['r'], data['p'] = r_arr, p_arr
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -795,3 +859,4 @@ if __name__ == '__main__':
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
     # calc_RSM9()
+    calc_RSM10()

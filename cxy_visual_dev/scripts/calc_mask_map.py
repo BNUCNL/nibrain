@@ -216,8 +216,8 @@ def make_mask6():
 
 
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -248,25 +248,33 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-myelin_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-myelin_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-thickness_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-curv_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-curv_mean_MMP-vis3.dscalar.nii')
+    # )
+
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
     mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean.dscalar.nii'),
+        src_file=pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY-myelin_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-myelin_mean_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY-thickness_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'summary_map/HCPY-curv_mean.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-curv_mean_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'tfMRI-WN-cope_MMP-vis3.dscalar.nii')
     )
 
     # make_mask1(N=2)
