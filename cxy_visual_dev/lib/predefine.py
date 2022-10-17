@@ -7,7 +7,7 @@ from os.path import join as pjoin
 from magicbox.io.io import CiftiReader
 
 
-proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
+proj_dir = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 
 # >>>CIFTI brain structure
 hemi2stru = {
@@ -43,9 +43,9 @@ R_MT_32k = 15291
 # 32k_fs_LR CIFTI<<<
 
 # >>>HCP MMP1.0
-mmp_map_file = '/nfs/p1/atlases/multimodal_glasser/surface/'\
+mmp_map_file = '/nfs/z1/atlas/multimodal_glasser/surface/'\
                'MMP_mpmLR32k.dlabel.nii'
-mmp_roilbl_file = '/nfs/p1/atlases/multimodal_glasser/roilbl_mmp.csv'
+mmp_roilbl_file = '/nfs/z1/atlas/multimodal_glasser/roilbl_mmp.csv'
 
 
 def get_name_label_of_MMP():
@@ -73,7 +73,7 @@ for name, lbl in zip(*get_name_label_of_MMP()):
 # HCP MMP1.0<<<
 
 # >>>ColeAnticevicNetPartition
-cole_net_assignment_file = '/nfs/p1/atlases/ColeAnticevicNetPartition/'\
+cole_net_assignment_file = '/nfs/z1/atlases/ColeAnticevicNetPartition/'\
     'cortex_parcel_network_assignments.mat'
 
 cole_names = ['Primary Visual', 'Secondary Visual', 'Somatomotor',
@@ -215,13 +215,13 @@ s1200_midthickness_R = pjoin(
 s1200_MedialWall = pjoin(
     s1200_avg_dir, 'Human.MedialWall_Conte69.32k_fs_LR.dlabel.nii'
 )
-s1200_group_rsfc_mat = '/nfs/m1/hcp/HCP_S1200_1003_rfMRI_MSMAll_'\
+s1200_group_rsfc_mat = '/nfs/z1/HCP/HCPYA/HCP_S1200_1003_rfMRI_MSMAll_'\
     'groupPCA_d4500ROW_zcorr.dconn.nii'
 
 dataset_name2dir = {
-    'HCPD': '/nfs/e1/HCPD',
-    'HCPY': '/nfs/m1/hcp',
-    'HCPA': '/nfs/e1/HCPA'
+    'HCPD': '/nfs/z1/HCP/HCPD',
+    'HCPY': '/nfs/z1/HCP/HCPYA',
+    'HCPA': '/nfs/z1/HCP/HCPA'
 }
 # datatset<<<
 
