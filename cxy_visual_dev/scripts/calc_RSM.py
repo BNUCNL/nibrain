@@ -5,7 +5,6 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
-from scipy.spatial.distance import cdist
 from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\

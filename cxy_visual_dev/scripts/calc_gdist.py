@@ -6,10 +6,10 @@ import nibabel as nib
 import pickle as pkl
 from os.path import join as pjoin
 from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import get_rois, proj_dir, mmp_map_file,\
-    L_offset_32k, L_count_32k, R_offset_32k, R_count_32k, LR_count_32k,\
-    hemi2stru, s1200_midthickness_L, s1200_midthickness_R, MedialWall,\
-    mmp_name2label
+from cxy_visual_dev.lib.predefine import Atlas, get_rois, proj_dir,\
+    mmp_map_file, L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
+    LR_count_32k, hemi2stru, s1200_midthickness_L, s1200_midthickness_R,\
+    MedialWall, mmp_name2label
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'gdist')
@@ -100,6 +100,42 @@ def calc_gdist1():
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def calc_gdist2(v1_gdist_file, mt_gdist_file, out_file, mt_rank=None):
+    """
+    将离V1中心的距离map和离MT中心的距离map合并（取二者中较小的距离）。
+
+    Args:
+        v1_gdist_file (str): 离V1中心的距离map
+        mt_gdist_file (str): 离MT中心的距离map
+        mt_rank (str, optional): 离MT中心距离的初始值，Defaults to None.
+            如果是None, 则从0开始。
+            如果是str, 则从该字符串指定的脑区在v1_gdist_map中的平均距离开始。
+    """
+    Hemi2loc = {
+        'L': (L_offset_32k, L_count_32k),
+        'R': (R_offset_32k, R_count_32k)}
+    atlas = Atlas('HCP-MMP')
+    reader = CiftiReader(v1_gdist_file)
+
+    v1_map = reader.get_data()[0]
+    mt_map = nib.load(mt_gdist_file).get_fdata()[0]
+    if mt_rank is not None:
+        for Hemi in ('L', 'R'):
+            offset, count = Hemi2loc[Hemi]
+            mask = atlas.get_mask(f'{Hemi}_{mt_rank}')[0]
+            init_gdist = np.mean(v1_map[mask])
+            mt_map[offset:(offset+count)] += init_gdist
+
+    data = np.zeros(LR_count_32k)
+    v1_idx_map = v1_map < mt_map
+    mt_idx_map = ~v1_idx_map
+    data[v1_idx_map] = v1_map[v1_idx_map]
+    data[mt_idx_map] = mt_map[mt_idx_map]
+    data = np.expand_dims(data, 0)
+
+    save2cifti(out_file, data, reader.brain_models())
+
+
 if __name__ == '__main__':
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
@@ -147,4 +183,25 @@ if __name__ == '__main__':
     # save2cifti(out_file, out_maps,
     #            CiftiReader(mmp_map_file).brain_models(), map_names)
 
-    calc_gdist1()
+    # calc_gdist1()
+
+    calc_gdist2(
+        v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
+        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+        out_file=pjoin(work_dir, 'gdist_src-Calc+MT.dscalar.nii'),
+        mt_rank=None)
+    calc_gdist2(
+        v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
+        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+        out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4.dscalar.nii'),
+        mt_rank='V4')
+    calc_gdist2(
+        v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
+        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+        out_file=pjoin(work_dir, 'gdist_src-OP+MT.dscalar.nii'),
+        mt_rank=None)
+    calc_gdist2(
+        v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
+        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+        out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4.dscalar.nii'),
+        mt_rank='V4')
