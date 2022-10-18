@@ -9,7 +9,7 @@ from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, get_rois, proj_dir,\
     mmp_map_file, L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     LR_count_32k, hemi2stru, s1200_midthickness_L, s1200_midthickness_R,\
-    MedialWall, mmp_name2label
+    MedialWall, mmp_name2label, hemi2Hemi
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'gdist')
@@ -136,6 +136,43 @@ def calc_gdist2(v1_gdist_file, mt_gdist_file, out_file, mt_rank=None):
     save2cifti(out_file, data, reader.brain_models())
 
 
+def calc_gdist3(seed_file, hemi, out_file):
+    """
+    在EDLV各部分内计算各顶点距种子区域的距离
+    """
+    Hemi = hemi2Hemi[hemi]
+    local_names = ['early', 'dorsal', 'lateral', 'ventral']
+    local_names = [f'{Hemi}_{i}' for i in local_names]
+    edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+
+    reader1 = CiftiReader(seed_file)
+    seed_map = reader1.get_data(hemi2stru[hemi], True)[0]
+    lbl_tab1 = reader1.label_tables()[0]
+    local2seed_key = {}
+    for k, v in lbl_tab1.items():
+        local2seed_key[v.label] = k
+
+    reader2 = CiftiReader(edlv_file)
+    edlv_map = reader2.get_data()[0]
+    lbl_tab2 = reader2.label_tables()[0]
+    local2edlv_key = {}
+    for k, v in lbl_tab2.items():
+        local2edlv_key[v.label] = k
+
+    out_map = np.ones((1, LR_count_32k)) * np.nan
+    for local_name in local_names:
+        seed_vertices = np.where(seed_map == local2seed_key[local_name])[0]
+        if Hemi == 'L':
+            src_lh, src_rh = seed_vertices, [0]
+        elif Hemi == 'R':
+            src_lh, src_rh = [0], seed_vertices
+        gdist_map = calc_gdist_map_from_src(src_lh, src_rh, None)
+        edlv_mask = edlv_map == local2edlv_key[local_name]
+        out_map[0, edlv_mask] = gdist_map[edlv_mask]
+
+    save2cifti(out_file, out_map, reader1.brain_models())
+
+
 if __name__ == '__main__':
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
@@ -185,23 +222,29 @@ if __name__ == '__main__':
 
     # calc_gdist1()
 
-    calc_gdist2(
-        v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
-        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
-        out_file=pjoin(work_dir, 'gdist_src-Calc+MT.dscalar.nii'),
-        mt_rank=None)
-    calc_gdist2(
-        v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
-        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
-        out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4.dscalar.nii'),
-        mt_rank='V4')
-    calc_gdist2(
-        v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
-        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
-        out_file=pjoin(work_dir, 'gdist_src-OP+MT.dscalar.nii'),
-        mt_rank=None)
-    calc_gdist2(
-        v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
-        mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
-        out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4.dscalar.nii'),
-        mt_rank='V4')
+    # calc_gdist2(
+    #     v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
+    #     mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT.dscalar.nii'),
+    #     mt_rank=None)
+    # calc_gdist2(
+    #     v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
+    #     mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4.dscalar.nii'),
+    #     mt_rank='V4')
+    # calc_gdist2(
+    #     v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
+    #     mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT.dscalar.nii'),
+    #     mt_rank=None)
+    # calc_gdist2(
+    #     v1_gdist_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii'),
+    #     mt_gdist_file=pjoin(work_dir, 'gdist_src-MT.dscalar.nii'),
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4.dscalar.nii'),
+    #     mt_rank='V4')
+
+    calc_gdist3(
+        seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v3_MMP-vis3-R.dlabel.nii'),
+        hemi='rh',
+        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii')
+    )
