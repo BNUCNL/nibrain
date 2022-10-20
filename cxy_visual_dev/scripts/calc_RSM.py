@@ -86,16 +86,33 @@ def calc_RSM1(mask, out_file):
     map_names.extend(['distFromCS1', 'distFromCS2', 'distFromOP', 'distFromMT'])
     maps.extend([map_dist_cs1, map_dist_cs2, map_dist_op, map_dist_mt])
 
+    # C1和C2的几何模型
+    map_dist_model1 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-Calc+MT.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model2 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-Calc+MT=V4.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model3 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-OP+MT.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model4 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-OP+MT=V4.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model5 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'observed-seed-v3'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5])
+
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)
     curv_l, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
     curv_r, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
     map_curv = np.c_[curv_l, curv_r][0, mask][None, :]
-    va_l = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
-                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+    va_l = nib.load('/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
                     'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
-    va_r = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
-                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+    va_r = nib.load('/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
                     'S1200.R.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
     map_va = np.r_[va_l[idx2v_l], va_r[idx2v_r]][mask][None, :]
     map_names.extend(['Curvature', 'VertexArea'])
@@ -823,7 +840,7 @@ def calc_RSM10():
 
 
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -858,4 +875,4 @@ if __name__ == '__main__':
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
     # calc_RSM9()
-    calc_RSM10()
+    # calc_RSM10()
