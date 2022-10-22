@@ -483,20 +483,13 @@ def get_observed_seeds(hemi='rh'):
     先在wb_view上选定点和线，然后加粗（合并1环近邻）
     """
     seed_name2vtx = {
-        'early': [25682, 25648, 25613, 25614, 25578, 25541, 25503,
-                  25463, 25422, 25380, 25338, 25295, 25251, 25206,
-                  25207, 25161, 25113, 25064, 25014, 24963, 24860,
-                  24808, 24754, 24525, 24433, 24381, 24295, 24233,
-                  24168, 24100, 24028, 24030, 24032, 24774, 24884,
-                  24989, 24481, 25089, 25137, 25184, 25230, 25275,
-                  25319, 25361, 25402, 25443, 25483, 25522, 25560,
-                  25596, 25631, 25666],
-        'dorsal': [25934, 25960, 25961, 25963, 25965, 25967, 25969,
-                   25971, 25973, 25950, 12990, 12962, 12933, 12903,
-                   12872, 12840, 12772, 12701, 12625, 12586, 12505,
-                   12463, 12376, 12333, 12381, 12383, 12384, 12431,
-                   12433, 12434, 12436, 12437, 12483, 12528, 12530,
-                   12573],
+        'early': [24963, 24860, 24808, 24754, 24525, 24433, 24381,
+                  24295, 24233, 24168, 24100, 24028, 24030, 24032,
+                  24774, 24884, 24989, 24481, 25089, 25137, 25184,
+                  25230, 25275, 25319, 25361, 25402],
+        'dorsal': [12772, 12701, 12625, 12586, 12505, 12463, 12376,
+                   12333, 12381, 12383, 12384, 12431, 12433, 12434,
+                   12436, 12437, 12483, 12528, 12530, 12573],
         'lateral': [15090, 15034, 23209, 23264, 23318, 23371, 23423,
                     23474, 23475, 23526, 23527, 23528, 23529, 23481,
                     23432, 23382, 23331, 23279, 23226, 15015, 15124,
@@ -507,13 +500,10 @@ def get_observed_seeds(hemi='rh'):
 
     Hemi = hemi2Hemi[hemi]
     mask_name = f'MMP-vis3-{Hemi}'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     hemi2geo_file = {
         'lh': s1200_midthickness_L,
         'rh': s1200_midthickness_R}
-    out_file = pjoin(work_dir, f'observed-seed-v3_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'observed-seed-v4_{mask_name}.dlabel.nii')
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
@@ -521,7 +511,7 @@ def get_observed_seeds(hemi='rh'):
     assert (1, LR_count_32k) == LR_shape
     bms = reader.brain_models()
     mmp_map = reader.get_data(hemi2stru[hemi], True)[0]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
     mask = np.zeros(hemi_shape, dtype=np.uint8)
     for roi in get_rois(mask_name):
         mask[mmp_map == mmp_name2label[roi]] = 1
@@ -546,7 +536,6 @@ def get_observed_seeds(hemi='rh'):
             color = (1, 0, 0, 1)
         lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
             seed_key, f'{Hemi}_{seed_name}', *color)
-    offset, count = hemi2offset_count[hemi]
     out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
@@ -649,9 +638,6 @@ def expand_observed_seeds1(hemi='rh'):
     """
     Hemi = hemi2Hemi[hemi]
     mask_name = f'MMP-vis3-{Hemi}'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     hemi2geo_file = {
         'lh': s1200_midthickness_L,
         'rh': s1200_midthickness_R}
@@ -660,8 +646,8 @@ def expand_observed_seeds1(hemi='rh'):
 
     local_names = ('early', 'dorsal', 'lateral', 'ventral')
     local_names = [f'{Hemi}_{i}' for i in local_names]
-    seed_file = pjoin(work_dir, f'observed-seed-v3_{mask_name}.dlabel.nii')
-    out_file = pjoin(work_dir, f'observed-seed-v3-expansion_{mask_name}.dlabel.nii')
+    seed_file = pjoin(work_dir, f'observed-seed-v4_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'observed-seed-v4-expansion_{mask_name}.dlabel.nii')
 
     # prepare map information
     reader = CiftiReader(seed_file)
@@ -672,7 +658,7 @@ def expand_observed_seeds1(hemi='rh'):
     for k, v in lbl_tab.items():
         local2key[v.label] = k
     seed_map = reader.get_data(hemi2stru[hemi], True)[0]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
 
     # get vertex neighbors
     mmp_map = CiftiReader(mmp_map_file).get_data(
@@ -692,7 +678,6 @@ def expand_observed_seeds1(hemi='rh'):
     out_maps = np.zeros((n_local, LR_count_32k), np.uint8)
     lbl_tabs = []
     map_names = []
-    offset, count = hemi2offset_count[hemi]
     for local_idx, local_name in enumerate(local_names):
         hemi_map = np.zeros(hemi_shape, np.uint8)
         base_vertices = np.where(
