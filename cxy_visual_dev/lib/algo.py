@@ -212,7 +212,7 @@ def smooth_cii(src_file, hemi, n_ring, out_file):
     bm = reader.brain_models([hemi2stru[hemi]])[0]
     offset, count = bm.index_offset, bm.index_count
     src_maps = reader.get_data(hemi2stru[hemi], True)
-    _, _, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    idx2vtx = reader.get_stru_pos(hemi2stru[hemi])[-1]
 
     # get vertex neighbors
     faces = GiftiReader(hemi2geo_file[hemi]).faces

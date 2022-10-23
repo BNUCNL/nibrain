@@ -33,11 +33,8 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
     hemi2gii = {
         'lh': s1200_midthickness_L,
         'rh': s1200_midthickness_R}
-    hemi2loc = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
 
-    mw = MedialWall()
+    mw = MedialWall(method=2)
     reader = CiftiReader(mmp_map_file)
     data = np.ones(LR_count_32k, np.float64) * np.nan
     for hemi in hemis:
@@ -46,15 +43,14 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
             continue
 
         src_vertices = np.asarray(hemi2src[hemi], np.int32)
-        trg_vertices = reader.get_data(hemi2stru[hemi])[-1]
-        trg_vertices = np.array(trg_vertices, np.int32)
+        offset, count, _, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
+        trg_vertices = np.array(idx2vtx, np.int32)
 
         gii = GiftiReader(hemi2gii[hemi])
         coords = gii.coords.astype(np.float64)
         faces = gii.faces.astype(np.int32)
         faces = mw.remove_from_faces(hemi, faces)
 
-        offset, count = hemi2loc[hemi]
         data[offset:(offset+count)] = gdist.compute_gdist(
             coords, faces, src_vertices, trg_vertices)
 
@@ -246,5 +242,10 @@ if __name__ == '__main__':
     calc_gdist3(
         seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v3_MMP-vis3-R.dlabel.nii'),
         hemi='rh',
-        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii')
+        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v3_MMP-vis3-R_new.dscalar.nii')
+    )
+    calc_gdist3(
+        seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v4_MMP-vis3-R.dlabel.nii'),
+        hemi='rh',
+        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii')
     )

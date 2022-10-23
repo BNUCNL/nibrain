@@ -9,7 +9,7 @@ from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru
 from cxy_visual_dev.lib.algo import cat_data_from_cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -102,13 +102,18 @@ def calc_RSM1(mask, out_file):
     map_dist_model5 = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'observed-seed-v3'])
-    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5])
+    map_dist_model6 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6])
 
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)
-    curv_l, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
-    curv_r, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+    curv_l = reader.get_data(hemi2stru['lh'])
+    curv_r = reader.get_data(hemi2stru['rh'])
+    idx2v_l = reader.get_stru_pos(hemi2stru['lh'])[-1]
+    idx2v_r = reader.get_stru_pos(hemi2stru['rh'])[-1]
     map_curv = np.c_[curv_l, curv_r][0, mask][None, :]
     va_l = nib.load('/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
                     'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data

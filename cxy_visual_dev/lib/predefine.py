@@ -437,8 +437,8 @@ class Atlas:
 
         elif atlas_name == 'Wang2015':
             reader = CiftiReader(wang2015_file)
-            map_L, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
-            map_R, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+            map_L = reader.get_data(hemi2stru['lh'])
+            map_R = reader.get_data(hemi2stru['rh'])
             lbl_tab = reader.label_tables()[0]
             for k in lbl_tab.keys():
                 if k == 0:
@@ -447,10 +447,10 @@ class Atlas:
             self.maps = np.c_[map_L, map_R]
             self.roi2label = wang2015_name2label
 
-        elif atlas_name == 'MMP-vis3-EDMV':
-            reader = CiftiReader(pjoin(proj_dir, 'analysis/tmp/MMP-vis3-EDMV.dlabel.nii'))
-            map_L, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
-            map_R, _, _ = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+        elif atlas_name == 'MMP-vis3-EDLV':
+            reader = CiftiReader(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii'))
+            map_L = reader.get_data(hemi2stru['lh'])
+            map_R = reader.get_data(hemi2stru['rh'])
             lbl_tab = reader.label_tables()[0]
             self.roi2label = {}
             for k in lbl_tab.keys():
@@ -522,18 +522,18 @@ class MedialWall:
         if method == 1:
             reader = CiftiReader(s1200_MedialWall)
             self.L_vertices = np.where(
-                reader.get_data(hemi2stru['lh'])[0][0] == 1
+                reader.get_data(hemi2stru['lh'])[0] == 1
             )[0].tolist()
             self.R_vertices = np.where(
-                reader.get_data(hemi2stru['rh'])[0][0] == 1
+                reader.get_data(hemi2stru['rh'])[0] == 1
             )[0].tolist()
         elif method == 2:
             reader = CiftiReader(mmp_map_file)
-            _, L_shape, L_idx2vtx = reader.get_data(hemi2stru['lh'])
+            _, _, L_shape, L_idx2vtx = reader.get_stru_pos(hemi2stru['lh'])
             self.L_vertices = sorted(
                 set(range(L_shape[0])).difference(L_idx2vtx)
             )
-            _, R_shape, R_idx2vtx = reader.get_data(hemi2stru['rh'])
+            _, _, R_shape, R_idx2vtx = reader.get_stru_pos(hemi2stru['rh'])
             self.R_vertices = sorted(
                 set(range(R_shape[0])).difference(R_idx2vtx)
             )
