@@ -9,7 +9,8 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
     mmp_map_file, s1200_avg_RFsize, s1200_avg_R2,\
     s1200_avg_curv, s1200_avg_myelin,\
-    s1200_avg_thickness, s1200_avg_corrThickness
+    s1200_avg_thickness, s1200_avg_corrThickness,\
+    s1200_avg_angle, s1200_avg_eccentricity
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -216,8 +217,8 @@ def make_mask6():
 
 
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -268,34 +269,44 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'HCPY-curv_mean_MMP-vis3.dscalar.nii')
     # )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-Calc+MT_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT=V4.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-OP+MT_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT=V4.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4_MMP-vis3.dscalar.nii')
-    )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT=V4.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT=V4.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4_MMP-vis3.dscalar.nii')
+    # )
 
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
     # mask_cii(
     #     src_file=pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii'),
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'tfMRI-WN-cope_MMP-vis3.dscalar.nii')
     # )
+    mask_cii(
+        src_file=s1200_avg_eccentricity,
+        mask=mask,
+        out_file=pjoin(work_dir, 'S1200-avg-ECC_MMP-vis3.dscalar.nii')
+    )
+    mask_cii(
+        src_file=s1200_avg_angle,
+        mask=mask,
+        out_file=pjoin(work_dir, 'S1200-avg-angle_MMP-vis3.dscalar.nii')
+    )
 
     # make_mask1(N=2)
     # make_mask1(N=3)

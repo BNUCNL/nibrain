@@ -362,16 +362,10 @@ def calc_RSM1_main(mask_name):
             )
 
     elif mask_name == 'MMP-vis3-R-dorsal':
-        # 3+16+17+18 groups
-        atlas = Atlas('HCP-MMP')
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_dorsal = edlv_map == 2
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_dorsal = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
-            get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
-        rois_dorsal = [f'R_{roi}' for roi in rois_dorsal]
-        print('MMP-vis3-R-dorsal:', rois_dorsal)
-
-        mask_dorsal = atlas.get_mask(rois_dorsal)[0]
         calc_RSM1(
             mask=mask_dorsal,
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-dorsal.pkl')
@@ -382,16 +376,10 @@ def calc_RSM1_main(mask_name):
         )
 
     elif mask_name == 'MMP-vis3-R-ventral':
-        # 4+13+14 groups (ventral)
-        atlas = Atlas('HCP-MMP')
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_ventral = edlv_map == 4
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_ventral = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
-            get_rois('MMP-vis3-G14')
-        rois_ventral = [f'R_{roi}' for roi in rois_ventral]
-        print('MMP-vis3-R-ventral:', rois_ventral)
-    
-        mask_ventral = atlas.get_mask(rois_ventral)[0]
         calc_RSM1(
             mask=mask_ventral,
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-ventral.pkl')
@@ -401,23 +389,47 @@ def calc_RSM1_main(mask_name):
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-ventral_R2.pkl')
         )
 
-    elif mask_name == 'MMP-vis3-R-middle':
-        # No.5 group (middle)
-        atlas = Atlas('HCP-MMP')
+    elif mask_name == 'MMP-vis3-R-lateral':
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_latral = edlv_map == 3
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_middle = get_rois('MMP-vis3-G5')
-        rois_middle = [f'R_{roi}' for roi in rois_middle]
-        print('MMP-vis3-R-middle:', rois_middle)
-
-        mask_middle = atlas.get_mask(rois_middle)[0]
         calc_RSM1(
-            mask=mask_middle,
-            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-middle.pkl')
+            mask=mask_latral,
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-lateral.pkl')
         )
         calc_RSM1(
-            mask=np.logical_and(R2_mask, mask_middle),
-            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-middle_R2.pkl')
+            mask=np.logical_and(R2_mask, mask_latral),
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-lateral_R2.pkl')
+        )
+
+    elif mask_name == 'MMP-vis3-R-early':
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_early = edlv_map == 1
+        R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+        calc_RSM1(
+            mask=mask_early,
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-early.pkl')
+        )
+        calc_RSM1(
+            mask=np.logical_and(R2_mask, mask_early),
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-early_R2.pkl')
+        )
+
+    elif mask_name == 'Wang2015-R':
+        mask1 = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+        # R_FEF和R_IPS5与MMP-vis3-R没有重合的部分，前者在额叶，后者本身只有3个顶点。
+        mask2 = Atlas('Wang2015').get_mask(get_rois('Wang2015-R'))[0]
+        mask_wang = np.logical_and(mask1, mask2)
+        R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+        calc_RSM1(
+            mask=mask_wang,
+            out_file=pjoin(work_dir, 'RSM1_Wang2015-R.pkl')
+        )
+        calc_RSM1(
+            mask=np.logical_and(R2_mask, mask_wang),
+            out_file=pjoin(work_dir, 'RSM1_Wang2015-R_R2.pkl')
         )
 
     else:
@@ -845,7 +857,12 @@ def calc_RSM10():
 
 
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R-early')
+    calc_RSM1_main(mask_name='MMP-vis3-R-dorsal')
+    calc_RSM1_main(mask_name='MMP-vis3-R-lateral')
+    calc_RSM1_main(mask_name='MMP-vis3-R-ventral')
+    calc_RSM1_main(mask_name='Wang2015-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
