@@ -14,7 +14,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
-    get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize, s1200_1096_myelin, s1200_1096_thickness
+    get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize, s1200_1096_myelin, s1200_1096_thickness,\
+    hemi2stru
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1, AgeSlideWindow
 from magicbox.io.io import CiftiReader, save2cifti
@@ -550,6 +551,60 @@ def PC12_fit_func2():
     fig.savefig(out_fig)
 
 
+def PC12_fit_func3():
+    """
+    用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    在整个视觉皮层以及EDLV四个部分线性拟合WM任务激活
+    """
+    Hemi = 'R'
+    vis_name = f'MMP-vis3-{Hemi}'
+    mask_names = (vis_name, f'{vis_name}-early', f'{vis_name}-dorsal',
+                  f'{vis_name}-lateral', f'{vis_name}-ventral')
+    atlas = Atlas('MMP-vis3-EDLV')
+    pc_file = pjoin(
+        anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    pc_names = ['PC1', 'PC2']
+    func_file = pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii')
+
+    n_pc = len(pc_names)
+    pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
+    reader = CiftiReader(func_file)
+    bms = reader.brain_models([hemi2stru['lh'], hemi2stru['rh']])
+    func_data = reader.get_data()[:, :LR_count_32k]
+    trg_names = reader.map_names()
+    n_trg = len(trg_names)
+    n_mask = len(mask_names)
+
+    fname1 = 'PC1+2=WM-cope'
+    out_file1 = pjoin(work_dir, f'{fname1}.pkl')
+    rs = np.zeros((n_mask, n_trg))
+    ps = np.zeros((n_mask, n_trg))
+    for mask_idx, mask_name in enumerate(mask_names):
+        fname2 = f'{fname1}_{mask_name}'
+        out_file2 = pjoin(work_dir, f'{fname2}.dscalar.nii')
+        if mask_name == vis_name:
+            mask = atlas.get_mask('R')[0]
+        else:
+            edlv_name = f"{Hemi}_{mask_name.split('-')[-1]}"
+            mask = atlas.get_mask(edlv_name)[0]
+        X = pc_maps[:, mask].T
+        out_maps = np.ones((n_trg, LR_count_32k)) * np.nan
+        for trg_idx, trg_name in enumerate(trg_names):
+            y = func_data[trg_idx, mask]
+            model = Pipeline([('preprocesser', StandardScaler()),
+                              ('regressor', LinearRegression())])
+            model.fit(X, y)
+            y_pred = model.predict(X)
+            out_maps[trg_idx, mask] = y_pred
+            r, p = pearsonr(y, y_pred)
+            rs[mask_idx, trg_idx] = r
+            ps[mask_idx, trg_idx] = p
+        save2cifti(out_file2, out_maps, bms)
+    out_data = {'row_name': mask_names, 'col_name': trg_names,
+                'r': rs, 'p': ps}
+    pkl.dump(out_data, open(out_file1, 'wb'))
+
+
 def HCPY_MT_fit_PC12():
     """
     对每个被试用其myelin和thickness map拟合PC1/2
@@ -628,4 +683,5 @@ if __name__ == '__main__':
     # PC12_fit_func()
     # PC12_fit_func1()
     # PC12_fit_func2()
-    HCPY_MT_fit_PC12()
+    PC12_fit_func3()
+    # HCPY_MT_fit_PC12()

@@ -448,18 +448,16 @@ class Atlas:
             self.roi2label = wang2015_name2label
 
         elif atlas_name == 'MMP-vis3-EDLV':
-            reader = CiftiReader(pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii'))
-            map_L = reader.get_data(hemi2stru['lh'])
-            map_R = reader.get_data(hemi2stru['rh'])
+            reader = CiftiReader(pjoin(
+                proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii'
+            ))
             lbl_tab = reader.label_tables()[0]
             self.roi2label = {}
             for k in lbl_tab.keys():
                 if k == 0:
                     continue
-                self.roi2label[f'R_{lbl_tab[k].label}'] = k
-                self.roi2label[f'L_{lbl_tab[k].label}'] = k + 4
-                map_L[map_L == k] = k + 4
-            self.maps = np.c_[map_L, map_R]
+                self.roi2label[lbl_tab[k].label] = k
+            self.maps = reader.get_data()
 
         else:
             raise ValueError(f'{atlas_name} is not supported at present!')
