@@ -105,8 +105,11 @@ def calc_RSM1(mask, out_file):
     map_dist_model6 = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4'])
-    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6])
+    map_dist_model7 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6, map_dist_model7])
 
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)
@@ -794,9 +797,14 @@ def calc_RSM9():
 
 def calc_RSM10():
     """
-    计算PC1/2和WM任务中'BODY', 'FACE', 'PLACE', 'TOOL',
-    'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map
-    在整个以及EDLV局部视觉皮层的相关
+    计算PC1/2和WM任务中'BODY', 'FACE', 'PLACE', 'TOOL', 'AVG',
+    'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map,
+    以及fALFF在整个以及EDLV局部视觉皮层的相关
+
+    注意，这里的AVG是直接基于BODY, FACE, PLACE, 和TOOL
+        四个被试间平均map做平均。与BODY-AVG等里的AVG不是一回事
+        由于拥有这四个条件的被试应该是一致的。所以这里直接基于被试间平均map做平均和
+        先基于单个被试做平均，然后跨被试平均是一样的。
     """
     Hemi = 'R'
     mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
@@ -809,10 +817,14 @@ def calc_RSM10():
     pc_names = ['stru-C1', 'stru-C2']
     n_pc = len(pc_names)
 
-    # WM任务的beta map
-    reader1 = CiftiReader(pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii'))
+    # WM任务的beta map（混入fALFF）
+    reader1 = CiftiReader(pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii'))
     cope_maps = reader1.get_data()[:, :LR_count_32k][:, mask]
     cope_names = reader1.map_names()
+    reader3 = CiftiReader(pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'))
+    map_falff = reader3.get_data()[0, :LR_count_32k][mask]
+    cope_maps = np.r_[cope_maps, map_falff[None, :]]
+    cope_names.append(f'fA{reader3.map_names()[0]}')
     n_cope = len(cope_names)
 
     # get EDLV data
@@ -857,12 +869,12 @@ def calc_RSM10():
 
 
 if __name__ == '__main__':
-    # calc_RSM1_main(mask_name='MMP-vis3-R')
-    calc_RSM1_main(mask_name='MMP-vis3-R-early')
-    calc_RSM1_main(mask_name='MMP-vis3-R-dorsal')
-    calc_RSM1_main(mask_name='MMP-vis3-R-lateral')
-    calc_RSM1_main(mask_name='MMP-vis3-R-ventral')
-    calc_RSM1_main(mask_name='Wang2015-R')
+    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-early')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-dorsal')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-lateral')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-ventral')
+    # calc_RSM1_main(mask_name='Wang2015-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2

@@ -169,6 +169,44 @@ def calc_gdist3(seed_file, hemi, out_file):
     save2cifti(out_file, out_map, reader1.brain_models())
 
 
+def calc_gdist4(seed_file, hemi, out_file):
+    """
+    Calculate the minimum geodesic distance from each vertex
+    to the four seeds (EDLV).
+    """
+    Hemi = hemi2Hemi[hemi]
+    local_names = ['early', 'dorsal', 'lateral', 'ventral']
+    local_names = [f'{Hemi}_{i}' for i in local_names]
+
+    reader1 = CiftiReader(seed_file)
+    seed_map = reader1.get_data(hemi2stru[hemi], True)[0]
+    lbl_tab1 = reader1.label_tables()[0]
+    local2seed_key = {}
+    for k, v in lbl_tab1.items():
+        local2seed_key[v.label] = k
+
+    out_maps = np.zeros((len(local_names), LR_count_32k))
+    for local_idx, local_name in enumerate(local_names):
+        seed_vertices = np.where(seed_map == local2seed_key[local_name])[0]
+        if Hemi == 'L':
+            src_lh, src_rh = seed_vertices, [0]
+        elif Hemi == 'R':
+            src_lh, src_rh = [0], seed_vertices
+        gdist_map = calc_gdist_map_from_src(src_lh, src_rh, None)
+        out_maps[local_idx] = gdist_map
+    out_map = np.min(out_maps, axis=0, keepdims=True)
+
+    save2cifti(out_file, out_map, reader1.brain_models())
+
+
+def calc_gdist5(seed_file, hemi, out_file):
+    """
+    Calculate the minimum geodesic distance from each vertex
+    to all non-zeros vertices.
+    """
+    pass
+
+
 if __name__ == '__main__':
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_CalcarineSulcus.label')),
@@ -239,13 +277,28 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4.dscalar.nii'),
     #     mt_rank='V4')
 
-    calc_gdist3(
-        seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v3_MMP-vis3-R.dlabel.nii'),
+    # calc_gdist3(
+    #     seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v3_MMP-vis3-R.dlabel.nii'),
+    #     hemi='rh',
+    #     out_file=pjoin(work_dir, 'gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii')
+    # )
+    # calc_gdist3(
+    #     seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v4_MMP-vis3-R.dlabel.nii'),
+    #     hemi='rh',
+    #     out_file=pjoin(work_dir, 'gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii')
+    # )
+    # calc_gdist4(
+    #     seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v4_MMP-vis3-R.dlabel.nii'),
+    #     hemi='rh',
+    #     out_file=pjoin(work_dir, 'gdist4_src-observed-seed-v4_R.dscalar.nii')
+    # )
+    # calc_gdist4(
+    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v1_R.dlabel.nii'),
+    #     hemi='rh',
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_R.dscalar.nii')
+    # )
+    calc_gdist4(
+        seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v2_R.dlabel.nii'),
         hemi='rh',
-        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v3_MMP-vis3-R_new.dscalar.nii')
-    )
-    calc_gdist3(
-        seed_file=pjoin(anal_dir, 'divide_map/observed-seed-v4_MMP-vis3-R.dlabel.nii'),
-        hemi='rh',
-        out_file=pjoin(work_dir, 'gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii')
+        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v2_R.dscalar.nii')
     )

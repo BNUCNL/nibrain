@@ -154,8 +154,8 @@ def get_WM_cope_map():
                           'Contrasts.txt')
     cope_files = pjoin(
         feat_dir, 'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
-    out_file = pjoin(work_dir, 'tfMRI-WN-cope.dscalar.nii')
-    log_file = pjoin(work_dir, 'tfMRI-WN-cope_log')
+    out_file = pjoin(work_dir, 'tfMRI-WM-cope.dscalar.nii')
+    log_file = pjoin(work_dir, 'tfMRI-WM-cope_log')
 
     sids = pd.read_csv(subj_file)['subID'].values
     n_sid = len(sids)
@@ -195,10 +195,32 @@ def get_WM_cope_map():
     save2cifti(out_file, out_maps, bms, copes, vol)
 
 
+def add_avg_for_WM_cope_map():
+    """
+    这里的AVG是直接基于BODY, FACE, PLACE, 和TOOL
+    四个被试间平均map做平均。由于拥有这四个条件的被试应该是一致的。
+    所以这里直接基于被试间平均map做平均和
+    先基于单个被试做平均，然后跨被试平均是一样的。
+    """
+    copes = ['BODY', 'FACE', 'PLACE', 'TOOL']
+    cope_file = pjoin(work_dir, 'tfMRI-WM-cope.dscalar.nii')
+    reader = CiftiReader(cope_file)
+    bms = reader.brain_models()
+    vol = reader.volume
+    cope_maps = reader.get_data()
+    map_names = reader.map_names()
+    cope_indices = [map_names.index(i) for i in copes]
+    avg_map = np.mean(cope_maps[cope_indices], 0, keepdims=True)
+    cope_maps = np.r_[cope_maps, avg_map]
+    map_names.append('AVG')
+    save2cifti(cope_file, cope_maps, bms, map_names, vol)
+
+
 if __name__ == '__main__':
     # get_category_prob_map(thr=2.3)
     # summary_category_prob_map(
     #     fpath=pjoin(work_dir, 'HCPY-category_prob-map_thr2.3.dscalar.nii'),
     #     methods=['MPM', 'count', 'animate'], thr=0.2
     # )
-    get_WM_cope_map()
+    # get_WM_cope_map()
+    add_avg_for_WM_cope_map()

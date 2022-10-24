@@ -554,7 +554,7 @@ def PC12_fit_func2():
 def PC12_fit_func3():
     """
     用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
-    在整个视觉皮层以及EDLV四个部分线性拟合WM任务激活
+    在整个视觉皮层以及EDLV四个部分线性拟合WM任务激活+fALFF
     """
     Hemi = 'R'
     vis_name = f'MMP-vis3-{Hemi}'
@@ -564,7 +564,8 @@ def PC12_fit_func3():
     pc_file = pjoin(
         anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     pc_names = ['PC1', 'PC2']
-    func_file = pjoin(anal_dir, 'tfMRI/tfMRI-WN-cope.dscalar.nii')
+    func_file = pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii')
+    faff_file = pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii')
 
     n_pc = len(pc_names)
     pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
@@ -572,10 +573,13 @@ def PC12_fit_func3():
     bms = reader.brain_models([hemi2stru['lh'], hemi2stru['rh']])
     func_data = reader.get_data()[:, :LR_count_32k]
     trg_names = reader.map_names()
+    falff_map = nib.load(faff_file).get_fdata()[[0], :LR_count_32k]
+    func_data = np.r_[func_data, falff_map]
+    trg_names.append('fALFF')
     n_trg = len(trg_names)
     n_mask = len(mask_names)
 
-    fname1 = 'PC1+2=WM-cope'
+    fname1 = 'PC1+2=func3'
     out_file1 = pjoin(work_dir, f'{fname1}.pkl')
     rs = np.zeros((n_mask, n_trg))
     ps = np.zeros((n_mask, n_trg))
