@@ -5,7 +5,7 @@ from os.path import join as pjoin
 from scipy.stats.stats import sem
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import proj_dir,\
-    s1200_1096_thickness, s1200_1096_myelin
+    s1200_1096_curv, s1200_1096_thickness
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'summary_map')
@@ -17,6 +17,25 @@ def make_mean_map(src_file, out_file):
     reader = CiftiReader(src_file)
     data = np.nanmean(reader.get_data(), 0, keepdims=True)
     save2cifti(out_file, data, reader.brain_models(), volume=reader.volume)
+
+
+def make_mean_map1():
+    """
+    仅用于计算和存出1069个被试的thickness和curv的平均map
+    """
+    src_files = (s1200_1096_thickness, s1200_1096_curv)
+    out_files = (pjoin(work_dir, 'HCPY-thickness_mean.dscalar.nii'),
+                 pjoin(work_dir, 'HCPY-curv_mean.dscalar.nii'))
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    info_df = pd.read_csv(info_file)
+    indices = info_df['1096_idx'].values
+
+    for src_file, out_file in zip(src_files, out_files):
+        reader = CiftiReader(src_file)
+        data = reader.get_data()[indices]
+        print(data.shape)
+        data = np.mean(data, 0, keepdims=True)
+        save2cifti(out_file, data, reader.brain_models())
 
 
 def make_age_maps(src_file, info_file, age_name, metric, out_file,
@@ -93,14 +112,6 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength1_mean.dscalar.nii')
     # )
     # make_mean_map(
-    #     src_file=s1200_1096_myelin,
-    #     out_file=pjoin(work_dir, 'HCPY-myelin_mean.dscalar.nii')
-    # )
-    # make_mean_map(
-    #     src_file=s1200_1096_thickness,
-    #     out_file=pjoin(work_dir, 'HCPY-thickness_mean.dscalar.nii')
-    # )
-    # make_mean_map(
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-GBC_cortex.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPY-GBC_cortex_mean.dscalar.nii')
     # )
@@ -120,6 +131,15 @@ if __name__ == '__main__':
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPY-FC-strength_R.dscalar.nii'),
     #     out_file=pjoin(work_dir, 'HCPY-FC-strength_R_mean.dscalar.nii')
     # )
+    make_mean_map(
+        src_file=pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPY-corrThickness_mean.dscalar.nii')
+    )
+    make_mean_map(
+        src_file=pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
+        out_file=pjoin(work_dir, 'HCPY-myelin_mean.dscalar.nii')
+    )
+    make_mean_map1()
 
     # make_age_maps(
     #     src_file=pjoin(proj_dir, 'data/HCP/HCPD_thickness.dscalar.nii'),

@@ -3,13 +3,13 @@ import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from magicbox.io.io import GiftiReader, CiftiReader, save2cifti
-from magicbox.algorithm.graph import bfs
-from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
+from magicbox.graph.tool import bfs
+from magicbox.graph.triangular_mesh import get_n_ring_neighbor
 from cxy_visual_dev.lib.predefine import proj_dir, mmp_name2label,\
     mmp_map_file, hemi2stru, hemi2Hemi, s1200_midthickness_L,\
     s1200_midthickness_R, MedialWall, L_OccipitalPole_32k,\
     R_OccipitalPole_32k, L_MT_32k, R_MT_32k, get_rois, Atlas,\
-    s1200_group_rsfc_mat
+    s1200_group_rsfc_mat, LR_count_32k
 
 
 def get_calcarine_sulcus(hemi):
@@ -167,10 +167,78 @@ def process_HCPYA_grp_rsfc_mat():
     save2cifti(out_file, data, bms, volume=vol)
 
 
+def make_EDLV_dlabel():
+    """
+    依据HCP MMP的22组，将HCP-MMP-visual3分成四份：
+    Early: Group1+2
+    Dorsal: Group3+16+17+18
+    Lateral: Group5
+    Ventral: Group4+13+14
+    将其制作成.dlabel.nii文件
+    """
+    reader = CiftiReader(mmp_map_file)
+    atlas = Atlas('HCP-MMP')
+    out_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+
+    data = np.zeros((1, LR_count_32k), np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+
+    # early
+    rois_early = get_rois('MMP-vis3-G1') + get_rois('MMP-vis3-G2')
+
+    rois_early_R = [f'R_{roi}' for roi in rois_early]
+    data[atlas.get_mask(rois_early_R)] = 1
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'R_early', 0.84, 0.84, 0.84, 1)
+
+    rois_early_L = [f'L_{roi}' for roi in rois_early]
+    data[atlas.get_mask(rois_early_L)] = 5
+    lbl_tab[5] = nib.cifti2.Cifti2Label(5, 'L_early', 0.84, 0.84, 0.84, 1)
+
+    # dorsal
+    rois_dorsal = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
+        get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
+
+    rois_dorsal_R = [f'R_{roi}' for roi in rois_dorsal]
+    data[atlas.get_mask(rois_dorsal_R)] = 2
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'R_dorsal', 0.38, 0.85, 0.21, 1)
+
+    rois_dorsal_L = [f'L_{roi}' for roi in rois_dorsal]
+    data[atlas.get_mask(rois_dorsal_L)] = 6
+    lbl_tab[6] = nib.cifti2.Cifti2Label(6, 'L_dorsal', 0.38, 0.85, 0.21, 1)
+
+    # lateral
+    rois_lateral = get_rois('MMP-vis3-G5')
+
+    rois_lateral_R = [f'R_{roi}' for roi in rois_lateral]
+    data[atlas.get_mask(rois_lateral_R)] = 3
+    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'R_lateral', 0, 0.46, 0.73, 1)
+
+    rois_lateral_L = [f'L_{roi}' for roi in rois_lateral]
+    data[atlas.get_mask(rois_lateral_L)] = 7
+    lbl_tab[7] = nib.cifti2.Cifti2Label(7, 'L_lateral', 0, 0.46, 0.73, 1)
+
+    # ventral
+    rois_ventral = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
+        get_rois('MMP-vis3-G14')
+
+    rois_ventral_R = [f'R_{roi}' for roi in rois_ventral]
+    data[atlas.get_mask(rois_ventral_R)] = 4
+    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'R_ventral', 0.80, 0.16, 0.48, 1)
+
+    rois_ventral_L = [f'L_{roi}' for roi in rois_ventral]
+    data[atlas.get_mask(rois_ventral_L)] = 8
+    lbl_tab[8] = nib.cifti2.Cifti2Label(8, 'L_ventral', 0.80, 0.16, 0.48, 1)
+
+    # save out
+    save2cifti(out_file, data, reader.brain_models(), label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # get_calcarine_sulcus(hemi='lh')
     # get_calcarine_sulcus(hemi='rh')
     # get_OpMt_line(hemi='lh')
     # get_OpMt_line(hemi='rh')
     # modify_wang2015()
-    process_HCPYA_grp_rsfc_mat()
+    # process_HCPYA_grp_rsfc_mat()
+    make_EDLV_dlabel()

@@ -310,16 +310,16 @@ def summary_subj_info(data_flag):
 
 if __name__ == '__main__':
     # >>>check_rfMRI_file
-    # subj_par = '/nfs/m1/hcp'
-    # df = pd.read_csv(pjoin(subj_par, 'S1200_behavior.csv'), usecols=['Subject'])
-    # subj_ids = [str(i) for i in df['Subject']]
-    # check_rfMRI_file(
-    #     subj_par=subj_par, subj_ids=subj_ids,
-    #     stem_path='MNINonLinear/Results',
-    #     base_path='rfMRI_REST*/'
-    #               'rfMRI_REST*_Atlas_MSMAll_hp2000_clean.dtseries.nii',
-    #     out_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
-    # )
+    subj_par = '/nfs/z1/HCP/HCPYA'
+    df = pd.read_csv(pjoin(subj_par, 'S1200_behavior.csv'), usecols=['Subject'])
+    subj_ids = [str(i) for i in df['Subject']]
+    check_rfMRI_file(
+        subj_par=subj_par, subj_ids=subj_ids,
+        stem_path='MNINonLinear/Results',
+        base_path='rfMRI_REST*/'
+                  'rfMRI_REST*_Atlas_MSMAll_hp2000_clean.dtseries.nii',
+        out_file=pjoin(work_dir, 'HCPY_rfMRI_file_check_z1.tsv')
+    )
 
     # subj_par = '/nfs/e1/HCPD/fmriresults01'
     # df = pd.read_csv('/nfs/e1/HCPD/HCPD_SubjInfo.csv')
@@ -381,7 +381,7 @@ if __name__ == '__main__':
     # get_subject_info_from_completeness('HCPA')
     # get_subject_info_for_HCPY()
 
-    summary_subj_info(data_flag='HCPY-myelin')
+    # summary_subj_info(data_flag='HCPY-myelin')
     # summary_subj_info(data_flag='HCPD-myelin')
     # summary_subj_info(data_flag='HCPA-myelin')
     # summary_subj_info(data_flag='HCPY-rfMRI')

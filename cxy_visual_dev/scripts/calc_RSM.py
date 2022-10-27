@@ -5,12 +5,11 @@ import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from scipy.stats import pearsonr
-from scipy.spatial.distance import cdist
 from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru
 from cxy_visual_dev.lib.algo import cat_data_from_cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -87,16 +86,41 @@ def calc_RSM1(mask, out_file):
     map_names.extend(['distFromCS1', 'distFromCS2', 'distFromOP', 'distFromMT'])
     maps.extend([map_dist_cs1, map_dist_cs2, map_dist_op, map_dist_mt])
 
+    # C1和C2的几何模型
+    map_dist_model1 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-Calc+MT.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model2 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-Calc+MT=V4.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model3 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-OP+MT.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model4 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-OP+MT=V4.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model5 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-observed-seed-v3_MMP-vis3-R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model6 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist_src-observed-seed-v4_MMP-vis3-R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_dist_model7 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6, map_dist_model7])
+
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)
-    curv_l, _, idx2v_l = reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT')
-    curv_r, _, idx2v_r = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT')
+    curv_l = reader.get_data(hemi2stru['lh'])
+    curv_r = reader.get_data(hemi2stru['rh'])
+    idx2v_l = reader.get_stru_pos(hemi2stru['lh'])[-1]
+    idx2v_r = reader.get_stru_pos(hemi2stru['rh'])[-1]
     map_curv = np.c_[curv_l, curv_r][0, mask][None, :]
-    va_l = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
-                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+    va_l = nib.load('/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
                     'S1200.L.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
-    va_r = nib.load('/nfs/p1/public_dataset/datasets/hcp/DATA/'
-                    'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
+    va_r = nib.load('/nfs/z1/HCP/HCPYA/HCP_S1200_GroupAvg_v1/'
                     'S1200.R.midthickness_MSMAll_va.32k_fs_LR.shape.gii').darrays[0].data
     map_va = np.r_[va_l[idx2v_l], va_r[idx2v_r]][mask][None, :]
     map_names.extend(['Curvature', 'VertexArea'])
@@ -341,16 +365,10 @@ def calc_RSM1_main(mask_name):
             )
 
     elif mask_name == 'MMP-vis3-R-dorsal':
-        # 3+16+17+18 groups
-        atlas = Atlas('HCP-MMP')
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_dorsal = edlv_map == 2
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_dorsal = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
-            get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
-        rois_dorsal = [f'R_{roi}' for roi in rois_dorsal]
-        print('MMP-vis3-R-dorsal:', rois_dorsal)
-
-        mask_dorsal = atlas.get_mask(rois_dorsal)[0]
         calc_RSM1(
             mask=mask_dorsal,
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-dorsal.pkl')
@@ -361,16 +379,10 @@ def calc_RSM1_main(mask_name):
         )
 
     elif mask_name == 'MMP-vis3-R-ventral':
-        # 4+13+14 groups (ventral)
-        atlas = Atlas('HCP-MMP')
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_ventral = edlv_map == 4
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_ventral = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
-            get_rois('MMP-vis3-G14')
-        rois_ventral = [f'R_{roi}' for roi in rois_ventral]
-        print('MMP-vis3-R-ventral:', rois_ventral)
-    
-        mask_ventral = atlas.get_mask(rois_ventral)[0]
         calc_RSM1(
             mask=mask_ventral,
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-ventral.pkl')
@@ -380,23 +392,47 @@ def calc_RSM1_main(mask_name):
             out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-ventral_R2.pkl')
         )
 
-    elif mask_name == 'MMP-vis3-R-middle':
-        # No.5 group (middle)
-        atlas = Atlas('HCP-MMP')
+    elif mask_name == 'MMP-vis3-R-lateral':
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_latral = edlv_map == 3
         R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
-
-        rois_middle = get_rois('MMP-vis3-G5')
-        rois_middle = [f'R_{roi}' for roi in rois_middle]
-        print('MMP-vis3-R-middle:', rois_middle)
-
-        mask_middle = atlas.get_mask(rois_middle)[0]
         calc_RSM1(
-            mask=mask_middle,
-            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-middle.pkl')
+            mask=mask_latral,
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-lateral.pkl')
         )
         calc_RSM1(
-            mask=np.logical_and(R2_mask, mask_middle),
-            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-middle_R2.pkl')
+            mask=np.logical_and(R2_mask, mask_latral),
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-lateral_R2.pkl')
+        )
+
+    elif mask_name == 'MMP-vis3-R-early':
+        edlv_file = pjoin(proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii')
+        edlv_map = nib.load(edlv_file).get_fdata()[0]
+        mask_early = edlv_map == 1
+        R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+        calc_RSM1(
+            mask=mask_early,
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-early.pkl')
+        )
+        calc_RSM1(
+            mask=np.logical_and(R2_mask, mask_early),
+            out_file=pjoin(work_dir, 'RSM1_MMP-vis3-R-early_R2.pkl')
+        )
+
+    elif mask_name == 'Wang2015-R':
+        mask1 = Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]
+        # R_FEF和R_IPS5与MMP-vis3-R没有重合的部分，前者在额叶，后者本身只有3个顶点。
+        mask2 = Atlas('Wang2015').get_mask(get_rois('Wang2015-R'))[0]
+        mask_wang = np.logical_and(mask1, mask2)
+        R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
+        calc_RSM1(
+            mask=mask_wang,
+            out_file=pjoin(work_dir, 'RSM1_Wang2015-R.pkl')
+        )
+        calc_RSM1(
+            mask=np.logical_and(R2_mask, mask_wang),
+            out_file=pjoin(work_dir, 'RSM1_Wang2015-R_R2.pkl')
         )
 
     else:
@@ -759,8 +795,86 @@ def calc_RSM9():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def calc_RSM10():
+    """
+    计算PC1/2和WM任务中'BODY', 'FACE', 'PLACE', 'TOOL', 'AVG',
+    'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map,
+    以及fALFF在整个以及EDLV局部视觉皮层的相关
+
+    注意，这里的AVG是直接基于BODY, FACE, PLACE, 和TOOL
+        四个被试间平均map做平均。与BODY-AVG等里的AVG不是一回事
+        由于拥有这四个条件的被试应该是一致的。所以这里直接基于被试间平均map做平均和
+        先基于单个被试做平均，然后跨被试平均是一样的。
+    """
+    Hemi = 'R'
+    mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+    out_file = pjoin(work_dir, f'RSM10_MMP-vis3-{Hemi}.pkl')
+
+    # 结构梯度的PC1, PC2: stru-C1, stru-C2;
+    pc_maps = nib.load(pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+    )).get_fdata()[:2, mask]
+    pc_names = ['stru-C1', 'stru-C2']
+    n_pc = len(pc_names)
+
+    # WM任务的beta map（混入fALFF）
+    reader1 = CiftiReader(pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii'))
+    cope_maps = reader1.get_data()[:, :LR_count_32k][:, mask]
+    cope_names = reader1.map_names()
+    reader3 = CiftiReader(pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'))
+    map_falff = reader3.get_data()[0, :LR_count_32k][mask]
+    cope_maps = np.r_[cope_maps, map_falff[None, :]]
+    cope_names.append(f'fA{reader3.map_names()[0]}')
+    n_cope = len(cope_names)
+
+    # get EDLV data
+    reader2 = CiftiReader(pjoin(
+        proj_dir, 'data/HCP/HCP-MMP1_visual-cortex3_EDLV.dlabel.nii'))
+    lbl_tab = reader2.label_tables()[0]
+    local2key = {}
+    for k, v in lbl_tab.items():
+        if v.label.startswith(f'{Hemi}_'):
+            local2key[v.label] = k
+    print(local2key)
+    edlv_map = reader2.get_data()[0, mask]
+    n_local = len(local2key)
+
+    # calculating
+    r_arr = np.zeros((n_pc, n_cope*(n_local+1)))
+    p_arr = np.zeros((n_pc, n_cope*(n_local+1)))
+    col_names = []
+    for pc_idx, pc_name in enumerate(pc_names):
+        pc_map = pc_maps[pc_idx]
+        col_idx = 0
+        for cope_idx, cope_name in enumerate(cope_names):
+            cope_map = cope_maps[cope_idx]
+            r, p = pearsonr(pc_map, cope_map)
+            r_arr[pc_idx, col_idx] = r
+            p_arr[pc_idx, col_idx] = p
+            col_idx += 1
+            if pc_idx == 0:
+                col_names.append(cope_name)
+            for local_name, local_key in local2key.items():
+                local_mask = edlv_map == local_key
+                r, p = pearsonr(pc_map[local_mask], cope_map[local_mask])
+                r_arr[pc_idx, col_idx] = r
+                p_arr[pc_idx, col_idx] = p
+                col_idx += 1
+                if pc_idx == 0:
+                    col_names.append(f'{local_name}_{cope_name}')
+
+    data = {'row_name': pc_names, 'col_name': col_names}
+    data['r'], data['p'] = r_arr, p_arr
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-early')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-dorsal')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-lateral')
+    # calc_RSM1_main(mask_name='MMP-vis3-R-ventral')
+    # calc_RSM1_main(mask_name='Wang2015-R')
 
     # >>>MMP-vis3-R PC1层级mask
     # N = 2
@@ -795,3 +909,4 @@ if __name__ == '__main__':
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
     # calc_RSM9()
+    # calc_RSM10()

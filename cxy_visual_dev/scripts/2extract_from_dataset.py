@@ -14,7 +14,8 @@ from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, get_rois,\
     mmp_map_file, dataset_name2dir, All_count_32k, proj_dir, hemi2Hemi,\
     L_offset_32k, L_count_32k, R_count_32k, R_offset_32k, hemi2stru,\
-    s1200_1096_myelin, s1200_1096_corrThickness
+    s1200_1096_myelin, s1200_1096_corrThickness, s1200_1096_thickness,\
+    s1200_1096_curv
 from cxy_visual_dev.lib.algo import calc_alff
 
 work_dir = pjoin(proj_dir, 'data/HCP')
@@ -1093,14 +1094,14 @@ if __name__ == '__main__':
 
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
-    get_HCPY_morph(
-        src_file=s1200_1096_myelin,
-        out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
-    )
-    get_HCPY_morph(
-        src_file=s1200_1096_corrThickness,
-        out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
-    )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_myelin,
+    #     out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
+    # )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_corrThickness,
+    #     out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
+    # )
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')

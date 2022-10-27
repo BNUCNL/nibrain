@@ -9,7 +9,10 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     Atlas, get_rois, All_count_32k, LR_count_32k,\
     mmp_map_file, s1200_avg_RFsize, s1200_avg_R2,\
     s1200_avg_curv, s1200_avg_myelin,\
-    s1200_avg_thickness, s1200_avg_corrThickness
+    s1200_avg_thickness, s1200_avg_corrThickness,\
+    s1200_avg_angle, s1200_avg_eccentricity,\
+    hemi2Hemi, hemi2stru, s1200_midthickness_L,\
+    s1200_midthickness_R
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -215,9 +218,53 @@ def make_mask6():
     save2cifti(out_file, out_map, reader.brain_models(), label_tables=[lbl_tab])
 
 
+def make_mask7():
+    """
+    直接指定某些顶点为某个ROI
+    """
+    hemi = 'rh'
+    Hemi = hemi2Hemi[hemi]
+
+    # seed_name2vtx = {
+    #     'early': [24938, 24433],
+    #     'dorsal': [12442, 12586],
+    #     'lateral': [23526, 15523],
+    #     'ventral': [21501, 22485]}
+    # color = (1, 0, 0, 1)
+    # out_file = pjoin(work_dir, f'EDLV-seed-v1_{Hemi}.dlabel.nii')
+
+    seed_name2vtx = {
+        'early': [24938, 24433],
+        'dorsal': [12442, 12586],
+        'lateral': [15241],
+        'ventral': [21501, 22485]}
+    color = (1, 0, 0, 1)
+    out_file = pjoin(work_dir, f'EDLV-seed-v2_{Hemi}.dlabel.nii')
+
+    # prepare atlas information
+    reader = CiftiReader(mmp_map_file)
+    LR_shape = reader.full_data.shape
+    assert (1, LR_count_32k) == LR_shape
+    bms = reader.brain_models()
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
+
+    # save out
+    out_map = np.zeros(LR_shape, dtype=np.uint8)
+    lbl_tab = nib.cifti2.Cifti2LabelTable()
+    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
+    for seed_key, seed_name in enumerate(seed_name2vtx.keys(), 1):
+        seed_vertices = seed_name2vtx[seed_name]
+        hemi_map[seed_vertices] = seed_key
+        lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
+            seed_key, f'{Hemi}_{seed_name}', *color)
+    out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
+    save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -248,21 +295,81 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'MMP-vis3_ring1-CS1_R_width5_mask-MMP-vis3.dlabel.nii')
     # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-corrThickness_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-corrThickness_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-myelin_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-myelin_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-thickness_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-thickness_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'summary_map/HCPY-curv_mean.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-curv_mean_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-Calc+MT=V4.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-Calc+MT=V4_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-OP+MT=V4.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4_MMP-vis3.dscalar.nii')
+    # )
+
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'tfMRI-WM-cope_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=s1200_avg_eccentricity,
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'S1200-avg-ECC_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=s1200_avg_angle,
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'S1200-avg-angle_MMP-vis3.dscalar.nii')
+    # )
+
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist4_src-observed-seed-v4_MMP-vis3-R.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v1_R.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3-R.dscalar.nii')
+    # )
     mask_cii(
-        src_file=s1200_avg_curv, mask=mask,
-        out_file=pjoin(work_dir, 's1200-avg-curv_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=s1200_avg_myelin, mask=mask,
-        out_file=pjoin(work_dir, 's1200-avg-myelin_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=s1200_avg_thickness, mask=mask,
-        out_file=pjoin(work_dir, 's1200-avg-thickness_MMP-vis3.dscalar.nii')
-    )
-    mask_cii(
-        src_file=s1200_avg_corrThickness, mask=mask,
-        out_file=pjoin(work_dir, 's1200-avg-corrThickness_MMP-vis3.dscalar.nii')
+        src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v2_R.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v2_MMP-vis3-R.dscalar.nii')
     )
 
     # make_mask1(N=2)
@@ -271,6 +378,7 @@ if __name__ == '__main__':
     # make_mask2()
     # make_mask3()
     # make_mask6()
+    # make_mask7()
 
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8

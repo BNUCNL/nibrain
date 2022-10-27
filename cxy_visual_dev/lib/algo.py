@@ -12,11 +12,13 @@ from sklearn.decomposition import PCA, FactorAnalysis, DictionaryLearning,\
     FastICA
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
-from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir
+from magicbox.io.io import CiftiReader, save2cifti, GiftiReader
+from magicbox.graph.triangular_mesh import get_n_ring_neighbor
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir,\
+    hemi2stru, s1200_midthickness_L, s1200_midthickness_R
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
@@ -38,9 +40,13 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
         zscore0 (str, optional): split, whole
             split: do zscore across subjects of each row
             whole: do zscore across subjects of all rows
+            split-minmax: do MinMaxScale across subjects of each row
+            whole-minmax: do MinMaxScale across subjects of all rows
         zscore1 (str, optional): split, whole
             split: do zscore across vertices of each mask of each column
             whole: do zscore across vertices of all columns
+            split-minmax: do MinMaxScale across vertices of each mask of each column
+            whole-minmax: do MinMaxScale across vertices of all columns
 
     Returns:
         [tuple]: (data, n_vertices, n_maps, reader)
@@ -76,6 +82,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
                 n_vertices.append(n_vertices[-1] + data2.shape[1])
                 if zscore1 == 'split':
                     data2 = zscore(data2, 1)
+                elif zscore1 == 'split-minmax':
+                    data2 = MinMaxScaler(
+                        feature_range=(0, 1)).fit_transform(data2.T).T
             else:
                 # extract masked data
                 data2 = []
@@ -84,6 +93,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
                     n_vertices.append(n_vertices[-1] + maps_mask.shape[1])
                     if zscore1 == 'split':
                         maps_mask = zscore(maps_mask, 1)
+                    elif zscore1 == 'split-minmax':
+                        maps_mask = MinMaxScaler(
+                            feature_range=(0, 1)).fit_transform(maps_mask.T).T
                     data2.append(maps_mask)
                 data2 = np.concatenate(data2, 1)
 
@@ -96,6 +108,9 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
             data1 = data1[map_mask]
         if zscore0 == 'split':
             data1 = zscore(data1, 0)
+        elif zscore0 == 'split-minmax':
+            data1 = MinMaxScaler(
+                feature_range=(0, 1)).fit_transform(data1)
         n_maps.append(n_maps[-1] + data1.shape[0])
 
         # update
@@ -104,8 +119,15 @@ def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
     data = np.concatenate(data, 0)
     if zscore1 == 'whole':
         data = zscore(data, 1)
+    elif zscore1 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data.T).T
+
     if zscore0 == 'whole':
         data = zscore(data, 0)
+    elif zscore0 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data)
 
     return data, n_vertices, n_maps, reader
 
@@ -167,6 +189,51 @@ def stack_cii(src_files, out_file):
         maps = np.r_[maps, reader_tmp.get_data()]
         map_names.extend(reader_tmp.map_names())
     save2cifti(out_file, maps, reader.brain_models(), map_names, reader.volume)
+
+
+def smooth_cii(src_file, hemi, n_ring, out_file):
+    """
+    smooth cerebral cortex
+    忽略值为NAN的顶点，将非NAN顶点赋值为其本身与非NAN近邻的均值
+
+    Args:
+        src_file (str): .dscalar.nii
+        hemi (str): lh or rh
+        n_ring (int): smoothness
+        out_file (str): .dscalar.nii
+    """
+    hemi2geo_file = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
+
+    # get map info
+    reader = CiftiReader(src_file)
+    full_shape = reader.full_data.shape
+    bm = reader.brain_models([hemi2stru[hemi]])[0]
+    offset, count = bm.index_offset, bm.index_count
+    src_maps = reader.get_data(hemi2stru[hemi], True)
+    idx2vtx = reader.get_stru_pos(hemi2stru[hemi])[-1]
+
+    # get vertex neighbors
+    faces = GiftiReader(hemi2geo_file[hemi]).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, n_ring)
+
+    # calculating
+    n_map, n_vtx = src_maps.shape
+    out_maps = np.ones(full_shape) * np.nan
+    hemi_maps = np.ones((n_map, n_vtx)) * np.nan
+    for vtx in range(n_vtx):
+        vertices = list(vtx2neighbors[vtx])
+        vertices.append(vtx)
+        for map_idx in range(n_map):
+            if np.isnan(src_maps[map_idx, vtx]):
+                continue
+            hemi_maps[map_idx, vtx] = np.nanmean(src_maps[map_idx, vertices])
+    out_maps[:, offset:(offset+count)] = hemi_maps[:, idx2vtx]
+
+    # save out
+    save2cifti(out_file, out_maps, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
 def decompose(fpaths, cat_shape, method, axis, csv_files, cii_files,

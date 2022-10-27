@@ -10,7 +10,6 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
 from sklearn.pipeline import Pipeline
-from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import LR_count_32k, proj_dir, Atlas,\
     get_rois, mmp_map_file
@@ -36,6 +35,27 @@ def get_rois_by_mask_name(mask_name):
         rois_vis = get_rois('MMP-vis3-R')
         rois_ex = ['R_V1', 'R_V2', 'R_V3', 'R_V4', 'R_V3A']
         rois = [i for i in rois_vis if i not in rois_ex]
+    elif mask_name == 'MMP-vis3-R-early':
+        rois = get_rois('MMP-vis3-G1') + get_rois('MMP-vis3-G2')
+        rois = [f'R_{roi}' for roi in rois]
+    elif mask_name == 'MMP-vis3-R-dorsal':
+        rois = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
+            get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
+        rois = [f'R_{roi}' for roi in rois]
+    elif mask_name == 'MMP-vis3-R-lateral':
+        rois = get_rois('MMP-vis3-G5')
+        rois = [f'R_{roi}' for roi in rois]
+    elif mask_name == 'MMP-vis3-R-ventral':
+        rois = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
+            get_rois('MMP-vis3-G14')
+        rois = [f'R_{roi}' for roi in rois]
+    elif mask_name == 'MMP-vis3-R-forefront':
+        rois = ['R_TF', 'R_PeEc']
+    elif mask_name == 'MMP-vis3-R-ventral_ex(forefront)':
+        rois = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
+            get_rois('MMP-vis3-G14')
+        rois_ex = ['TF', 'PeEc']
+        rois = [f'R_{roi}' for roi in rois if roi not in rois_ex]
     else:
         raise ValueError("not supported mask name")
 
@@ -575,10 +595,21 @@ if __name__ == '__main__':
     # PC_predict_ROI4(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 3], mask_name='MMP-vis3-R', n_split=5)
-    for i in range(4, 11):
+    # for i in range(4, 11):
+    #     PC_predict_ROI4(
+    #         pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #         pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
+    for mask_name in (
+        'MMP-vis3-R-early', 'MMP-vis3-R-dorsal', 'MMP-vis3-R-lateral',
+        'MMP-vis3-R-ventral', 'MMP-vis3-R-forefront',
+        'MMP-vis3-R-ventral_ex(forefront)'
+    ):
         PC_predict_ROI4(
-            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-            pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[1], mask_name=mask_name, n_split=5)
+        PC_predict_ROI4(
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[2], mask_name=mask_name, n_split=5)
 
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
@@ -607,11 +638,22 @@ if __name__ == '__main__':
     # PC_predict_ROI5(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     pc_nums=[1, 3], mask_name='MMP-vis3-R', n_split=5)
-    for i in range(4, 11):
+    # for i in range(4, 11):
+    #     PC_predict_ROI5(
+    #         pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+    #         pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
+    for mask_name in (
+        'MMP-vis3-R-early', 'MMP-vis3-R-dorsal', 'MMP-vis3-R-lateral',
+        'MMP-vis3-R-ventral', 'MMP-vis3-R-forefront',
+        'MMP-vis3-R-ventral_ex(forefront)'
+    ):
         PC_predict_ROI5(
-            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-            pc_nums=[1, i], mask_name='MMP-vis3-R', n_split=5)
-    
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[1], mask_name=mask_name, n_split=5)
+        PC_predict_ROI5(
+            pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
+            pc_nums=[2], mask_name=mask_name, n_split=5)
+
     # PC_predict_ROI6(
     #     pc_file=pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
     #     trg='MPM', pc_nums=[1], mask_name='R_V1~4', n_split=5)

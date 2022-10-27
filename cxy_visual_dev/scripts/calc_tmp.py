@@ -128,60 +128,6 @@ def make_EDMV_dlabel():
     save2cifti(out_file, data, reader.brain_models(), label_tables=[lbl_tab])
 
 
-def make_EDMV_dlabel1():
-    """
-    依据HCP MMP的22组，将HCP-MMP-visual3分成四份：
-    Early: Group1+2
-    Dorsal: Group3+16+17+18
-    Middle: Group5
-    Ventral: Group4+13+14
-    将其制作成.dlabel.nii文件
-    """
-    reader = CiftiReader(mmp_map_file)
-    atlas = Atlas('HCP-MMP')
-    out_file = pjoin(work_dir, 'MMP-vis3-EDMV.dlabel.nii')
-
-    data = np.zeros((1, LR_count_32k), np.float64)
-    lbl_tab = nib.cifti2.Cifti2LabelTable()
-    lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
-
-    rois_early = get_rois('MMP-vis3-G1') + get_rois('MMP-vis3-G2')
-    rois_early_L = [f'L_{roi}' for roi in rois_early]
-    rois_early_R = [f'R_{roi}' for roi in rois_early]
-    rois_early_LR = rois_early_L + rois_early_R
-    mask_early_LR = atlas.get_mask(rois_early_LR)
-    data[mask_early_LR] = 1
-    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'early', 0.84, 0.84, 0.84, 1)
-
-    rois_dorsal = get_rois('MMP-vis3-G3') + get_rois('MMP-vis3-G16') +\
-        get_rois('MMP-vis3-G17') + get_rois('MMP-vis3-G18')
-    rois_dorsal_L = [f'L_{roi}' for roi in rois_dorsal]
-    rois_dorsal_R = [f'R_{roi}' for roi in rois_dorsal]
-    rois_dorsal_LR = rois_dorsal_L + rois_dorsal_R
-    mask_dorsal_LR = atlas.get_mask(rois_dorsal_LR)
-    data[mask_dorsal_LR] = 2
-    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'dorsal', 0.38, 0.85, 0.21, 1)
-
-    rois_middle = get_rois('MMP-vis3-G5')
-    rois_middle_L = [f'L_{roi}' for roi in rois_middle]
-    rois_middle_R = [f'R_{roi}' for roi in rois_middle]
-    rois_middle_LR = rois_middle_L + rois_middle_R
-    mask_middle_LR = atlas.get_mask(rois_middle_LR)
-    data[mask_middle_LR] = 3
-    lbl_tab[3] = nib.cifti2.Cifti2Label(3, 'middle', 0, 0.46, 0.73, 1)
-
-    rois_ventral = get_rois('MMP-vis3-G4') + get_rois('MMP-vis3-G13') +\
-        get_rois('MMP-vis3-G14')
-    rois_ventral_L = [f'L_{roi}' for roi in rois_ventral]
-    rois_ventral_R = [f'R_{roi}' for roi in rois_ventral]
-    rois_ventral_LR = rois_ventral_L + rois_ventral_R
-    mask_ventral_LR = atlas.get_mask(rois_ventral_LR)
-    data[mask_ventral_LR] = 4
-    lbl_tab[4] = nib.cifti2.Cifti2Label(4, 'ventral', 0.80, 0.16, 0.48, 1)
-
-    save2cifti(out_file, data, reader.brain_models(), label_tables=[lbl_tab])
-
-
 def make_R2_thr98_mask():
     """
     将S1200_7T_Retinotopy181.Fit1_R2_MSMAll.32k_fs_LR.dscalar.nii
@@ -221,6 +167,5 @@ def make_va_MMP_vis2():
 if __name__ == '__main__':
     # C2_corr_ecc_angle_area()
     # make_EDMV_dlabel()
-    make_EDMV_dlabel1()
     # make_R2_thr98_mask()
     # make_va_MMP_vis2()

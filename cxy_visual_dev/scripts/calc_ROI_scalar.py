@@ -76,7 +76,7 @@ def ROI_scalar1(roi_type):
 
     # 结构梯度的PC1, PC2: stru-C1, stru-C2;
     map_stru_pc = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
     )).get_fdata()[:2]
     map_names = ['stru-C1', 'stru-C2']
     maps = [map_stru_pc]
@@ -143,5 +143,5 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     # )
 
-    # ROI_scalar1(roi_type='MMP-vis3-R')
+    ROI_scalar1(roi_type='MMP-vis3-R')
     ROI_scalar1(roi_type='Wang2015-R')
