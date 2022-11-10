@@ -1094,14 +1094,16 @@ if __name__ == '__main__':
 
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
-    # get_HCPY_morph(
-    #     src_file=s1200_1096_myelin,
-    #     out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
-    # )
-    # get_HCPY_morph(
-    #     src_file=s1200_1096_corrThickness,
-    #     out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
-    # )
+
+    get_HCPY_morph(
+        src_file=s1200_1096_myelin,
+        out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
+    )
+    get_HCPY_morph(
+        src_file=s1200_1096_corrThickness,
+        out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
+    )
+
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')

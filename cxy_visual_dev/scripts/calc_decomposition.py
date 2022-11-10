@@ -12,8 +12,7 @@ from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
     s1200_1096_thickness, s1200_1096_myelin, Atlas, s1200_avg_eccentricity,\
     get_rois, LR_count_32k, mmp_map_file, s1200_group_rsfc_mat
-from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow,\
-    smooth_cii
+from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'decomposition')
@@ -505,35 +504,21 @@ if __name__ == '__main__':
     #     map_mask=None, zscore0='split', zscore1=None, n_component=20, random_state=7
     # )
 
-    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
-    # 联合myelin和thickness做空间PCA
-    # decompose(
-    #     fpaths=[
-    #         pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
-    #         pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
-    #     cat_shape=(2, 1), method='PCA', axis=0,
-    #     csv_files=[
-    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
-    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_corrT.csv')],
-    #     cii_files=[pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-    #     pkl_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
-    #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
-    # )
-    # smooth_cii(
-    #     src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-    #     hemi='rh', n_ring=1,
-    #     out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-1ring.dscalar.nii')
-    # )
-    # smooth_cii(
-    #     src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-    #     hemi='rh', n_ring=2,
-    #     out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-2ring.dscalar.nii')
-    # )
-    smooth_cii(
-        src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        hemi='rh', n_ring=3,
-        out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-3ring.dscalar.nii')
+    # 在成人数据上，分别对左右脑HCP-MMP1_visual-cortex3做zscore
+    # 联合myelin和corrThickness做空间PCA
+    vis_mask = 'MMP-vis3-L'  # MMP-vis3-L, MMP-vis3-R
+    decompose(
+        fpaths=[
+            pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
+            pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
+        cat_shape=(2, 1), method='PCA', axis=0,
+        csv_files=[
+            pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj_M.csv'),
+            pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj_corrT.csv')],
+        cii_files=[pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj.dscalar.nii')],
+        pkl_file=pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj.pkl'),
+        vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois(vis_mask))[0]],
+        map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
     )
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
