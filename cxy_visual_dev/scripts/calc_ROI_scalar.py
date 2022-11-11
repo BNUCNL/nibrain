@@ -57,18 +57,19 @@ def ROI_scalar(src_file, mask, values, metric, out_file, zscore_flag=False,
         out_df.to_csv(out_file, index=True)
 
 
-def ROI_scalar1(roi_type):
+def ROI_scalar1(atlas_name, Hemi):
     """
     为各map计算视觉ROI内的各种metric
     """
-    if roi_type == 'MMP-vis3-R':
+    roi_type = f'{atlas_name}-{Hemi}'
+    if atlas_name == 'MMP-vis3':
         atlas = Atlas('HCP-MMP')
-        rois = get_rois('MMP-vis3-R')
-    elif roi_type == 'Wang2015-R':
+        rois = get_rois(roi_type)
+    elif atlas_name == 'Wang2015':
         atlas = Atlas('Wang2015')
-        rois = get_rois('Wang2015-R')
+        rois = get_rois(roi_type)
     else:
-        raise ValueError('unsupported roi_type:', roi_type)
+        raise ValueError('unsupported atlas_name:', atlas_name)
 
     values = [atlas.roi2label[i] for i in rois]
     metrics = ['mean', 'std', 'sem', 'cv', 'sum']
@@ -76,9 +77,9 @@ def ROI_scalar1(roi_type):
 
     # 结构梯度的PC1, PC2: stru-C1, stru-C2;
     map_stru_pc = nib.load(pjoin(
-        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'
+        anal_dir, f'decomposition/HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii'
     )).get_fdata()[:2]
-    map_names = ['stru-C1', 'stru-C2']
+    map_names = ['PC1', 'PC2']
     maps = [map_stru_pc]
 
     # 离距状沟的距离: distFromCS;
@@ -143,5 +144,7 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, f'HCPD-myelin_{N}x{N}.csv')
     # )
 
-    ROI_scalar1(roi_type='MMP-vis3-R')
-    ROI_scalar1(roi_type='Wang2015-R')
+    ROI_scalar1(atlas_name='MMP-vis3', Hemi='R')
+    ROI_scalar1(atlas_name='Wang2015', Hemi='R')
+    ROI_scalar1(atlas_name='MMP-vis3', Hemi='L')
+    ROI_scalar1(atlas_name='Wang2015', Hemi='L')
