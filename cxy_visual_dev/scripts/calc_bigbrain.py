@@ -18,17 +18,16 @@ if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
 
-def get_msp_from_FFA_proj():
+def get_msp_from_FFA_proj(hemi):
     """
     把之前在搞FFA那个项目的时候计算的胞体密度数据
     换成更标准一些的格式存到这边，并计算每个layer的
     平均map（之前对每个layer采样了10个surface）
     """
-    hemi = 'rh'
     n_layer = 6
     n_interbedded = 10
-    msp_file = '/nfs/t3/workingshop/chenxiayu/study/'\
-        'FFA_pattern/analysis/s2/1080_fROI/refined_with_Kevin/bigbrain/'\
+    msp_file = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/FFA_pattern/'\
+        'analysis/s2/1080_fROI/refined_with_Kevin/bigbrain/'\
         'Msp_BB_layer{0}-{1}_{2}.gii'
     out_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}.func.gii')
     out_file2 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}.func.gii')
@@ -46,15 +45,14 @@ def get_msp_from_FFA_proj():
         nib.save(gii2, out_file2.format(layer_idx, layer_idx+1, hemi))
 
 
-def smooth_msp():
+def smooth_msp(hemi):
     """
     对各msp map进行平滑
     """
     sigma = '2'
-    hemi = 'rh'
     n_layer = 6
-    surf_file = '/nfs/s2/userhome/chenxiayu/workingdir/test/bigbrain/'\
-        'bigbrain.loris.ca/BigBrainRelease.2015/Surface_Parcellations/'\
+    surf_file = '/nfs/z1/zhenlab/stanford/ABA/brainmap/bigbrain/'\
+        'BigBrainRelease.2015/Surface_Parcellations/'\
         f'BigBrain_space/Surfaces/{hemi}.white.anat.surf.gii'
     msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}.func.gii')
     out_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}_s{3}.func.gii')
@@ -76,17 +74,16 @@ def smooth_msp():
         nib.save(gii2, out_file2.format(lyr_idx, lyr_idx+1, hemi, sigma))
 
 
-def mask_msp():
+def mask_msp(hemi):
     """
     把各层平均map在PC1中属于nan的部分的值设置为nan
     """
-    hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     n_layer = 6
     resample_way = '164fsLR2bigbrain'
     msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2.func.gii')
     pc_file = pjoin(anal_dir,
-                    'decomposition/HCPY-M+T_MMP-vis3-'
+                    'decomposition/HCPY-M+corrT_MMP-vis3-'
                     f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
     out_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2_mask.func.gii')
 
@@ -98,23 +95,20 @@ def mask_msp():
         nib.save(msp_gii, out_file.format(layer_idx, layer_idx+1, hemi))
 
 
-def PC12_corr_msp():
+def PC12_corr_msp(hemi, resample_way):
     """
     C1_corr_layer: PC1和各层10个细分map的相关
     C2_corr_layer: PC2和各层10个细分map的相关
     C1_corr_layer-mean: PC1和各层平均map的相关
     C2_corr_layer-mean: PC2和各层平均map的相关
     """
-    hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
     n_layer = 6
     n_interbedded = 10
-    resample_way = '164fsLR2bigbrain'
-    # resample_way = 'fsavg2bigbrain'
     msp_file1 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}_s2.func.gii')
     msp_file2 = pjoin(work_dir, 'Msp_BB_layer{0}-{1}-mean_{2}_s2.func.gii')
     pc_file = pjoin(anal_dir,
-                    'decomposition/HCPY-M+T_MMP-vis3-'
+                    'decomposition/HCPY-M+corrT_MMP-vis3-'
                     f'{Hemi}_zscore1_PCA-subj_{resample_way}.func.gii')
     pc_names = ('C1', 'C2')
     out_file = pjoin(work_dir, f'{resample_way}_{Hemi}_s2.pkl')
@@ -272,10 +266,16 @@ def msp_lasso_PC12(hemi='rh'):
 
 
 if __name__ == '__main__':
-    # get_msp_from_FFA_proj()
-    # smooth_msp()
-    # mask_msp()
-    # PC12_corr_msp()
+    # get_msp_from_FFA_proj(hemi='lh')
+    # get_msp_from_FFA_proj(hemi='rh')
+    # smooth_msp(hemi='lh')
+    # smooth_msp(hemi='rh')
+    # mask_msp(hemi='lh')
+    # mask_msp(hemi='rh')
+    PC12_corr_msp(hemi='lh', resample_way='164fsLR2bigbrain')
+    PC12_corr_msp(hemi='rh', resample_way='164fsLR2bigbrain')
+    PC12_corr_msp(hemi='lh', resample_way='fsavg2bigbrain')
+    PC12_corr_msp(hemi='rh', resample_way='fsavg2bigbrain')
     # msp_fit_PC12(hemi='rh', method='ordinary')
     # msp_fit_PC12(hemi='rh', method='lasso')
-    msp_lasso_PC12(hemi='rh')
+    # msp_lasso_PC12(hemi='rh')
