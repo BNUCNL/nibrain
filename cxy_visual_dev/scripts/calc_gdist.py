@@ -9,7 +9,8 @@ from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, get_rois, proj_dir,\
     mmp_map_file, L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     LR_count_32k, hemi2stru, s1200_midthickness_L, s1200_midthickness_R,\
-    MedialWall, mmp_name2label, hemi2Hemi
+    MedialWall, mmp_name2label, hemi2Hemi, L_OccipitalPole_32k,\
+    R_OccipitalPole_32k
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'gdist')
@@ -230,6 +231,10 @@ if __name__ == '__main__':
     #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
     #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
     # )
+    calc_gdist_map_from_src(
+        src_lh=[L_OccipitalPole_32k], src_rh=[R_OccipitalPole_32k],
+        out_file=pjoin(work_dir, 'gdist_src-OP.dscalar.nii')
+    )
 
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OpMt.label')),
@@ -293,12 +298,12 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'gdist4_src-observed-seed-v4_R.dscalar.nii')
     # )
     # calc_gdist4(
-    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v1_R.dlabel.nii'),
-    #     hemi='rh',
-    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_R.dscalar.nii')
+    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed_L.dlabel.nii'),
+    #     hemi='lh',
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_L.dscalar.nii')
     # )
-    calc_gdist4(
-        seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v2_R.dlabel.nii'),
-        hemi='rh',
-        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v2_R.dscalar.nii')
-    )
+    # calc_gdist4(
+    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed_R.dlabel.nii'),
+    #     hemi='rh',
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_R.dscalar.nii')
+    # )

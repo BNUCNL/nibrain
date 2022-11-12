@@ -69,22 +69,19 @@ def calc_RSM1(mask, out_file):
     map_names = ['stru-C1', 'stru-C2']
     maps = [map_stru_pc]
 
-    # 离距状沟(旧), (新)的距离: distFromCS1, distFromCS2;
+    # 离距状沟的距离: distFromCS;
     # 离枕极, MT的距离: distFromOP, distFromMT;
-    map_dist_cs1 = nib.load(pjoin(
+    map_dist_cs = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_dist_cs2 = nib.load(pjoin(
-        anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'
-    )).get_fdata()[0, mask][None, :]
     map_dist_op = nib.load(pjoin(
-        anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'
+        anal_dir, 'gdist/gdist_src-OP.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
     map_dist_mt = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-MT.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCS1', 'distFromCS2', 'distFromOP', 'distFromMT'])
-    maps.extend([map_dist_cs1, map_dist_cs2, map_dist_op, map_dist_mt])
+    map_names.extend(['distFromCS', 'distFromOP', 'distFromMT'])
+    maps.extend([map_dist_cs, map_dist_op, map_dist_mt])
 
     # C1和C2的几何模型
     map_dist_model1 = nib.load(pjoin(
@@ -108,8 +105,13 @@ def calc_RSM1(mask, out_file):
     map_dist_model7 = nib.load(pjoin(
         anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min'])
-    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6, map_dist_model7])
+    map_dist_model8 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist4_src-EDLV-seed_R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4',
+                      'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min', 'distFromEDLV'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4,
+                 map_dist_model5, map_dist_model6, map_dist_model7, map_dist_model8])
 
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)

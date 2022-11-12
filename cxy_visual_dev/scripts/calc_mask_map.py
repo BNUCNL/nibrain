@@ -222,24 +222,25 @@ def make_mask7():
     """
     直接指定某些顶点为某个ROI
     """
+    # hemi = 'lh'
+    # Hemi = hemi2Hemi[hemi]
+    # seed_name2vtx = {
+    #     'early': [24939, 24324],
+    #     'dorsal': [12485, 12545],
+    #     'lateral': [15294],
+    #     'ventral': [21501, 22655]}
+    # color = (1, 0, 0, 1)
+    # out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
+
     hemi = 'rh'
     Hemi = hemi2Hemi[hemi]
-
-    # seed_name2vtx = {
-    #     'early': [24938, 24433],
-    #     'dorsal': [12442, 12586],
-    #     'lateral': [23526, 15523],
-    #     'ventral': [21501, 22485]}
-    # color = (1, 0, 0, 1)
-    # out_file = pjoin(work_dir, f'EDLV-seed-v1_{Hemi}.dlabel.nii')
-
     seed_name2vtx = {
         'early': [24938, 24433],
         'dorsal': [12442, 12586],
         'lateral': [15241],
         'ventral': [21501, 22485]}
     color = (1, 0, 0, 1)
-    out_file = pjoin(work_dir, f'EDLV-seed-v2_{Hemi}.dlabel.nii')
+    out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
@@ -263,8 +264,8 @@ def make_mask7():
 
 
 if __name__ == '__main__':
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -335,6 +336,11 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4_MMP-vis3.dscalar.nii')
     # )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'gdist/gdist_src-OP.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
+    )
 
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
@@ -354,23 +360,26 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'S1200-avg-angle_MMP-vis3.dscalar.nii')
     # )
 
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
     # mask_cii(
     #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'),
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist4_src-observed-seed-v4_MMP-vis3-R.dscalar.nii')
     # )
     # mask_cii(
-    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v1_R.dscalar.nii'),
+    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed_R.dscalar.nii'),
     #     mask=mask,
-    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3-R.dscalar.nii')
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_MMP-vis3-R.dscalar.nii')
     # )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v2_R.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v2_MMP-vis3-R.dscalar.nii')
-    )
+
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L'))[0]
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed_L.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_MMP-vis3-L.dscalar.nii')
+    # )
 
     # make_mask1(N=2)
     # make_mask1(N=3)
