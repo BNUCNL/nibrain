@@ -551,12 +551,11 @@ def PC12_fit_func2():
     fig.savefig(out_fig)
 
 
-def PC12_fit_func3():
+def PC12_fit_func3(Hemi):
     """
     用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
     在整个视觉皮层以及EDLV四个部分线性拟合WM任务激活+fALFF
     """
-    Hemi = 'R'
     vis_name = f'MMP-vis3-{Hemi}'
     mask_names = (vis_name, f'{vis_name}-early', f'{vis_name}-dorsal',
                   f'{vis_name}-lateral', f'{vis_name}-ventral')
@@ -580,14 +579,14 @@ def PC12_fit_func3():
     n_mask = len(mask_names)
 
     fname1 = 'PC1+2=func3'
-    out_file1 = pjoin(work_dir, f'{fname1}.pkl')
+    out_file1 = pjoin(work_dir, f'{fname1}_{Hemi}.pkl')
     rs = np.zeros((n_mask, n_trg))
     ps = np.zeros((n_mask, n_trg))
     for mask_idx, mask_name in enumerate(mask_names):
         fname2 = f'{fname1}_{mask_name}'
         out_file2 = pjoin(work_dir, f'{fname2}.dscalar.nii')
         if mask_name == vis_name:
-            mask = atlas.get_mask('R')[0]
+            mask = atlas.get_mask(Hemi)[0]
         else:
             edlv_name = f"{Hemi}_{mask_name.split('-')[-1]}"
             mask = atlas.get_mask(edlv_name)[0]
@@ -603,7 +602,7 @@ def PC12_fit_func3():
             r, p = pearsonr(y, y_pred)
             rs[mask_idx, trg_idx] = r
             ps[mask_idx, trg_idx] = p
-        save2cifti(out_file2, out_maps, bms)
+        save2cifti(out_file2, out_maps, bms, trg_names)
     out_data = {'row_name': mask_names, 'col_name': trg_names,
                 'r': rs, 'p': ps}
     pkl.dump(out_data, open(out_file1, 'wb'))
@@ -687,5 +686,6 @@ if __name__ == '__main__':
     # PC12_fit_func()
     # PC12_fit_func1()
     # PC12_fit_func2()
-    PC12_fit_func3()
+    PC12_fit_func3(Hemi='L')
+    PC12_fit_func3(Hemi='R')
     # HCPY_MT_fit_PC12()

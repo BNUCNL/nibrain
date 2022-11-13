@@ -264,22 +264,12 @@ def make_mask7():
 
 
 if __name__ == '__main__':
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'S1200-avg-RFsize_MMP-vis3.dscalar.nii')
-    # )
-    # mask_maps(
-    #     data_file=pjoin(anal_dir, 'AFF/HCPY-aff.dscalar.nii'),
-    #     mask=mask,
-    #     out_file=pjoin(work_dir, 'HCPY-aff_MMP-vis3.dscalar.nii')
-    # )
-    # mask_maps(
-    #     data_file=pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'),
-    #     mask=mask,
-    #     out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
     # )
     # mask_maps(
     #     data_file=pjoin(anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'),
@@ -336,14 +326,14 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OP+MT=V4_MMP-vis3.dscalar.nii')
     # )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist_src-OP.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
-    )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist_src-OP.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
+    # )
 
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
     # mask_cii(
     #     src_file=pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii'),
     #     mask=mask,
@@ -359,6 +349,11 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'S1200-avg-angle_MMP-vis3.dscalar.nii')
     # )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
+    )
 
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]

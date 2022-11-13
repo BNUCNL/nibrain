@@ -100,20 +100,23 @@ def get_HCPY_aff(freq_names, linear_detrend=True):
     计算指定频段的能量幅度(amplitude of frequency fluctuation, AFF)
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试
+    每个被试的AFF是这四个run的AFF的平均
     """
     # prepare
     tr = 0.8
-    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    sid_file = pjoin(proj_dir, 'data/HCP/subject_id_1096')
     check_file = pjoin(proj_dir, 'data/HCP/HCPY_rfMRI_file_check.tsv')
-    src_file = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    src_file = '/nfs/z1/HCP/HCPYA/{sid}/MNINonLinear/Results/'\
+        '{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
     aff_file = pjoin(work_dir, 'HCPY-aff-{}.dscalar.nii')
     faff_file = pjoin(work_dir, 'HCPY-faff-{}.dscalar.nii')
 
-    info_df = pd.read_csv(info_file)
-    n_subj = info_df.shape[0]
+    subj_ids = open(sid_file).read().splitlines()
+    n_subj = len(subj_ids)
     check_df = pd.read_csv(check_file, sep='\t')
     subj_ids_1206 = check_df['subID'].to_list()
-    runs = ['rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
+    runs = ['rfMRI_REST1_RL', 'rfMRI_REST2_RL',
+            'rfMRI_REST1_LR', 'rfMRI_REST2_LR']
     ok_idx_vec = np.all(check_df[runs] == 'ok=(1200, 91282)', 1)
     n_run = len(runs)
 
@@ -129,11 +132,10 @@ def get_HCPY_aff(freq_names, linear_detrend=True):
         freq_name2faff_all[freq_name] = \
             np.ones((n_subj, All_count_32k), dtype=np.float64) * np.nan
 
-    for subj_idx, idx in enumerate(info_df.index):
+    for subj_idx, subj_id in enumerate(subj_ids):
         time1 = time.time()
 
-        subj_id = info_df.loc[idx, 'subID']
-        idx_1206 = subj_ids_1206.index(subj_id)
+        idx_1206 = subj_ids_1206.index(int(subj_id))
         if not ok_idx_vec[idx_1206]:
             continue
 
@@ -181,36 +183,41 @@ def get_HCPY_aff(freq_names, linear_detrend=True):
     for freq_name in freq_names:
         save2cifti(
             aff_file.format(freq_name), freq_name2aff_all[freq_name],
-            brain_models, info_df['subID'].astype(str), volume
-        )
+            brain_models, subj_ids, volume)
         save2cifti(
             faff_file.format(freq_name), freq_name2faff_all[freq_name],
-            brain_models, info_df['subID'].astype(str), volume
-        )
+            brain_models, subj_ids, volume)
 
 
 def merge_mean_map(a_type='aff'):
     """
-    计算各频段的平均map，放到同一个文件中
+    计算各频段的平均map (限制在1070名中有4个run的被试内)，放到同一个文件中
     """
-    freq_names=['LFF', 'slow5', 'slow4', 'slow3', 'slow2', 'slow1']
+    freq_names = ['LFF', 'slow5', 'slow4', 'slow3', 'slow2', 'slow1']
     src_files = pjoin(work_dir, 'HCPY-{0}-{1}.dscalar.nii')
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
     out_file = pjoin(work_dir, f'HCPY-{a_type}.dscalar.nii')
 
     bms = None
     vol = None
+    mns = None
     out = None
-    for i, freq_name in enumerate(freq_names):
+    indices = None
+    info_df = pd.read_csv(info_file)
+    for idx, freq_name in enumerate(freq_names):
         src_file = src_files.format(a_type, freq_name)
-        if i == 0:
-            reader = CiftiReader(src_file)
+        reader = CiftiReader(src_file)
+        data = reader.get_data()
+        if idx == 0:
             bms = reader.brain_models()
             vol = reader.volume
-            data = reader.get_data()
+            mns = reader.map_names()
+            sids_1096 = [int(i) for i in mns]
+            indices = [sids_1096.index(i) for i in info_df['subID']]
             out = np.zeros((len(freq_names), data.shape[1]))
         else:
-            data = nib.load(src_file).get_fdata()
-        out[i] = np.nanmean(data, 0)
+            assert mns == reader.map_names()
+        out[idx] = np.nanmean(data[indices], 0)
 
     save2cifti(out_file, out, bms, freq_names, vol)
 
