@@ -608,34 +608,38 @@ def PC12_fit_func3(Hemi):
     pkl.dump(out_data, open(out_file1, 'wb'))
 
 
-def HCPY_MT_fit_PC12():
+def HCPY_MT_fit_PC12(Hemi):
     """
     对每个被试用其myelin和thickness map拟合PC1/2
     整体和局部的拟合都做，用以得到在整体或是局部视觉皮层中
     每个被试对PC1/2的贡献
     """
-    out_file = pjoin(work_dir, 'HCPY-M+T_fit_PC_subj-wise.pkl')
+    vis_name = f'MMP-vis3-{Hemi}'
+    out_file = pjoin(work_dir, f'HCPY-M+corrT_{vis_name}_fit_PC_subj-wise.pkl')
+
     # preparation for feature
-    m_maps = nib.load(s1200_1096_myelin).get_fdata()
-    t_maps = nib.load(s1200_1096_thickness).get_fdata()
+    m_file = pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')
+    t_file = pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')
+    m_maps = nib.load(m_file).get_fdata()
+    t_maps = nib.load(t_file).get_fdata()
     n_subj = m_maps.shape[0]
 
     # preparation for target
     n_pc = 2
     pc_names = ['C1', 'C2']
-    pc_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
+    pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
 
     # preparation for mask
     out_data = {}
-    atlas_names = ['HCP-MMP', 'MMP-vis3-EDMV']
+    atlas_names = ['HCP-MMP', 'MMP-vis3-EDLV']
     for atlas_name in atlas_names:
         atlas = Atlas(atlas_name)
         if atlas_name == 'HCP-MMP':
-            mask_names = ['MMP-vis3-R']
-            mask_names.extend(get_rois('MMP-vis3-R'))
-        elif atlas_name == 'MMP-vis3-EDMV':
-            mask_names = [i for i in atlas.roi2label.keys() if i.startswith('R_')]
+            mask_names = [vis_name]
+            mask_names.extend(get_rois(vis_name))
+        elif atlas_name == 'MMP-vis3-EDLV':
+            mask_names = [i for i in atlas.roi2label.keys() if i.startswith(f'{Hemi}_')]
         else:
             raise ValueError('not supported atlas name:', atlas_name)
         n_mask = len(mask_names)
@@ -644,7 +648,7 @@ def HCPY_MT_fit_PC12():
         for mask_idx, mask_name in enumerate(mask_names, 1):
             time1 = time.time()
 
-            if mask_name == 'MMP-vis3-R':
+            if mask_name == vis_name:
                 mask = atlas.get_mask(get_rois(mask_name))[0]
             else:
                 mask = atlas.get_mask(mask_name)[0]
@@ -663,7 +667,7 @@ def HCPY_MT_fit_PC12():
                 for pc_idx, pc_name in enumerate(pc_names):
                     out_data[f'{mask_name}_{pc_name}'][subj_idx] = \
                         r2_score(Y[:, pc_idx], Y_pred[:, pc_idx])
-            
+
             print(f'Finished {atlas_name}-{mask_name}-{mask_idx}/{n_mask}: '
                   f'cost {time.time() - time1} seconds.')
 
@@ -686,6 +690,7 @@ if __name__ == '__main__':
     # PC12_fit_func()
     # PC12_fit_func1()
     # PC12_fit_func2()
-    PC12_fit_func3(Hemi='L')
-    PC12_fit_func3(Hemi='R')
-    # HCPY_MT_fit_PC12()
+    # PC12_fit_func3(Hemi='L')
+    # PC12_fit_func3(Hemi='R')
+    HCPY_MT_fit_PC12(Hemi='L')
+    HCPY_MT_fit_PC12(Hemi='R')
