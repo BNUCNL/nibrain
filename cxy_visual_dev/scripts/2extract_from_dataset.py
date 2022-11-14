@@ -969,7 +969,7 @@ def get_HCPY_rsfc_mat(Hemi='R'):
 
 def get_HCPY_rsfc_mat_roi():
     """
-    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    只选用1070名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
     每个被试的4个run都先沿时间轴做去均值中心化然后拼接在一起，来做
     HCP-MMP1所有脑区之间的连接矩阵。
@@ -981,9 +981,9 @@ def get_HCPY_rsfc_mat_roi():
     check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
     runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
             'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
-    run_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/{1}/'\
+    run_files = '/nfs/z1/HCP/HCPYA/{0}/MNINonLinear/Results/{1}/'\
         '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    out_file = pjoin(work_dir, f'HCPY-avg_RSFC_HCP-MMP.pkl')
+    out_file = pjoin(work_dir, 'HCPY-avg_RSFC_HCP-MMP.pkl')
 
     # loading
     mask_map = atlas.maps[0]
@@ -1095,14 +1095,14 @@ if __name__ == '__main__':
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
 
-    get_HCPY_morph(
-        src_file=s1200_1096_myelin,
-        out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
-    )
-    get_HCPY_morph(
-        src_file=s1200_1096_corrThickness,
-        out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
-    )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_myelin,
+    #     out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
+    # )
+    # get_HCPY_morph(
+    #     src_file=s1200_1096_corrThickness,
+    #     out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
+    # )
 
     # get_HCPY_alff()
     # get_HCPY_GBC()
@@ -1116,4 +1116,4 @@ if __name__ == '__main__':
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
     # get_HCPY_rsfc_mat(Hemi='R')
-    # get_HCPY_rsfc_mat_roi()
+    get_HCPY_rsfc_mat_roi()

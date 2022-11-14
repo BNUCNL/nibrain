@@ -62,27 +62,33 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
         save2cifti(out_file, data, reader.brain_models())
 
 
-def calc_gdist1():
+def calc_gdist1(hemi):
     """
     计算视觉皮层内两两顶点之间的测地距离
     """
+    Hemi = hemi2Hemi[hemi]
+    hemi2geo = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R
+    }
     # find vertex numbers
-    vis_name = 'MMP-vis3-R'
+    vis_name = f'MMP-vis3-{Hemi}'
     rois = get_rois(vis_name)
     reader = CiftiReader(mmp_map_file)
-    mask_map = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)[0]
+    mask_map = reader.get_data(hemi2stru[hemi], True)[0]
     mask = np.zeros_like(mask_map, bool)
     for roi in rois:
         mask = np.logical_or(mask, mask_map == mmp_name2label[roi])
     vertices = np.where(mask)[0].astype(np.int32)
     n_vtx = len(vertices)
+    out_file = pjoin(work_dir, f'gdist-between-all-pair-vtx_{vis_name}.pkl')
 
     # prepare geometry
     mw = MedialWall()
-    gii = GiftiReader(s1200_midthickness_R)
+    gii = GiftiReader(hemi2geo[hemi])
     coords = gii.coords.astype(np.float64)
     faces = gii.faces.astype(np.int32)
-    faces = mw.remove_from_faces('rh', faces)
+    faces = mw.remove_from_faces(hemi, faces)
 
     # calculate gdist
     ds = np.zeros((n_vtx, n_vtx))
@@ -92,8 +98,7 @@ def calc_gdist1():
         print(f'Finished {vtx_idx + 1}/{n_vtx}, cost {time.time() - time1} seconds.')
 
     # save out
-    out_dict = {'gdist': ds, 'vtx_number_in_32k_fs_R': vertices}
-    out_file = pjoin(work_dir, f'gdist-between-all-pair-vtx_{vis_name}.pkl')
+    out_dict = {'gdist': ds, f'vtx_number_in_32k_fs_{Hemi}': vertices}
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
@@ -231,10 +236,10 @@ if __name__ == '__main__':
     #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
     #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
     # )
-    calc_gdist_map_from_src(
-        src_lh=[L_OccipitalPole_32k], src_rh=[R_OccipitalPole_32k],
-        out_file=pjoin(work_dir, 'gdist_src-OP.dscalar.nii')
-    )
+    # calc_gdist_map_from_src(
+    #     src_lh=[L_OccipitalPole_32k], src_rh=[R_OccipitalPole_32k],
+    #     out_file=pjoin(work_dir, 'gdist_src-OP.dscalar.nii')
+    # )
 
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OpMt.label')),
@@ -259,7 +264,8 @@ if __name__ == '__main__':
     # save2cifti(out_file, out_maps,
     #            CiftiReader(mmp_map_file).brain_models(), map_names)
 
-    # calc_gdist1()
+    calc_gdist1(hemi='lh')
+    # calc_gdist1(hemi='rh')
 
     # calc_gdist2(
     #     v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
