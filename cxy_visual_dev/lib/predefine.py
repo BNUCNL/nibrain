@@ -12,35 +12,53 @@ proj_dir = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 # 视觉相关行为类型到其测量变量的映射
 vis_beh_domain2meas = {
     'Episodic Memory': ['PicSeq_Unadj', 'PicSeq_AgeAdj'],
-    'Fluid Intelligence': ['PMAT24_A_CR', 'PMAT24_A_SI', 'PMAT24_A_RTCR'],
+    'Fluid Intelligence': ['PMAT24_A_CR', 'PMAT24_A_SI', 'PMAT24_A_RTCR',
+                           'PMAT24_CR/RT', 'PMAT24_CR/SI'],
     'Processing Speed': ['ProcSpeed_Unadj', 'ProcSpeed_AgeAdj'],
-    'Spatial Orientation': ['VSPLOT_TC', 'VSPLOT_CRTE', 'VSPLOT_OFF'],
+    'Spatial Orientation': ['VSPLOT_TC', 'VSPLOT_CRTE', 'VSPLOT_OFF',
+                            'VSPLOT_CR/RT', 'VSPLOT_CR/OFF'],
     'Emotion Recognition': ['ER40_CR', 'ER40_CRT', 'ER40ANG', 'ER40FEAR',
-                            'ER40HAP', 'ER40NOE', 'ER40SAD'],
+                            'ER40HAP', 'ER40NOE', 'ER40SAD', 'ER40_CR/RT'],
     'Color Vision': ['Color_Vision', 'Eye'],
     'Contrast Sensitivity': ['Mars_Log_Score', 'Mars_Errs', 'Mars_Final'],
     'Visual Acuity': ['EVA_Num', 'EVA_Denom', 'Correction'],
-    'Emotion Processing (MRI)': ['Emotion_Task_Acc', 'Emotion_Task_Median_RT',
-                                 'Emotion_Task_Face_Acc', 'Emotion_Task_Face_Median_RT',
-                                 'Emotion_Task_Shape_Acc', 'Emotion_Task_Shape_Median_RT'],
-    'Working Memory (MRI)': ['WM_Task_Acc', 'WM_Task_Median_RT', 'WM_Task_2bk_Acc',
-                             'WM_Task_2bk_Median_RT', 'WM_Task_0bk_Acc', 'WM_Task_0bk_Median_RT',
-                             'WM_Task_0bk_Body_Acc', 'WM_Task_0bk_Body_Acc_Target', 'WM_Task_0bk_Body_Acc_Nontarget',
-                             'WM_Task_0bk_Face_Acc', 'WM_Task_0bk_Face_Acc_Target', 'WM_Task_0bk_Face_ACC_Nontarget',
-                             'WM_Task_0bk_Place_Acc', 'WM_Task_0bk_Place_Acc_Target', 'WM_Task_0bk_Place_Acc_Nontarget',
-                             'WM_Task_0bk_Tool_Acc', 'WM_Task_0bk_Tool_Acc_Target', 'WM_Task_0bk_Tool_Acc_Nontarget',
-                             'WM_Task_2bk_Body_Acc', 'WM_Task_2bk_Body_Acc_Target', 'WM_Task_2bk_Body_Acc_Nontarget',
-                             'WM_Task_2bk_Face_Acc', 'WM_Task_2bk_Face_Acc_Target', 'WM_Task_2bk_Face_Acc_Nontarget',
-                             'WM_Task_2bk_Place_Acc', 'WM_Task_2bk_Place_Acc_Target', 'WM_Task_2bk_Place_Acc_Nontarget',
-                             'WM_Task_2bk_Tool_Acc', 'WM_Task_2bk_Tool_Acc_Target', 'WM_Task_2bk_Tool_Acc_Nontarget',
-                             'WM_Task_0bk_Body_Median_RT', 'WM_Task_0bk_Body_Median_RT_Target', 'WM_Task_0bk_Body_Median_RT_Nontarget',
-                             'WM_Task_0bk_Face_Median_RT', 'WM_Task_0bk_Face_Median_RT_Target', 'WM_Task_0bk_Face_Median_RT_Nontarget',
-                             'WM_Task_0bk_Place_Median_RT', 'WM_Task_0bk_Place_Median_RT_Target', 'WM_Task_0bk_Place_Median_RT_Nontarget',
-                             'WM_Task_0bk_Tool_Median_RT', 'WM_Task_0bk_Tool_Median_RT_Target', 'WM_Task_0bk_Tool_Median_RT_Nontarget',
-                             'WM_Task_2bk_Body_Median_RT', 'WM_Task_2bk_Body_Median_RT_Target', 'WM_Task_2bk_Body_Median_RT_Nontarget',
-                             'WM_Task_2bk_Face_Median_RT', 'WM_Task_2bk_Face_Median_RT_Target', 'WM_Task_2bk_Face_Median_RT_Nontarget',
-                             'WM_Task_2bk_Place_Median_RT', 'WM_Task_2bk_Place_Median_RT_Target', 'WM_Task_2bk_Place_Median_RT_Nontarget',
-                             'WM_Task_2bk_Tool_Median_RT', 'WM_Task_2bk_Tool_Median_RT_Target', 'WM_Task_2bk_Tool_Median_RT_Nontarget']
+    'Emotion Processing (MRI)': [
+        'Emotion_Task_Acc', 'Emotion_Task_Median_RT', 'Emotion_Task_CR/RT',
+        'Emotion_Task_Face_Acc', 'Emotion_Task_Face_Median_RT',
+        'Emotion_Task_Shape_Acc', 'Emotion_Task_Shape_Median_RT'],
+    'Working Memory (MRI)': [
+        'WM_Task_Acc', 'WM_Task_Median_RT', 'WM_Task_CR/RT',
+        'WM_Task_2bk_Acc', 'WM_Task_2bk_Median_RT', 'WM_Task_2bk_CR/RT',
+        'WM_Task_0bk_Acc', 'WM_Task_0bk_Median_RT', 'WM_Task_0bk_CR/RT',
+        'WM_Task_0bk_Body_Acc', 'WM_Task_0bk_Body_Acc_Target', 'WM_Task_0bk_Body_Acc_Nontarget',
+        'WM_Task_0bk_Face_Acc', 'WM_Task_0bk_Face_Acc_Target', 'WM_Task_0bk_Face_ACC_Nontarget',
+        'WM_Task_0bk_Place_Acc', 'WM_Task_0bk_Place_Acc_Target', 'WM_Task_0bk_Place_Acc_Nontarget',
+        'WM_Task_0bk_Tool_Acc', 'WM_Task_0bk_Tool_Acc_Target', 'WM_Task_0bk_Tool_Acc_Nontarget',
+        'WM_Task_2bk_Body_Acc', 'WM_Task_2bk_Body_Acc_Target', 'WM_Task_2bk_Body_Acc_Nontarget',
+        'WM_Task_2bk_Face_Acc', 'WM_Task_2bk_Face_Acc_Target', 'WM_Task_2bk_Face_Acc_Nontarget',
+        'WM_Task_2bk_Place_Acc', 'WM_Task_2bk_Place_Acc_Target', 'WM_Task_2bk_Place_Acc_Nontarget',
+        'WM_Task_2bk_Tool_Acc', 'WM_Task_2bk_Tool_Acc_Target', 'WM_Task_2bk_Tool_Acc_Nontarget',
+        'WM_Task_0bk_Body_Median_RT', 'WM_Task_0bk_Body_Median_RT_Target', 'WM_Task_0bk_Body_Median_RT_Nontarget',
+        'WM_Task_0bk_Face_Median_RT', 'WM_Task_0bk_Face_Median_RT_Target', 'WM_Task_0bk_Face_Median_RT_Nontarget',
+        'WM_Task_0bk_Place_Median_RT', 'WM_Task_0bk_Place_Median_RT_Target', 'WM_Task_0bk_Place_Median_RT_Nontarget',
+        'WM_Task_0bk_Tool_Median_RT', 'WM_Task_0bk_Tool_Median_RT_Target', 'WM_Task_0bk_Tool_Median_RT_Nontarget',
+        'WM_Task_2bk_Body_Median_RT', 'WM_Task_2bk_Body_Median_RT_Target', 'WM_Task_2bk_Body_Median_RT_Nontarget',
+        'WM_Task_2bk_Face_Median_RT', 'WM_Task_2bk_Face_Median_RT_Target', 'WM_Task_2bk_Face_Median_RT_Nontarget',
+        'WM_Task_2bk_Place_Median_RT', 'WM_Task_2bk_Place_Median_RT_Target', 'WM_Task_2bk_Place_Median_RT_Nontarget',
+        'WM_Task_2bk_Tool_Median_RT', 'WM_Task_2bk_Tool_Median_RT_Target', 'WM_Task_2bk_Tool_Median_RT_Nontarget']
+}
+
+# 行为正确率除以反应时的命名映射
+beh_CR_div_RT_dict = {
+    'PMAT24_CR/RT': ('PMAT24_A_CR', 'PMAT24_A_RTCR'),
+    'PMAT24_CR/SI': ('PMAT24_A_CR', 'PMAT24_A_SI'),
+    'VSPLOT_CR/RT': ('VSPLOT_TC', 'VSPLOT_CRTE'),
+    'VSPLOT_CR/OFF': ('VSPLOT_TC', 'VSPLOT_OFF'),
+    'ER40_CR/RT': ('ER40_CR', 'ER40_CRT'),
+    'Emotion_Task_CR/RT': ('Emotion_Task_Acc', 'Emotion_Task_Median_RT'),
+    'WM_Task_CR/RT': ('WM_Task_Acc', 'WM_Task_Median_RT'),
+    'WM_Task_2bk_CR/RT': ('WM_Task_2bk_Acc', 'WM_Task_2bk_Median_RT'),
+    'WM_Task_0bk_CR/RT': ('WM_Task_0bk_Acc', 'WM_Task_0bk_Median_RT')
 }
 
 # >>>CIFTI brain structure

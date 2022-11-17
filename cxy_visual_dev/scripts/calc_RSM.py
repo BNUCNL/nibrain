@@ -9,7 +9,8 @@ from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru,\
+    beh_CR_div_RT_dict
 from cxy_visual_dev.lib.algo import cat_data_from_cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -813,6 +814,20 @@ def calc_RSM9():
     beh_arr = beh_arr[subj_indices].T
     map_names.extend(cols)
     maps.append(beh_arr)
+
+    # 构建行为正确率除以反应时的指标
+    CR_div_RT_maps = []
+    CR_div_RT_names = []
+    for CR_div_RT_name, CR_div_RT_combo in beh_CR_div_RT_dict.items():
+        beh_col_idx1 = cols.index(CR_div_RT_combo[0])
+        beh_col_idx2 = cols.index(CR_div_RT_combo[1])
+        CR_div_RT_map = beh_arr[beh_col_idx1] / beh_arr[beh_col_idx2]
+        CR_div_RT_maps.append(CR_div_RT_map)
+        CR_div_RT_names.append(CR_div_RT_name)
+    CR_div_RT_maps = np.array(CR_div_RT_maps)
+    np.nan_to_num(CR_div_RT_maps, copy=False, nan=np.nan, posinf=np.nan, neginf=np.nan)
+    map_names.extend(CR_div_RT_names)
+    maps.append(CR_div_RT_maps)
 
     # ---HCPY-M+corrT_MMP-vis3-L_fit_PC_subj-wise---
     mt_fit_pc_lh_file = pjoin(anal_dir, 'fit/HCPY-M+corrT_MMP-vis3-L_fit_PC_subj-wise.pkl')
