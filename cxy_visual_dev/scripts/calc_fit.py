@@ -161,12 +161,12 @@ def HCPDA_MT_fit_PC12_SW(dataset_name, vis_name, width, step, merge_remainder):
     """
     n_pc = 2
     m_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_myelin.dscalar.nii')
-    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_thickness.dscalar.nii')
+    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_corrThickness.dscalar.nii')
     pc_file = pjoin(
-        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+        anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
-    out_name = f'{dataset_name}-M+T=PC12_SW-width{width}-step{step}'
+    out_name = f'{dataset_name}-M+corrT=PC12_{vis_name}_SW-width{width}-step{step}'
     if merge_remainder:
         out_name += '-merge'
     out_file = pjoin(work_dir, f'{out_name}.pkl')
@@ -678,10 +678,14 @@ if __name__ == '__main__':
     # gdist_fit_PC1()
     # gdist_fit_PC12()
     # HCPDA_fit_PC12()
-    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
-    #                      width=50, step=10, merge_remainder=True)
-    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
-    #                      width=50, step=10, merge_remainder=True)
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-L',
+                         width=50, step=10, merge_remainder=True)
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-L',
+                         width=50, step=10, merge_remainder=True)
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
+                         width=50, step=10, merge_remainder=True)
+    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
+                         width=50, step=10, merge_remainder=True)
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # HCPDA_fit_PC12_local1(data_name='HCPD', Hemi='R')
@@ -692,5 +696,5 @@ if __name__ == '__main__':
     # PC12_fit_func2()
     # PC12_fit_func3(Hemi='L')
     # PC12_fit_func3(Hemi='R')
-    HCPY_MT_fit_PC12(Hemi='L')
-    HCPY_MT_fit_PC12(Hemi='R')
+    # HCPY_MT_fit_PC12(Hemi='L')
+    # HCPY_MT_fit_PC12(Hemi='R')
