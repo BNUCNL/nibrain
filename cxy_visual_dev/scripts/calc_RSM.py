@@ -654,12 +654,12 @@ def calc_RSM7(dataset_name, vis_name):
     """
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     hcpy_file = pjoin(
-        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+        anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     n_hcpy_pc = 2
     hcpda_file = pjoin(
-        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+        anal_dir, f'decomposition/{dataset_name}-M+corrT_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
     n_hcpda_pc = 10
-    out_file = pjoin(work_dir, f'RSM7_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+    out_file = pjoin(work_dir, f'RSM7_M+corrT_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
 
     hcpda_data = pkl.load(open(hcpda_file, 'rb'))
     row_names = hcpda_data['component name']
@@ -961,11 +961,13 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM5()
     # calc_RSM6()
-    # calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
-    # calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-L')
+    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-L')
 
     # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')
 
-    calc_RSM9()
+    # calc_RSM9()
     # calc_RSM10()
