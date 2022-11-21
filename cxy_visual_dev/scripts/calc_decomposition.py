@@ -643,25 +643,35 @@ if __name__ == '__main__':
     #     mask_name0='grayordinate', mask_name1='grayordinate',
     #     dtype='r', zscore0=True, n_component=20, random_state=7)
 
-    pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
-    pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
-    pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-L', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
-    pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-L', width=50,
-                    step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-L', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-L', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
 
     # pca_HCPDA_MT_SW_param(
-    #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
-    #     out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    #     out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
     # pca_HCPDA_MT_SW_param(
-    #     src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
-    #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    #     out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
+    pca_HCPDA_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    )
+    pca_HCPDA_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    )
 
     # pca_HCPDA_MT_SW_param_local(
     #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
