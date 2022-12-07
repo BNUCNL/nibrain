@@ -1075,13 +1075,13 @@ if __name__ == '__main__':
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    # subj_par = '/nfs/m1/hcp'
-    # ColeParcel_fc_vtx(
-    #     subj_par=subj_par,
-    #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
-    #     stem_path='MNINonLinear/Results',
-    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    # )
+    subj_par = '/nfs/z1/HCP/HCPYA'
+    ColeParcel_fc_vtx(
+        subj_par=subj_par,
+        check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
+        stem_path='MNINonLinear/Results',
+        base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    )
 
     # df_ck = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
     # df_ck = df_ck.loc[[2], :]
@@ -1116,4 +1116,4 @@ if __name__ == '__main__':
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
     # get_HCPY_rsfc_mat(Hemi='R')
-    get_HCPY_rsfc_mat_roi()
+    # get_HCPY_rsfc_mat_roi()
