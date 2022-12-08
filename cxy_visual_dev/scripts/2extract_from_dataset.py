@@ -896,7 +896,7 @@ def get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right'):
               f'cost {time.time() - time1} seconds.')
 
 
-def get_HCPY_rsfc_mat(Hemi='R'):
+def get_HCPY_rsfc_mat_bak(Hemi='R'):
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
@@ -964,6 +964,62 @@ def get_HCPY_rsfc_mat(Hemi='R'):
               f'cost {time.time()-time1} seconds')
 
     data = {'matrix': rs / n_subj_valid, 'row-idx_to_32k-fs-LR-idx': mask_indices_LR}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
+def get_HCPY_rsfc_mat(Hemi='R'):
+    """
+    对1070名中的每一位被试，选用状态是ok=(1200, 91282)的run。
+    每个run都会计算视觉皮层内两两顶点之间的RSFC, 然后为每个被试
+    计算跨ta的所有run的平均RSFC，最终得到跨被试平均的RSFC。
+    """
+    # prepare
+    vis_name = f'MMP-vis3-{Hemi}'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/z1/HCP/HCPYA/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_file = pjoin(work_dir, f'HCPY-avg_RSFC-{vis_name}.pkl')
+
+    # loading
+    vis_mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name), 'grayordinate')[0]
+    vtx_indices = np.where(vis_mask)[0]
+    n_vtx = len(vtx_indices)
+    df = pd.read_csv(info_file, index_col='subID')
+    n_sid = df.shape[0]
+    df_ck = pd.read_csv(check_file, sep='\t', index_col='subID')
+
+    # start
+    rs = np.zeros((n_vtx, n_vtx))
+    n_sid_valid = 0
+    for sidx, sid in enumerate(df.index, 1):
+        time1 = time.time()
+
+        rs_sub = np.zeros((n_vtx, n_vtx))
+        n_run_valid = 0
+        for run in runs:
+            if df_ck.loc[sid, run] != 'ok=(1200, 91282)':
+                continue
+            run_file = run_files.format(sid, run)
+            X = nib.load(run_file).get_fdata()[:, vtx_indices].T
+            rs_run = 1 - pairwise_distances(X, metric='correlation', n_jobs=8)
+            rs_sub = rs_sub + rs_run
+            n_run_valid += 1
+        if n_run_valid == 0:
+            continue
+
+        rs_sub = rs_sub / n_run_valid
+        rs = rs + rs_sub
+        n_sid_valid += 1
+        print(f'Finish subj-{sid}_{sidx}/{n_sid}, '
+              f'cost {time.time()-time1} seconds')
+    print('n_sid_valid:', n_sid_valid)
+
+    # save out
+    data = {'matrix': rs / n_sid_valid,
+            'row-idx_to_32k-fs-LR-idx': vtx_indices}
     pkl.dump(data, open(out_file, 'wb'))
 
 
@@ -1075,13 +1131,13 @@ if __name__ == '__main__':
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    subj_par = '/nfs/z1/HCP/HCPYA'
-    ColeParcel_fc_vtx(
-        subj_par=subj_par,
-        check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
-        stem_path='MNINonLinear/Results',
-        base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    )
+    # subj_par = '/nfs/z1/HCP/HCPYA'
+    # ColeParcel_fc_vtx(
+    #     subj_par=subj_par,
+    #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
+    #     stem_path='MNINonLinear/Results',
+    #     base_path='{run}/{run}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    # )
 
     # df_ck = pd.read_csv(pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'), sep='\t')
     # df_ck = df_ck.loc[[2], :]
@@ -1115,5 +1171,7 @@ if __name__ == '__main__':
     # get_HCPY_rsfc_mat_old(hemi='rh')
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
-    # get_HCPY_rsfc_mat(Hemi='R')
+    # get_HCPY_rsfc_mat_bak(Hemi='R')
+    get_HCPY_rsfc_mat(Hemi='R')
+    get_HCPY_rsfc_mat(Hemi='L')
     # get_HCPY_rsfc_mat_roi()
