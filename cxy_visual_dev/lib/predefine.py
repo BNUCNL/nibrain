@@ -67,6 +67,10 @@ hemi2stru = {
     'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
 }
 hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+Hemi2stru = {
+    'L': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+    'R': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+}
 # CIFTI brain structure<<<
 
 # >>>32k_fs_LR CIFTI
