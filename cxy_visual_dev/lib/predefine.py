@@ -9,6 +9,10 @@ from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 
+meas2color = {
+    'Myelination': 'cornflowerblue', 'Thickness': 'limegreen',
+    'PC1': (150, 150, 150), 'PC2': (220, 220, 220)}
+
 # 视觉相关行为类型到其测量变量的映射
 vis_beh_domain2meas = {
     'Episodic Memory': ['PicSeq_Unadj', 'PicSeq_AgeAdj'],
