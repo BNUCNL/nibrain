@@ -1092,6 +1092,72 @@ def get_HCPY_rsfc_mat_roi():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def get_HCPY_Destrieux_atlas():
+    """
+    基于1070名被试的{sid}.aparc.a2009s.32k_fs_LR.dlabel.nii
+    制作Destrieux Atlas各ROI的概率图以及MPM
+    """
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    src_files = '/nfs/z1/HCP/HCPYA/{sid}/MNINonLinear/fsaverage_LR32k/'\
+        '{sid}.aparc.a2009s.32k_fs_LR.dlabel.nii'
+    out_file1 = pjoin(work_dir, 'HCPY_aparc-a2009s_prob_32k_fs_LR.dscalar.nii')
+    out_file2 = pjoin(work_dir, 'HCPY_aparc-a2009s_MPM_32k_fs_LR.dlabel.nii')
+
+    df = pd.read_csv(info_file, index_col='subID')
+    n_sid = df.shape[0]
+
+    lbl_tab = None
+    lbl2key = None
+    prob_maps = None
+    map_names = None
+    bms = None
+    vol = None
+    n_sid_valid = 0
+    for sidx, sid in enumerate(df.index, 1):
+        src_file = src_files.format(sid=sid)
+        if not os.path.exists(src_file):
+            continue
+        reader = CiftiReader(src_file)
+        ind_map = reader.get_data()[0]
+
+        lbl_tab_tmp = reader.label_tables()[0]
+        lbl2key_tmp = {}
+        for k, v in lbl_tab_tmp.items():
+            if k == 0:
+                continue
+            lbl2key_tmp[v.label] = k
+        if lbl2key is None:
+            lbl_tab = lbl_tab_tmp
+            lbl2key = lbl2key_tmp
+            prob_maps = np.zeros((len(lbl2key), ind_map.shape[0]))
+            map_names = list(lbl2key.keys())
+            bms = reader.brain_models()
+            vol = reader.volume
+        else:
+            assert lbl2key == lbl2key_tmp
+
+        for map_idx, map_name in enumerate(map_names):
+            prob_maps[map_idx] = prob_maps[map_idx] +\
+                (ind_map == lbl2key[map_name]).astype(int)
+
+        n_sid_valid += 1
+        print(f'Finished {sid}-{sidx}/{n_sid}')
+    print('n_sid_valid:', n_sid_valid)
+
+    prob_maps = prob_maps / n_sid_valid
+    mpm_map = np.argmax(prob_maps, 0)
+    mpm_map_tmp = mpm_map + 1
+    for vtx_idx in range(mpm_map.shape[0]):
+        lbl = map_names[mpm_map[vtx_idx]]
+        mpm_map[vtx_idx] = lbl2key[lbl]
+    assert np.all(mpm_map == mpm_map_tmp)
+    mpm_map = np.expand_dims(mpm_map, 0)
+
+    save2cifti(out_file1, prob_maps, bms, map_names, vol)
+    save2cifti(out_file2, mpm_map, bms, None, vol,
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -1172,6 +1238,7 @@ if __name__ == '__main__':
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
     # get_HCPY_rsfc_mat_bak(Hemi='R')
-    get_HCPY_rsfc_mat(Hemi='R')
-    get_HCPY_rsfc_mat(Hemi='L')
+    # get_HCPY_rsfc_mat(Hemi='R')
+    # get_HCPY_rsfc_mat(Hemi='L')
     # get_HCPY_rsfc_mat_roi()
+    get_HCPY_Destrieux_atlas()
