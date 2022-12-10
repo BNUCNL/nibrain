@@ -100,8 +100,39 @@ def geodesic_distance(Hemi):
     savemat(out_file, data)
 
 
+def RSFC_pair_vertices(Hemi):
+    """
+    Get RSFC between each pair of visual cortex vertices
+
+    Args:
+        Hemi (str): L or R.
+            L: left visual cortex
+            R: right visual cortex
+    """
+    vis_name = f'MMP-vis3-{Hemi}'
+    rsfc_file = pjoin(
+        proj_dir, f'data/HCP/HCPY-avg_RSFC-{vis_name}.pkl')
+    out_file = pjoin(work_dir, f'HCPY-avg_RSFC-{vis_name}.mat')
+
+    # prepare visual vertex indices
+    vis_mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
+    vtx_indices = np.where(vis_mask)[0]
+    n_vtx = len(vtx_indices)
+    idx_mat = np.tri(n_vtx, k=-1, dtype=bool).T
+
+    # get RSFC data
+    rsfc_dict = pkl.load(open(rsfc_file, 'rb'))
+    assert np.all(vtx_indices == rsfc_dict['row-idx_to_32k-fs-LR-idx'])
+    data = {'data': rsfc_dict['matrix'][idx_mat]}
+
+    # save out
+    savemat(out_file, data)
+
+
 if __name__ == '__main__':
     # gradient_distance(Hemi='R')
     # gradient_distance(Hemi='L')
-    geodesic_distance(Hemi='R')
-    geodesic_distance(Hemi='L')
+    # geodesic_distance(Hemi='R')
+    # geodesic_distance(Hemi='L')
+    # RSFC_pair_vertices(Hemi='R')
+    RSFC_pair_vertices(Hemi='L')
