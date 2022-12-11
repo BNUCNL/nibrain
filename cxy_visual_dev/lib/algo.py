@@ -974,6 +974,15 @@ class AgeSlideWindow:
         for win_id in win_ids:
             ages = self.get_ages(win_id, age_type)
             ax.plot([ages.min(), ages.max()], [win_id, win_id], c='k')
+        xticks = (self.get_ages(1, age_type).min(),
+                  self.get_ages(int(self.n_win/2), age_type).median(),
+                  self.get_ages(self.n_win, age_type).max())
+        xticks = [int(i) for i in xticks]
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(xticks)
+        yticks = (1, self.n_win)
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticks)
         ax.set_xlabel(f'Age ({age_type})')
         ax.set_ylabel('Window')
         title = f'{self.dataset_name}_width-{self.width}_setp-{self.step}'
