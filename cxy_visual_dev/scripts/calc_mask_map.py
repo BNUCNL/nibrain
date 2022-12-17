@@ -12,7 +12,7 @@ from cxy_visual_dev.lib.predefine import proj_dir,\
     s1200_avg_thickness, s1200_avg_corrThickness,\
     s1200_avg_angle, s1200_avg_eccentricity,\
     hemi2Hemi, hemi2stru, s1200_midthickness_L,\
-    s1200_midthickness_R
+    s1200_midthickness_R, Hemi2stru
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'mask_map')
@@ -222,6 +222,23 @@ def make_mask7():
     """
     直接指定某些顶点为某个ROI
     """
+    Hemis = ('L', 'R')
+    seed_name2vtx_L = {
+        'early': [24939, 24324],
+        'dorsal': [12485, 12545],
+        'lateral': [23474, 15570],
+        'ventral': [21501, 22655]}
+    seed_name2vtx_R = {
+        'early': [24938, 24433],
+        'dorsal': [12442, 12586],
+        'lateral': [23526, 15523],
+        'ventral': [21501, 22485]}
+    Hemi2seed_dict = {'L': seed_name2vtx_L, 'R': seed_name2vtx_R}
+    n_seed = len(Hemi2seed_dict['L']) + len(Hemi2seed_dict['R'])
+    cmap = plt.cm.jet
+    color_indices = np.linspace(0, 1, n_seed)
+    out_file = pjoin(work_dir, 'EDLV-seed-v1.dlabel.nii')
+
     # hemi = 'lh'
     # Hemi = hemi2Hemi[hemi]
     # seed_name2vtx = {
@@ -232,34 +249,37 @@ def make_mask7():
     # color = (1, 0, 0, 1)
     # out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
 
-    hemi = 'rh'
-    Hemi = hemi2Hemi[hemi]
-    seed_name2vtx = {
-        'early': [24938, 24433],
-        'dorsal': [12442, 12586],
-        'lateral': [15241],
-        'ventral': [21501, 22485]}
-    color = (1, 0, 0, 1)
-    out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
+    # hemi = 'rh'
+    # Hemi = hemi2Hemi[hemi]
+    # seed_name2vtx = {
+    #     'early': [24938, 24433],
+    #     'dorsal': [12442, 12586],
+    #     'lateral': [15241],
+    #     'ventral': [21501, 22485]}
+    # color = (1, 0, 0, 1)
+    # out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
     LR_shape = reader.full_data.shape
     assert (1, LR_count_32k) == LR_shape
     bms = reader.brain_models()
-    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
 
-    # save out
     out_map = np.zeros(LR_shape, dtype=np.uint8)
     lbl_tab = nib.cifti2.Cifti2LabelTable()
     lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
-    hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
-    for seed_key, seed_name in enumerate(seed_name2vtx.keys(), 1):
-        seed_vertices = seed_name2vtx[seed_name]
-        hemi_map[seed_vertices] = seed_key
-        lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
-            seed_key, f'{Hemi}_{seed_name}', *color)
-    out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
+    seed_key = 0
+    for Hemi in Hemis:
+        offset, count, hemi_shape, idx2vtx = \
+            reader.get_stru_pos(Hemi2stru[Hemi])
+        hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
+        for seed_name, seed_vertices in Hemi2seed_dict[Hemi].items():
+            seed_color = cmap(color_indices[seed_key])
+            seed_key += 1
+            hemi_map[seed_vertices] = seed_key
+            lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
+                seed_key, f'{Hemi}_{seed_name}', *seed_color)
+        out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
 
@@ -332,8 +352,8 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
     # )
 
-    atlas = Atlas('HCP-MMP')
-    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
+    # atlas = Atlas('HCP-MMP')
+    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
     # mask_cii(
     #     src_file=pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii'),
     #     mask=mask,
@@ -349,11 +369,11 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'S1200-avg-angle_MMP-vis3.dscalar.nii')
     # )
-    mask_cii(
-        src_file=pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'),
-        mask=mask,
-        out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
-    )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'HCPY-faff_MMP-vis3.dscalar.nii')
+    # )
 
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-R'))[0]
@@ -382,7 +402,7 @@ if __name__ == '__main__':
     # make_mask2()
     # make_mask3()
     # make_mask6()
-    # make_mask7()
+    make_mask7()
 
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8
