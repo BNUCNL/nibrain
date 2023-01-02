@@ -13,6 +13,32 @@ meas2color = {
     'Myelination': 'cornflowerblue', 'Thickness': 'limegreen',
     'PC1': 'red', 'PC2': 'orange'}
 
+# 所有属于Cognition的测量变量
+cognition_cols = [
+    'PicSeq_Unadj', 'PicSeq_AgeAdj', 'CardSort_Unadj',
+    'CardSort_AgeAdj', 'Flanker_Unadj', 'Flanker_AgeAdj',
+    'PMAT24_A_CR', 'PMAT24_A_SI', 'PMAT24_A_RTCR', 'ReadEng_Unadj',
+    'ReadEng_AgeAdj', 'PicVocab_Unadj', 'PicVocab_AgeAdj',
+    'ProcSpeed_Unadj', 'ProcSpeed_AgeAdj', 'DDisc_SV_1mo_200',
+    'DDisc_SV_6mo_200', 'DDisc_SV_1yr_200', 'DDisc_SV_3yr_200',
+    'DDisc_SV_5yr_200', 'DDisc_SV_10yr_200', 'DDisc_SV_1mo_40K',
+    'DDisc_SV_6mo_40K', 'DDisc_SV_1yr_40K', 'DDisc_SV_3yr_40K',
+    'DDisc_SV_5yr_40K', 'DDisc_SV_10yr_40K', 'DDisc_AUC_200',
+    'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'VSPLOT_OFF',
+    'SCPT_TP', 'SCPT_TN', 'SCPT_FP', 'SCPT_FN', 'SCPT_TPRT',
+    'SCPT_SEN', 'SCPT_SPEC', 'SCPT_LRNR', 'IWRD_TOT', 'IWRD_RTC',
+    'ListSort_Unadj', 'ListSort_AgeAdj', 'CogFluidComp_Unadj',
+    'CogFluidComp_AgeAdj', 'CogEarlyComp_Unadj', 'CogEarlyComp_AgeAdj',
+    'CogTotalComp_Unadj', 'CogTotalComp_AgeAdj',
+    'CogCrystalComp_Unadj', 'CogCrystalComp_AgeAdj']
+
+# 所有属于Sensory的测量变量
+sensory_cols = [
+    'Noise_Comp', 'Odor_Unadj', 'Odor_AgeAdj', 'PainIntens_RawScore',
+    'PainInterf_Tscore', 'Taste_Unadj', 'Taste_AgeAdj', 'Color_Vision',
+    'Eye', 'EVA_Num', 'EVA_Denom', 'Correction', 'Mars_Log_Score',
+    'Mars_Errs', 'Mars_Final']
+
 # 视觉相关行为类型到其测量变量的映射
 vis_beh_domain2meas = {
     'Episodic Memory': ['PicSeq_Unadj', 'PicSeq_AgeAdj'],

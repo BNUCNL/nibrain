@@ -12,6 +12,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.cross_decomposition import CCA
 from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
     get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize, s1200_1096_myelin, s1200_1096_thickness,\
@@ -674,18 +675,170 @@ def HCPY_MT_fit_PC12(Hemi):
     pkl.dump(out_data, open(out_file, 'wb'))
 
 
+def weight_CCA_beh(vis_name):
+
+    # 0. 用上C2的M和T的权重作为特征（一共2个）
+    # 1. 选择Age-Adjusted Scale Score，而非Unadjusted Scale Score
+    # 2. 只保留正确率/数量，反应时
+    # 3. 对于Delay Discounting，只用两个AUC指标
+    # 4. 对于Sustained Attention，只用反应时以及sensitivity和specificity
+    # 5. 去掉分类变量
+    # 6. Visual Acuity保留EVA_Denom
+    # 7. Contrast Sensitivity保留Mars_Final
+    n_component = 2
+    meas_names = ('M', 'T')
+    pc_names = ('C2',)
+    cognition_cols = [
+        'PicSeq_AgeAdj', 'CardSort_AgeAdj', 'Flanker_AgeAdj',
+        'PMAT24_A_CR', 'PMAT24_A_RTCR', 'ReadEng_AgeAdj',
+        'PicVocab_AgeAdj', 'ProcSpeed_AgeAdj', 'DDisc_AUC_200',
+        'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'SCPT_TPRT',
+        'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT', 'IWRD_RTC', 'ListSort_AgeAdj',
+        'CogFluidComp_AgeAdj', 'CogEarlyComp_AgeAdj', 'CogTotalComp_AgeAdj',
+        'CogCrystalComp_AgeAdj']
+    sensory_cols = [
+        'Noise_Comp', 'Odor_AgeAdj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_AgeAdj', 'EVA_Denom', 'Mars_Final']
+    beh_cols = cognition_cols + sensory_cols
+
+    # prepare file
+    meas2file = {
+        'M': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_M.csv'),
+        'T': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_corrT.csv')}
+    beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
+    beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v3.pkl')
+
+    # load data
+    feat_names = []
+    weight_arr = []
+    for meas_name in meas_names:
+        weight_df = pd.read_csv(meas2file[meas_name], usecols=pc_names)
+        weight_arr.append(weight_df.values)
+        feat_names.extend([f'{i}_{meas_name}_weight' for i in pc_names])
+    weight_arr = np.concatenate(weight_arr, axis=1)
+    beh_df1 = pd.read_csv(beh_file1, index_col='Subject')
+    beh_df2 = pd.read_csv(beh_file2, index_col='Subject')
+    assert np.all(beh_df1.index == beh_df2.index)
+    beh_df = pd.concat([beh_df1, beh_df2], axis=1)
+    info_df = pd.read_csv(info_file, index_col='subID')
+    beh_df = beh_df.loc[info_df.index, beh_cols]
+
+    # prepare X and Y
+    Y = beh_df.values
+    non_nan_vec = ~np.any(np.isnan(Y), 1)
+    Y = Y[non_nan_vec]
+    X = weight_arr[non_nan_vec]
+    print('feature names:', feat_names)
+    print('X.shape:', X.shape)
+    print('behavior names:', beh_cols)
+    print('Y.shape:', Y.shape)
+
+    # CCA
+    cca = CCA(n_components=n_component, scale=True)
+    cca.fit(X, Y)
+    X_trans, Y_trans = cca.transform(X, Y)
+
+    # save out
+    out_dict = {
+        'model': cca, 'feature names': feat_names,
+        'target names': beh_cols, 'X_trans': X_trans,
+        'Y_trans': Y_trans}
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def weight_CCA_beh1(vis_name):
+
+    # 0. 用上C1和C2的（M和T的权重绝对值之和）作为特征（一共2个）
+    # 1. 选择Age-Adjusted Scale Score，而非Unadjusted Scale Score
+    # 2. 只保留正确率/数量，反应时
+    # 3. 对于Delay Discounting，只用两个AUC指标
+    # 4. 对于Sustained Attention，只用反应时以及sensitivity和specificity
+    # 5. 去掉分类变量
+    # 6. Visual Acuity保留EVA_Denom
+    # 7. Contrast Sensitivity保留Mars_Final
+    n_component = 2
+    meas_names = ('M', 'T')
+    pc_names = ('C1', 'C2')
+    cognition_cols = [
+        'PicSeq_AgeAdj', 'CardSort_AgeAdj', 'Flanker_AgeAdj',
+        'PMAT24_A_CR', 'PMAT24_A_RTCR', 'ReadEng_AgeAdj',
+        'PicVocab_AgeAdj', 'ProcSpeed_AgeAdj', 'DDisc_AUC_200',
+        'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'SCPT_TPRT',
+        'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT', 'IWRD_RTC', 'ListSort_AgeAdj',
+        'CogFluidComp_AgeAdj', 'CogEarlyComp_AgeAdj', 'CogTotalComp_AgeAdj',
+        'CogCrystalComp_AgeAdj']
+    sensory_cols = [
+        'Noise_Comp', 'Odor_AgeAdj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_AgeAdj', 'EVA_Denom', 'Mars_Final']
+    beh_cols = cognition_cols + sensory_cols
+
+    # prepare file
+    meas2file = {
+        'M': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_M.csv'),
+        'T': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_corrT.csv')}
+    beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
+    beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v4.pkl')
+
+    # load data
+    feat_names = [f'{i}_abs(w)_M+T' for i in pc_names]
+    weight_arr = 0
+    for meas_name in meas_names:
+        weight_df = pd.read_csv(meas2file[meas_name], usecols=pc_names)
+        weight_arr = weight_arr + np.abs(weight_df.values)
+    beh_df1 = pd.read_csv(beh_file1, index_col='Subject')
+    beh_df2 = pd.read_csv(beh_file2, index_col='Subject')
+    assert np.all(beh_df1.index == beh_df2.index)
+    beh_df = pd.concat([beh_df1, beh_df2], axis=1)
+    info_df = pd.read_csv(info_file, index_col='subID')
+    beh_df = beh_df.loc[info_df.index, beh_cols]
+
+    # prepare X and Y
+    Y = beh_df.values
+    non_nan_vec = ~np.any(np.isnan(Y), 1)
+    Y = Y[non_nan_vec]
+    X = weight_arr[non_nan_vec]
+    print('feature names:', feat_names)
+    print('X.shape:', X.shape)
+    print('behavior names:', beh_cols)
+    print('Y.shape:', Y.shape)
+
+    # CCA
+    cca = CCA(n_components=n_component, scale=True)
+    cca.fit(X, Y)
+    X_trans, Y_trans = cca.transform(X, Y)
+
+    # save out
+    out_dict = {
+        'model': cca, 'feature names': feat_names,
+        'target names': beh_cols, 'X_trans': X_trans,
+        'Y_trans': Y_trans}
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # gdist_fit_PC12()
     # HCPDA_fit_PC12()
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-L',
-                         width=50, step=10, merge_remainder=True)
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-L',
-                         width=50, step=10, merge_remainder=True)
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
-                         width=50, step=10, merge_remainder=True)
-    HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
-                         width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-L',
+    #                      width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-L',
+    #                      width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
+    #                      width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
+    #                      width=50, step=10, merge_remainder=True)
     # mean_tau_diff_fit_PC12()
     # HCPDA_fit_PC12_local()
     # HCPDA_fit_PC12_local1(data_name='HCPD', Hemi='R')
@@ -698,3 +851,7 @@ if __name__ == '__main__':
     # PC12_fit_func3(Hemi='R')
     # HCPY_MT_fit_PC12(Hemi='L')
     # HCPY_MT_fit_PC12(Hemi='R')
+    # weight_CCA_beh(vis_name='MMP-vis3-R')
+    # weight_CCA_beh(vis_name='MMP-vis3-L')
+    weight_CCA_beh1(vis_name='MMP-vis3-R')
+    weight_CCA_beh1(vis_name='MMP-vis3-L')
