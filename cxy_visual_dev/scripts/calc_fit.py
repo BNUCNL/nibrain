@@ -678,10 +678,10 @@ def HCPY_MT_fit_PC12(Hemi):
 def weight_CCA_beh(vis_name):
 
     # 0. 用上C2的M和T的权重作为特征（一共2个）
-    # 1. 选择Age-Adjusted Scale Score，而非Unadjusted Scale Score
-    # 2. 只保留正确率/数量，反应时
+    # 1. 选择Unadjusted Scale Score，而非Age-Adjusted Scale Score
+    # 2. 只保留正确率
     # 3. 对于Delay Discounting，只用两个AUC指标
-    # 4. 对于Sustained Attention，只用反应时以及sensitivity和specificity
+    # 4. 对于Sustained Attention，只用sensitivity和specificity
     # 5. 去掉分类变量
     # 6. Visual Acuity保留EVA_Denom
     # 7. Contrast Sensitivity保留Mars_Final
@@ -689,16 +689,15 @@ def weight_CCA_beh(vis_name):
     meas_names = ('M', 'T')
     pc_names = ('C2',)
     cognition_cols = [
-        'PicSeq_AgeAdj', 'CardSort_AgeAdj', 'Flanker_AgeAdj',
-        'PMAT24_A_CR', 'PMAT24_A_RTCR', 'ReadEng_AgeAdj',
-        'PicVocab_AgeAdj', 'ProcSpeed_AgeAdj', 'DDisc_AUC_200',
-        'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'SCPT_TPRT',
-        'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT', 'IWRD_RTC', 'ListSort_AgeAdj',
-        'CogFluidComp_AgeAdj', 'CogEarlyComp_AgeAdj', 'CogTotalComp_AgeAdj',
-        'CogCrystalComp_AgeAdj']
+        'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
+        'PMAT24_A_CR', 'ReadEng_Unadj', 'PicVocab_Unadj',
+        'ProcSpeed_Unadj', 'DDisc_AUC_200', 'DDisc_AUC_40K',
+        'VSPLOT_TC', 'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT',
+        'ListSort_Unadj', 'CogFluidComp_Unadj', 'CogEarlyComp_Unadj',
+        'CogTotalComp_Unadj', 'CogCrystalComp_Unadj']
     sensory_cols = [
-        'Noise_Comp', 'Odor_AgeAdj', 'PainIntens_RawScore',
-        'PainInterf_Tscore', 'Taste_AgeAdj', 'EVA_Denom', 'Mars_Final']
+        'Noise_Comp', 'Odor_Unadj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_Unadj', 'EVA_Denom', 'Mars_Final']
     beh_cols = cognition_cols + sensory_cols
 
     # prepare file
@@ -712,7 +711,7 @@ def weight_CCA_beh(vis_name):
     beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
     beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
     info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
-    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v3.pkl')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v7.pkl')
 
     # load data
     feat_names = []
@@ -755,10 +754,10 @@ def weight_CCA_beh(vis_name):
 def weight_CCA_beh1(vis_name):
 
     # 0. 用上C1和C2的（M和T的权重绝对值之和）作为特征（一共2个）
-    # 1. 选择Age-Adjusted Scale Score，而非Unadjusted Scale Score
-    # 2. 只保留正确率/数量，反应时
+    # 1. 选择Unadjusted Scale Score，而非Age-Adjusted Scale Score
+    # 2. 只保留正确率
     # 3. 对于Delay Discounting，只用两个AUC指标
-    # 4. 对于Sustained Attention，只用反应时以及sensitivity和specificity
+    # 4. 对于Sustained Attention，只用sensitivity和specificity
     # 5. 去掉分类变量
     # 6. Visual Acuity保留EVA_Denom
     # 7. Contrast Sensitivity保留Mars_Final
@@ -766,16 +765,15 @@ def weight_CCA_beh1(vis_name):
     meas_names = ('M', 'T')
     pc_names = ('C1', 'C2')
     cognition_cols = [
-        'PicSeq_AgeAdj', 'CardSort_AgeAdj', 'Flanker_AgeAdj',
-        'PMAT24_A_CR', 'PMAT24_A_RTCR', 'ReadEng_AgeAdj',
-        'PicVocab_AgeAdj', 'ProcSpeed_AgeAdj', 'DDisc_AUC_200',
-        'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'SCPT_TPRT',
-        'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT', 'IWRD_RTC', 'ListSort_AgeAdj',
-        'CogFluidComp_AgeAdj', 'CogEarlyComp_AgeAdj', 'CogTotalComp_AgeAdj',
-        'CogCrystalComp_AgeAdj']
+        'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
+        'PMAT24_A_CR', 'ReadEng_Unadj', 'PicVocab_Unadj',
+        'ProcSpeed_Unadj', 'DDisc_AUC_200', 'DDisc_AUC_40K',
+        'VSPLOT_TC', 'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT',
+        'ListSort_Unadj', 'CogFluidComp_Unadj', 'CogEarlyComp_Unadj',
+        'CogTotalComp_Unadj', 'CogCrystalComp_Unadj']
     sensory_cols = [
-        'Noise_Comp', 'Odor_AgeAdj', 'PainIntens_RawScore',
-        'PainInterf_Tscore', 'Taste_AgeAdj', 'EVA_Denom', 'Mars_Final']
+        'Noise_Comp', 'Odor_Unadj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_Unadj', 'EVA_Denom', 'Mars_Final']
     beh_cols = cognition_cols + sensory_cols
 
     # prepare file
@@ -789,7 +787,7 @@ def weight_CCA_beh1(vis_name):
     beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
     beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
     info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
-    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v4.pkl')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v8.pkl')
 
     # load data
     feat_names = [f'{i}_abs(w)_M+T' for i in pc_names]
