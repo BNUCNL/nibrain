@@ -2,7 +2,7 @@ import os
 import numpy as np
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, permutation_test
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas, get_rois,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k,\
     mmp_map_file, s1200_avg_R2
@@ -164,8 +164,44 @@ def make_va_MMP_vis2():
     save2cifti(pjoin(work_dir, 'va_MMP-vis2.dscalar.nii'), data, reader.brain_models())
 
 
+def calc_and_test_PC_corr_geo_model():
+    Hemis = ('L', 'R')
+    pc_names = ('PC1', 'PC2')
+    pc_files = pjoin(
+        anal_dir, 'decomposition/'
+        'HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj.dscalar.nii')
+    geo_file1 = pjoin(
+        anal_dir, 'gdist/gdist_src-OP.dscalar.nii')
+    geo_file2 = pjoin(
+        anal_dir, 'gdist/gdist4_src-EDLV-seed_{Hemi}.dscalar.nii')
+
+    def statistic(x, y):
+        return pearsonr(x, y)[0]
+
+    for Hemi in Hemis:
+        mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
+        pc_file = pc_files.format(Hemi=Hemi)
+        pc_maps = nib.load(pc_file).get_fdata()[:2, mask]
+        geo_maps = [
+            nib.load(geo_file1).get_fdata()[0, mask],
+            nib.load(geo_file2.format(Hemi=Hemi)).get_fdata()[0, mask]]
+        for pc_idx, pc_name in enumerate(pc_names):
+            print(f'---{Hemi}H {pc_name} corr geometry model---')
+            x = pc_maps[pc_idx]
+            y = geo_maps[pc_idx]
+            pmt_test = permutation_test(
+                (x, y), statistic, permutation_type='pairings',
+                vectorized=False, n_resamples=10000, alternative='two-sided',
+                random_state=7)
+            print('pmt_test.statistic:\n', pmt_test.statistic)
+            print('pmt_test.pvalue:\n', pmt_test.pvalue)
+            print("pearsonr(x, y, alternative='two-sided'):\n",
+                  pearsonr(x, y, alternative='two-sided'))
+
+
 if __name__ == '__main__':
     # C2_corr_ecc_angle_area()
     # make_EDMV_dlabel()
     # make_R2_thr98_mask()
     # make_va_MMP_vis2()
+    calc_and_test_PC_corr_geo_model()
