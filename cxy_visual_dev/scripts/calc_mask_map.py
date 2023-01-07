@@ -222,42 +222,36 @@ def make_mask7():
     """
     直接指定某些顶点为某个ROI
     """
+    # Hemis = ('L', 'R')
+    # seed_name2vtx_L = {
+    #     'early': [24939, 24324],
+    #     'dorsal': [12485, 12545],
+    #     'lateral': [23474, 15570],
+    #     'ventral': [21501, 22655]}
+    # seed_name2vtx_R = {
+    #     'early': [24938, 24433],
+    #     'dorsal': [12442, 12586],
+    #     'lateral': [23526, 15523],
+    #     'ventral': [21501, 22485]}
+    # out_file = pjoin(work_dir, 'EDLV-seed-v1.dlabel.nii')
+
     Hemis = ('L', 'R')
     seed_name2vtx_L = {
         'early': [24939, 24324],
         'dorsal': [12485, 12545],
-        'lateral': [23474, 15570],
+        'lateral': [15294],
         'ventral': [21501, 22655]}
     seed_name2vtx_R = {
         'early': [24938, 24433],
         'dorsal': [12442, 12586],
-        'lateral': [23526, 15523],
+        'lateral': [15241],
         'ventral': [21501, 22485]}
+    out_file = pjoin(work_dir, 'EDLV-seed.dlabel.nii')
+
     Hemi2seed_dict = {'L': seed_name2vtx_L, 'R': seed_name2vtx_R}
     n_seed = len(Hemi2seed_dict['L']) + len(Hemi2seed_dict['R'])
     cmap = plt.cm.jet
     color_indices = np.linspace(0, 1, n_seed)
-    out_file = pjoin(work_dir, 'EDLV-seed-v1.dlabel.nii')
-
-    # hemi = 'lh'
-    # Hemi = hemi2Hemi[hemi]
-    # seed_name2vtx = {
-    #     'early': [24939, 24324],
-    #     'dorsal': [12485, 12545],
-    #     'lateral': [15294],
-    #     'ventral': [21501, 22655]}
-    # color = (1, 0, 0, 1)
-    # out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
-
-    # hemi = 'rh'
-    # Hemi = hemi2Hemi[hemi]
-    # seed_name2vtx = {
-    #     'early': [24938, 24433],
-    #     'dorsal': [12442, 12586],
-    #     'lateral': [15241],
-    #     'ventral': [21501, 22485]}
-    # color = (1, 0, 0, 1)
-    # out_file = pjoin(work_dir, f'EDLV-seed_{Hemi}.dlabel.nii')
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
@@ -284,8 +278,8 @@ def make_mask7():
 
 
 if __name__ == '__main__':
-    # atlas = Atlas('HCP-MMP')
-    # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
+    atlas = Atlas('HCP-MMP')
+    mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'))[0]
     # mask_maps(
     #     data_file=s1200_avg_RFsize,
     #     mask=mask,
@@ -351,6 +345,11 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
     # )
+    mask_cii(
+        src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v1.dscalar.nii'),
+        mask=mask,
+        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3.dscalar.nii')
+    )
 
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]
@@ -402,7 +401,7 @@ if __name__ == '__main__':
     # make_mask2()
     # make_mask3()
     # make_mask6()
-    make_mask7()
+    # make_mask7()
 
     # atlas = Atlas('HCP-MMP')
     # R2_mask = nib.load(s1200_avg_R2).get_fdata()[0, :LR_count_32k] > 9.8

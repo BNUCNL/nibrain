@@ -173,18 +173,18 @@ def calc_and_test_PC_corr_geo_model():
     geo_file1 = pjoin(
         anal_dir, 'gdist/gdist_src-OP.dscalar.nii')
     geo_file2 = pjoin(
-        anal_dir, 'gdist/gdist4_src-EDLV-seed_{Hemi}.dscalar.nii')
+        anal_dir, 'gdist/gdist4_src-EDLV-seed-v1.dscalar.nii')
 
     def statistic(x, y):
         return pearsonr(x, y)[0]
 
+    geo_map1 = nib.load(geo_file1).get_fdata()[0]
+    geo_map2 = nib.load(geo_file2).get_fdata()[0]
     for Hemi in Hemis:
         mask = Atlas('HCP-MMP').get_mask(get_rois(f'MMP-vis3-{Hemi}'))[0]
         pc_file = pc_files.format(Hemi=Hemi)
         pc_maps = nib.load(pc_file).get_fdata()[:2, mask]
-        geo_maps = [
-            nib.load(geo_file1).get_fdata()[0, mask],
-            nib.load(geo_file2.format(Hemi=Hemi)).get_fdata()[0, mask]]
+        geo_maps = [geo_map1[mask], geo_map2[mask]]
         for pc_idx, pc_name in enumerate(pc_names):
             print(f'---{Hemi}H {pc_name} corr geometry model---')
             x = pc_maps[pc_idx]
