@@ -5,6 +5,7 @@ import nibabel as nib
 
 from os.path import join as pjoin
 from scipy.io import savemat
+from scipy.stats import zscore
 from scipy.spatial.distance import euclidean
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
@@ -23,6 +24,8 @@ def gradient_distance(Hemi):
     PC2: absolute difference between secondary gradient values of two vertices
     2D-PC: euclidean distance in the 2D gradient space constructed by
         the primary and secondary gradients.
+    2D-PC-zscore: euclidean distance in the 2D gradient space constructed by
+        the primary and secondary gradients after zscore.
 
     Args:
         Hemi (str): L or R.
@@ -41,8 +44,12 @@ def gradient_distance(Hemi):
     n_pair = int((n_vtx * n_vtx - n_vtx) / 2)
     pc_maps = nib.load(pc_file).get_fdata()[:2]
 
+    pc_maps_vis = zscore(pc_maps[:, vtx_indices], 1)
+    pc_maps_zscore = np.ones_like(pc_maps) * np.nan
+    pc_maps_zscore[0, vtx_indices] = pc_maps_vis[0]
+    pc_maps_zscore[1, vtx_indices] = pc_maps_vis[1]
     data = {'PC1': np.zeros(n_pair), 'PC2': np.zeros(n_pair),
-            '2D-PC': np.zeros(n_pair)}
+            '2D-PC': np.zeros(n_pair), '2D-PC-zscore': np.zeros(n_pair)}
     pair_idx = 0
     for idx, vtx_idx1 in enumerate(vtx_indices[:-1], 1):
         vtx1_pc = pc_maps[:, vtx_idx1]
@@ -51,6 +58,8 @@ def gradient_distance(Hemi):
             data['PC1'][pair_idx] = np.abs(vtx1_pc[0] - vtx2_pc[0])
             data['PC2'][pair_idx] = np.abs(vtx1_pc[1] - vtx2_pc[1])
             data['2D-PC'][pair_idx] = euclidean(vtx1_pc, vtx2_pc)
+            data['2D-PC-zscore'][pair_idx] = euclidean(
+                pc_maps_zscore[:, vtx_idx1], pc_maps_zscore[:, vtx_idx2])
             pair_idx += 1
 
     savemat(out_file, data)
@@ -130,9 +139,9 @@ def RSFC_pair_vertices(Hemi):
 
 
 if __name__ == '__main__':
-    # gradient_distance(Hemi='R')
-    # gradient_distance(Hemi='L')
+    gradient_distance(Hemi='R')
+    gradient_distance(Hemi='L')
     # geodesic_distance(Hemi='R')
     # geodesic_distance(Hemi='L')
     # RSFC_pair_vertices(Hemi='R')
-    RSFC_pair_vertices(Hemi='L')
+    # RSFC_pair_vertices(Hemi='L')
