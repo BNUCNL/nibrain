@@ -4,7 +4,7 @@ import numpy as np
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, permutation_test
 from nibabel.gifti import GiftiDataArray, GiftiImage
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.metrics import r2_score
@@ -265,6 +265,140 @@ def msp_lasso_PC12(hemi='rh'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+# ===to 32k_fs_LR===
+def resample_msp_bigbrain_to_164fsLR(hemi):
+    n_layer = 6
+    Hemi = hemi2Hemi[hemi]
+    msp_file = pjoin(work_dir, 'Msp_BB_layer{0}-{1}_{2}.func.gii')
+    surf_dir = '/nfs/z1/zhenlab/stanford/ABA/brainmap/bigbrain/'\
+        'BigBrainRelease.2015/Surface_Parcellations'
+    out_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}_{2}_164fsLR.func.gii')
+    for lyr_idx in range(n_layer):
+        cmd = ['wb_command', '-metric-resample']
+        cmd.append(msp_file.format(lyr_idx, lyr_idx+1, hemi))
+        cmd.append(pjoin(
+            surf_dir, f'BigBrain_space/Surfaces/{hemi}.sphere.anat.surf.gii'))
+        cmd.append(pjoin(
+            surf_dir, f'fs_LR/Surfaces/{hemi}.sphere.surf.gii'))
+        cmd.append('BARYCENTRIC')
+        cmd.append(out_file.format(lyr_idx, lyr_idx+1, Hemi))
+        print('Running: ' + ' '.join(cmd) + '\n')
+        subprocess.run(cmd)
+
+
+def resample_msp_164_to_32fsLR(Hemi):
+    n_layer = 6
+    msp_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}_{2}_164fsLR.func.gii')
+    surf_dir = '/usr/local/neurosoft/HCPpipelines/global/'\
+        'templates/standard_mesh_atlases'
+    out_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}_{2}_32fsLR.func.gii')
+    for lyr_idx in range(n_layer):
+        cmd = ['wb_command', '-metric-resample']
+        cmd.append(msp_file.format(lyr_idx, lyr_idx+1, Hemi))
+        cmd.append(pjoin(
+            surf_dir, f'fsaverage.{Hemi}_LR.spherical_std.164k_fs_LR.surf.gii'))
+        cmd.append(pjoin(
+            surf_dir, f'{Hemi}.sphere.32k_fs_LR.surf.gii'))
+        cmd.append('ADAP_BARY_AREA')
+        cmd.append(out_file.format(lyr_idx, lyr_idx+1, Hemi))
+        cmd.append('-area-metrics')
+        cmd.append(pjoin(
+            surf_dir, 'resample_fsaverage/'
+            f'fs_LR.{Hemi}.midthickness_va_avg.164k_fs_LR.shape.gii'))
+        cmd.append(pjoin(
+            surf_dir, 'resample_fsaverage/'
+            f'fs_LR.{Hemi}.midthickness_va_avg.32k_fs_LR.shape.gii'))
+        print('Running: ' + ' '.join(cmd) + '\n')
+        subprocess.run(cmd)
+
+
+def average_msp(Hemi):
+    """
+    并计算每个layer的平均map（之前对每个layer采样了10个surface）
+    """
+    n_layer = 6
+    msp_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}_{2}_32fsLR.func.gii')
+    out_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}-mean_{2}_32fsLR.func.gii')
+
+    for lyr_idx in range(n_layer):
+        gii1 = nib.load(msp_file.format(lyr_idx, lyr_idx+1, Hemi))
+        data = []
+        for i in gii1.darrays:
+            data.append(i.data)
+        print(len(data))
+        gii2 = GiftiImage(darrays=[GiftiDataArray(np.mean(data, 0))])
+        nib.save(gii2, out_file.format(lyr_idx, lyr_idx+1, Hemi))
+
+
+def PC12_corr_msp_32fsLR(Hemi):
+    """
+    C1_corr_layer: PC1和各层10个细分map的相关
+    C2_corr_layer: PC2和各层10个细分map的相关
+    C1_corr_layer-mean: PC1和各层平均map的相关
+    C2_corr_layer-mean: PC2和各层平均map的相关
+    """
+    n_layer = 6
+    n_interbedded = 10
+    msp_file1 = pjoin(work_dir, 'to_32fsLR/'
+                      'Msp_BB_layer{0}-{1}_{2}_32fsLR.func.gii')
+    msp_file2 = pjoin(work_dir, 'to_32fsLR/'
+                      'Msp_BB_layer{0}-{1}-mean_{2}_32fsLR.func.gii')
+    pc_file = pjoin(
+        anal_dir, 'decomposition/'
+        f'HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj_nan.func.gii')
+    pc_names = ('C1', 'C2')
+    out_file = pjoin(work_dir, f'to_32fsLR/PC12-corr-msp_{Hemi}.pkl')
+
+    def statistic(x, y):
+        return pearsonr(x, y)[0]
+
+    pc_gii = nib.load(pc_file)
+    non_nan_vec = None
+    out_dict = {'layer_name': tuple(range(1, n_layer+1))}
+    for pc_idx, pc_name in enumerate(pc_names):
+        pc_map = pc_gii.darrays[pc_idx].data
+        if non_nan_vec is None:
+            non_nan_vec = ~np.isnan(pc_map)
+        else:
+            assert np.all(non_nan_vec == ~np.isnan(pc_map))
+        pc_map = pc_map[non_nan_vec]
+        data1 = np.zeros((n_interbedded, n_layer), np.float64)
+        data1_p = np.zeros((n_interbedded, n_layer), np.float64)
+        data2 = np.zeros(n_layer, np.float64)
+        data2_p = np.zeros(n_layer, np.float64)
+        data2_pmt_p = np.zeros(n_layer, np.float64)
+        for layer_idx in range(n_layer):
+            msp_gii1 = nib.load(msp_file1.format(layer_idx, layer_idx+1, Hemi))
+            for i in range(n_interbedded):
+                msp_map = msp_gii1.darrays[i].data[non_nan_vec]
+                r, p = pearsonr(pc_map, msp_map)
+                data1[i, layer_idx] = r
+                data1_p[i, layer_idx] = p
+
+            msp_gii2 = nib.load(msp_file2.format(layer_idx, layer_idx+1, Hemi))
+            msp_map = msp_gii2.darrays[0].data[non_nan_vec]
+            r, p = pearsonr(pc_map, msp_map)
+            pmt_test = permutation_test(
+                (pc_map, msp_map), statistic, permutation_type='pairings',
+                vectorized=False, n_resamples=10000, alternative='two-sided',
+                random_state=7)
+            data2[layer_idx] = r
+            data2_p[layer_idx] = p
+            data2_pmt_p[layer_idx] = pmt_test.pvalue
+        out_dict[f'{pc_name}_corr_layer'] = data1
+        out_dict[f'{pc_name}_corr_layer-mean'] = data2
+        out_dict[f'{pc_name}_corr_layer-p'] = data1_p
+        out_dict[f'{pc_name}_corr_layer-mean-p'] = data2_p
+        out_dict[f'{pc_name}_corr_layer-mean-pmt-p'] = data2_pmt_p
+
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_msp_from_FFA_proj(hemi='lh')
     # get_msp_from_FFA_proj(hemi='rh')
@@ -272,10 +406,19 @@ if __name__ == '__main__':
     # smooth_msp(hemi='rh')
     # mask_msp(hemi='lh')
     # mask_msp(hemi='rh')
-    PC12_corr_msp(hemi='lh', resample_way='164fsLR2bigbrain')
-    PC12_corr_msp(hemi='rh', resample_way='164fsLR2bigbrain')
-    PC12_corr_msp(hemi='lh', resample_way='fsavg2bigbrain')
-    PC12_corr_msp(hemi='rh', resample_way='fsavg2bigbrain')
+    # PC12_corr_msp(hemi='lh', resample_way='164fsLR2bigbrain')
+    # PC12_corr_msp(hemi='rh', resample_way='164fsLR2bigbrain')
+    # PC12_corr_msp(hemi='lh', resample_way='fsavg2bigbrain')
+    # PC12_corr_msp(hemi='rh', resample_way='fsavg2bigbrain')
     # msp_fit_PC12(hemi='rh', method='ordinary')
     # msp_fit_PC12(hemi='rh', method='lasso')
     # msp_lasso_PC12(hemi='rh')
+
+    # resample_msp_bigbrain_to_164fsLR(hemi='lh')
+    # resample_msp_bigbrain_to_164fsLR(hemi='rh')
+    # resample_msp_164_to_32fsLR(Hemi='L')
+    # resample_msp_164_to_32fsLR(Hemi='R')
+    # average_msp(Hemi='L')
+    # average_msp(Hemi='R')
+    PC12_corr_msp_32fsLR(Hemi='L')
+    PC12_corr_msp_32fsLR(Hemi='R')
