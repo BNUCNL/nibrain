@@ -6,7 +6,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, permutation_test
 from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
@@ -609,6 +609,96 @@ def PC12_fit_func3(Hemi):
     pkl.dump(out_data, open(out_file1, 'wb'))
 
 
+def PC12_fit_func4(Hemi):
+    """
+    用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    在整个视觉皮层以及用分水岭算法得到的EDLV四个部分线性拟合WM任务激活+fALFF
+    """
+    vis_name = f'MMP-vis3-{Hemi}'
+    mask_names = (vis_name, f'{vis_name}-early', f'{vis_name}-dorsal',
+                  f'{vis_name}-lateral', f'{vis_name}-ventral')
+    pc_file = pjoin(
+        anal_dir, 'decomposition/'
+        f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    pc_names = ['PC1', 'PC2']
+    func_file = pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii')
+    faff_file = pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii')
+    edlv_file = pjoin(anal_dir, 'divide_map/'
+                      'watershed-PC2_EDLV-seed-v1.dlabel.nii')
+
+    def statistic(x, y):
+        return r2_score(x, y)
+
+    n_pc = len(pc_names)
+    pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
+    reader = CiftiReader(func_file)
+    bms = reader.brain_models([hemi2stru['lh'], hemi2stru['rh']])
+    func_data = reader.get_data()[:, :LR_count_32k]
+    trg_names = reader.map_names()
+    falff_map = nib.load(faff_file).get_fdata()[[0], :LR_count_32k]
+    func_data = np.r_[func_data, falff_map]
+    trg_names.append('fALFF')
+    n_trg = len(trg_names)
+    n_mask = len(mask_names)
+    reader_edlv = CiftiReader(edlv_file)
+    edlv_map = reader_edlv.get_data()[0]
+    lbl_tab = reader_edlv.label_tables()[0]
+    edlv_label2key = {}
+    for k, v in lbl_tab.items():
+        edlv_label2key[v.label] = k
+
+    fname1 = 'PC1+2=func4'
+    out_file1 = pjoin(work_dir, f'{fname1}_{Hemi}.pkl')
+    rs = np.zeros((n_mask, n_trg))
+    ps = np.zeros((n_mask, n_trg))
+    R2s = np.zeros((n_mask, n_trg))
+    R2_ps = np.zeros((n_mask, n_trg))
+    weights = np.zeros((n_mask, n_trg, n_pc))
+    for mask_idx, mask_name in enumerate(mask_names):
+        fname2 = f'{fname1}_{mask_name}'
+        out_file2 = pjoin(work_dir, f'{fname2}.dscalar.nii')
+        if mask_name == vis_name:
+            mask = np.zeros_like(edlv_map, bool)
+            for lbl, k in edlv_label2key.items():
+                if lbl.startswith(f'{Hemi}_'):
+                    mask = np.logical_or(mask, edlv_map == k)
+        else:
+            edlv_lbl = f"{Hemi}_{mask_name.split('-')[-1]}"
+            mask = edlv_map == edlv_label2key[edlv_lbl]
+        X = pc_maps[:, mask].T
+        out_maps = np.ones((n_trg, LR_count_32k)) * np.nan
+        for trg_idx, trg_name in enumerate(trg_names):
+            time1 = time.time()
+            y = func_data[trg_idx, mask]
+            model = Pipeline([('preprocesser', StandardScaler()),
+                              ('regressor', LinearRegression())])
+            model.fit(X, y)
+            y_pred = model.predict(X)
+            out_maps[trg_idx, mask] = y_pred
+            r, p = pearsonr(y, y_pred)
+            rs[mask_idx, trg_idx] = r
+            ps[mask_idx, trg_idx] = p
+            pmt_test = permutation_test(
+                (y, y_pred), statistic, permutation_type='pairings',
+                vectorized=False, n_resamples=10000, alternative='greater',
+                random_state=7)
+            R2s[mask_idx, trg_idx] = pmt_test.statistic
+            R2_ps[mask_idx, trg_idx] = pmt_test.pvalue
+            assert model.named_steps['regressor'].coef_.shape == (n_pc,)
+            weights[mask_idx, trg_idx] = \
+                model.named_steps['regressor'].coef_
+            print('pmt_test.statistic:', pmt_test.statistic)
+            print('model.score:', model.score(X, y))
+            print(f'Finished {mask_name}-{mask_idx+1}/{n_mask} '
+                  f'{trg_name}-{trg_idx+1}/{n_trg}: '
+                  f'cost {time.time()-time1} seconds.')
+        save2cifti(out_file2, out_maps, bms, trg_names)
+    out_data = {'row_name': mask_names, 'col_name': trg_names,
+                'r': rs, 'p': ps, 'R2': R2s, 'R2_p': R2_ps,
+                'weight': weights}
+    pkl.dump(out_data, open(out_file1, 'wb'))
+
+
 def HCPY_MT_fit_PC12(Hemi):
     """
     对每个被试用其myelin和thickness map拟合PC1/2
@@ -847,9 +937,11 @@ if __name__ == '__main__':
     # PC12_fit_func2()
     # PC12_fit_func3(Hemi='L')
     # PC12_fit_func3(Hemi='R')
+    PC12_fit_func4(Hemi='L')
+    PC12_fit_func4(Hemi='R')
     # HCPY_MT_fit_PC12(Hemi='L')
     # HCPY_MT_fit_PC12(Hemi='R')
     # weight_CCA_beh(vis_name='MMP-vis3-R')
     # weight_CCA_beh(vis_name='MMP-vis3-L')
-    weight_CCA_beh1(vis_name='MMP-vis3-R')
-    weight_CCA_beh1(vis_name='MMP-vis3-L')
+    # weight_CCA_beh1(vis_name='MMP-vis3-R')
+    # weight_CCA_beh1(vis_name='MMP-vis3-L')
