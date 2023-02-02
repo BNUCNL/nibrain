@@ -4,6 +4,8 @@ import numpy as np
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
+from scipy.stats import pearsonr
+from scipy.spatial.distance import cosine
 from cxy_visual_dev.lib.predefine import proj_dir, get_rois
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -211,6 +213,67 @@ def get_intersect_bundles1(Hemi='R'):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def SC_pattern_similarity(Hemi, pattern_type, similar_type):
+    """
+    计算两两视觉脑区之间与全脑或半脑HCP-MMP ROIs的结构连接模式的
+    相似性（皮尔逊相关或余弦相似性）
+    pattern_types = ['hemi', 'global']
+    similar_types = ['pearson', 'cosine']
+    """
+    src_file = pjoin(work_dir, f'intersect-bundles1_{Hemi}.pkl')
+    out_file = pjoin(work_dir, f'SC-pattern_{pattern_type}-'
+                     f'{similar_type}_{Hemi}.pkl')
+
+    data = pkl.load(open(src_file, 'rb'))
+    n_roi = len(data['vis_roi'])
+    n_pair = int((n_roi * n_roi - n_roi) / 2)
+    out_data = {'roi_pair': [], 'vec': np.zeros(n_pair)}
+
+    if pattern_type == 'hemi':
+        pattern_rois = [i for i in data['mmp_roi']
+                        if i.startswith(f'{Hemi}_')]
+    elif pattern_type == 'global':
+        pattern_rois = data['mmp_roi']
+    else:
+        raise ValueError('not supported pattern type:', pattern_type)
+    n_pattern_roi = len(pattern_rois)
+
+    if similar_type == 'pearson':
+        def corr(x, y):
+            return pearsonr(x, y)[0]
+    elif similar_type == 'cosine':
+        def corr(x, y):
+            return 1 - cosine(x, y)
+    else:
+        raise ValueError('not supported similar type', similar_type)
+
+    pair_idx = 0
+    for idx, roi1 in enumerate(data['vis_roi'][:-1], 1):
+        vec1 = np.zeros(n_pattern_roi)
+        for pattern_idx, pattern_roi in enumerate(pattern_rois):
+            bundle_dict = data[roi1][pattern_roi]
+            sc_num = np.sum([len(i) for i in bundle_dict.values()])
+            vec1[pattern_idx] = sc_num
+        for roi2 in data['vis_roi'][idx:]:
+            vec2 = np.zeros(n_pattern_roi)
+            for pattern_idx, pattern_roi in enumerate(pattern_rois):
+                bundle_dict = data[roi2][pattern_roi]
+                sc_num = np.sum([len(i) for i in bundle_dict.values()])
+                vec2[pattern_idx] = sc_num
+            out_data['vec'][pair_idx] = corr(vec1, vec2)
+            out_data['roi_pair'].append(f'{roi1}+{roi2}')
+            pair_idx += 1
+
+    # save out
+    pkl.dump(out_data, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_intersect_bundles(Hemi='R')
-    get_intersect_bundles1(Hemi='R')
+    # get_intersect_bundles1(Hemi='R')
+
+    pattern_types = ['hemi', 'global']
+    similar_types = ['pearson', 'cosine']
+    for pattern_type in pattern_types:
+        for similar_type in similar_types:
+            SC_pattern_similarity('R', pattern_type, similar_type)
