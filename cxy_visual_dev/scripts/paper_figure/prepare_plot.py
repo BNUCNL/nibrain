@@ -65,6 +65,62 @@ def gradient_distance(Hemi):
     savemat(out_file, data)
 
 
+def gradient_distance_roi(Hemi):
+    """
+    Calculate gradient distance between each pair of visual areas
+    PC1: absolute difference between primary gradient values of two areas
+    PC2: absolute difference between secondary gradient values of two areas
+    2D-PC: euclidean distance in the 2D gradient space constructed by
+        the primary and secondary gradients.
+    2D-PC-zscore: euclidean distance in the 2D gradient space constructed by
+        the primary and secondary gradients after zscore.
+
+    Args:
+        Hemi (str): L or R.
+            L: left visual cortex
+            R: right visual cortex
+    """
+    vis_name = f'MMP-vis3-{Hemi}'
+    pc_file = pjoin(
+        anal_dir,
+        f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    out_file = pjoin(work_dir, f'gradient_distance_roi_{Hemi}.mat')
+
+    vis_rois = get_rois(vis_name)
+    atlas = Atlas('HCP-MMP')
+    vis_mask = atlas.get_mask(vis_rois)[0]
+    roi_map = atlas.maps[0, vis_mask]
+    roi2mask = {}
+    for roi in vis_rois:
+        roi2mask[roi] = roi_map == atlas.roi2label[roi]
+    pc_maps = nib.load(pc_file).get_fdata()[:2, vis_mask]
+    pc_maps_zscore = zscore(pc_maps, 1)
+
+    n_roi = len(vis_rois)
+    n_pair = int((n_roi * n_roi - n_roi) / 2)
+    data = {
+        'roi_pair': [],
+        'PC1': np.zeros(n_pair), 'PC2': np.zeros(n_pair),
+        '2D-PC': np.zeros(n_pair), '2D-PC-zscore': np.zeros(n_pair)}
+    pair_idx = 0
+    for idx, roi1 in enumerate(vis_rois[:-1], 1):
+        mask1 = roi2mask[roi1]
+        roi1_pc = np.mean(pc_maps[:, mask1], 1)
+        roi1_pc_z = np.mean(pc_maps_zscore[:, mask1], 1)
+        for roi2 in vis_rois[idx:]:
+            mask2 = roi2mask[roi2]
+            roi2_pc = np.mean(pc_maps[:, mask2], 1)
+            roi2_pc_z = np.mean(pc_maps_zscore[:, mask2], 1)
+            data['PC1'][pair_idx] = np.abs(roi1_pc[0] - roi2_pc[0])
+            data['PC2'][pair_idx] = np.abs(roi1_pc[1] - roi2_pc[1])
+            data['2D-PC'][pair_idx] = euclidean(roi1_pc, roi2_pc)
+            data['2D-PC-zscore'][pair_idx] = euclidean(roi1_pc_z, roi2_pc_z)
+            data['roi_pair'].append(f'{roi1}+{roi2}')
+            pair_idx += 1
+
+    savemat(out_file, data)
+
+
 def geodesic_distance(Hemi):
     """
     Get geodesic distance between each pair of visual cortex vertices
@@ -139,8 +195,9 @@ def RSFC_pair_vertices(Hemi):
 
 
 if __name__ == '__main__':
-    gradient_distance(Hemi='R')
-    gradient_distance(Hemi='L')
+    # gradient_distance(Hemi='R')
+    # gradient_distance(Hemi='L')
+    gradient_distance_roi(Hemi='R')
     # geodesic_distance(Hemi='R')
     # geodesic_distance(Hemi='L')
     # RSFC_pair_vertices(Hemi='R')
