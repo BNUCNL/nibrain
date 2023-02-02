@@ -84,7 +84,7 @@ def gradient_distance_roi(Hemi):
     pc_file = pjoin(
         anal_dir,
         f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
-    out_file = pjoin(work_dir, f'gradient_distance_roi_{Hemi}.mat')
+    out_file = pjoin(work_dir, f'gradient_distance_roi_{Hemi}.pkl')
 
     vis_rois = get_rois(vis_name)
     atlas = Atlas('HCP-MMP')
@@ -118,7 +118,7 @@ def gradient_distance_roi(Hemi):
             data['roi_pair'].append(f'{roi1}+{roi2}')
             pair_idx += 1
 
-    savemat(out_file, data)
+    pkl.dump(data, open(out_file, 'wb'))
 
 
 def geodesic_distance(Hemi):
