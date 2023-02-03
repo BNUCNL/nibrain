@@ -399,6 +399,63 @@ def PC12_corr_msp_32fsLR(Hemi):
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
+def msp_fit_PC12_32fsLR(Hemi='R', method='ordinary'):
+    """
+    用6层胞体密度map作为特征分别对结构梯度的PC1/2做线性拟合
+    比较各特征系数的大小
+    """
+    n_layer = 6
+    msp_file = pjoin(work_dir, 'to_32fsLR/'
+                     'Msp_BB_layer{0}-{1}-mean_{2}_32fsLR.func.gii')
+    pc_file = pjoin(
+        anal_dir, 'decomposition/'
+        f'HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj_nan.func.gii')
+    pc_names = ('C1', 'C2')
+    n_pc = len(pc_names)
+    out_file = pjoin(work_dir, 'to_32fsLR/'
+                     f'Msp1~6_fit-{method}_PC12_{Hemi}.pkl')
+
+    # prepare Y
+    pc_gii = nib.load(pc_file)
+    non_nan_vec = None
+    Y = []
+    for pc_idx in range(n_pc):
+        pc_map = pc_gii.darrays[pc_idx].data
+        if non_nan_vec is None:
+            non_nan_vec = ~np.isnan(pc_map)
+        else:
+            assert np.all(non_nan_vec == ~np.isnan(pc_map))
+        Y.append(pc_map[non_nan_vec])
+    Y = np.array(Y).T
+
+    # prepare X
+    X = []
+    for lyr_idx in range(n_layer):
+        msp_gii = nib.load(msp_file.format(lyr_idx, lyr_idx+1, Hemi))
+        X.append(msp_gii.darrays[0].data[non_nan_vec])
+    X = np.array(X).T
+
+    # prepare model
+    if method == 'ordinary':
+        model = Pipeline([('preprocesser', StandardScaler()),
+                          ('regressor', LinearRegression())])
+    elif method == 'lasso':
+        model = Pipeline([('preprocesser', StandardScaler()),
+                          ('regressor', Lasso())])
+    else:
+        raise ValueError('not supported method:', method)
+    model.fit(X, Y)
+    Y_pred = model.predict(X)
+    scores = [r2_score(Y[:, i], Y_pred[:, i]) for i in range(n_pc)]
+
+    # save out
+    out_dict = {
+        'PC name': pc_names, 'layer ID': list(range(1, n_layer+1)),
+        'Y': Y, 'Y_pred': Y_pred, 'model': model, 'R2': scores,
+        'coef': model.named_steps['regressor'].coef_}
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # get_msp_from_FFA_proj(hemi='lh')
     # get_msp_from_FFA_proj(hemi='rh')
@@ -420,5 +477,6 @@ if __name__ == '__main__':
     # resample_msp_164_to_32fsLR(Hemi='R')
     # average_msp(Hemi='L')
     # average_msp(Hemi='R')
-    PC12_corr_msp_32fsLR(Hemi='L')
-    PC12_corr_msp_32fsLR(Hemi='R')
+    # PC12_corr_msp_32fsLR(Hemi='L')
+    # PC12_corr_msp_32fsLR(Hemi='R')
+    msp_fit_PC12_32fsLR(Hemi='R', method='ordinary')
