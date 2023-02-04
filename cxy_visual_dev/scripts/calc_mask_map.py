@@ -345,10 +345,15 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist_src-OP_MMP-vis3.dscalar.nii')
     # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v1.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3.dscalar.nii')
+    # )
     mask_cii(
-        src_file=pjoin(anal_dir, 'gdist/gdist4_src-EDLV-seed-v1.dscalar.nii'),
+        src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_t1map.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'AHEAD-YA_t1map_MMP-vis3.dscalar.nii')
     )
 
     # atlas = Atlas('HCP-MMP')
