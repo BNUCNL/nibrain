@@ -350,11 +350,36 @@ if __name__ == '__main__':
     #     mask=mask,
     #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_MMP-vis3.dscalar.nii')
     # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_t1map.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'AHEAD-YA_t1map_MMP-vis3.dscalar.nii')
+    # )
     mask_cii(
-        src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_t1map.dscalar.nii'),
+        src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_t2starmap.dscalar.nii'),
         mask=mask,
-        out_file=pjoin(work_dir, 'AHEAD-YA_t1map_MMP-vis3.dscalar.nii')
+        out_file=pjoin(work_dir, 'AHEAD-YA_t2starmap_MMP-vis3.dscalar.nii')
     )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_qsm.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'AHEAD-YA_qsm_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_r1map.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'AHEAD-YA_r1map_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_r2starmap.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'AHEAD-YA_r2starmap_MMP-vis3.dscalar.nii')
+    # )
+    # mask_cii(
+    #     src_file=pjoin(anal_dir, 'AHEAD/AHEAD-YA_t1w.dscalar.nii'),
+    #     mask=mask,
+    #     out_file=pjoin(work_dir, 'AHEAD-YA_t1w_MMP-vis3.dscalar.nii')
+    # )
 
     # atlas = Atlas('HCP-MMP')
     # mask = atlas.get_mask(get_rois('MMP-vis3-L') + get_rois('MMP-vis3-R'), 'grayordinate')[0]

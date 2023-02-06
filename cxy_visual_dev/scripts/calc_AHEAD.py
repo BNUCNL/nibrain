@@ -48,4 +48,9 @@ def get_mean_metric_YA(modality):
 
 
 if __name__ == '__main__':
-    get_mean_metric_YA(modality='t1map')
+    # get_mean_metric_YA(modality='t1map')
+    get_mean_metric_YA(modality='t2starmap')
+    get_mean_metric_YA(modality='qsm')
+    get_mean_metric_YA(modality='r1map')
+    get_mean_metric_YA(modality='r2starmap')
+    get_mean_metric_YA(modality='t1w')
