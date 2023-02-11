@@ -8,11 +8,10 @@ from sklearn.cluster import AgglomerativeClustering
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from magicbox.graph.triangular_mesh import get_n_ring_neighbor
-from magicbox.graph.segmentation import connectivity_grow
+from magicbox.graph.segmentation import connectivity_grow, watershed
 from cxy_visual_dev.lib.predefine import proj_dir, get_rois,\
     mmp_label2name, mmp_name2label, mmp_map_file, s1200_midthickness_R,\
-    hemi2stru, R_count_32k, R_offset_32k, LR_count_32k,\
-    L_count_32k, L_offset_32k, hemi2Hemi, s1200_midthickness_L
+    hemi2stru, LR_count_32k, hemi2Hemi, s1200_midthickness_L, Hemi2stru
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'divide_map')
@@ -122,19 +121,23 @@ def cluster_roi(connectivity='undirected', linkage='ward'):
                label_tables=lbl_tabs)
 
 
-def get_lowest_vertices():
+def get_extremum_vertices(hemi='rh'):
     """
-    找出那些比自己的一环近邻都小的顶点。
+    找出那些极值点
+    比自己的一环近邻都小的顶点（极小值点）标记为1
+    比自己的一环近邻都大的顶点（极大值点）标记为2
     目前只用于stru-C2
     """
-    hemi = 'rh'
-    mask_name = 'MMP-vis3-R'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
+    Hemi = hemi2Hemi[hemi]
+    mask_name = f'MMP-vis3-{Hemi}'
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
-    out_file = pjoin(work_dir, f'lowest-vtx_{mask_name}.dlabel.nii')
+    out_file = pjoin(work_dir, f'extremum-vtx_{mask_name}.dlabel.nii')
+
+    hemi2geo = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
+    geo_file = hemi2geo[hemi]
 
     # prepare atlas information
     reader = CiftiReader(mmp_map_file)
@@ -142,14 +145,14 @@ def get_lowest_vertices():
     assert (1, LR_count_32k) == LR_shape
     bms = reader.brain_models()
     mmp_map = reader.get_data(hemi2stru[hemi], True)[0]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
     mask = np.zeros(hemi_shape, dtype=np.uint8)
     for roi in get_rois(mask_name):
         mask[mmp_map == mmp_name2label[roi]] = 1
     mask_vertices = np.nonzero(mask)[0]
 
     # get vertex neighbors
-    faces = GiftiReader(s1200_midthickness_R).faces
+    faces = GiftiReader(geo_file).faces
     vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
 
     # get source data
@@ -160,14 +163,16 @@ def get_lowest_vertices():
     out_map = np.zeros(LR_shape, dtype=np.uint8)
     lbl_tab = nib.cifti2.Cifti2LabelTable()
     lbl_tab[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
-    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'lowest-vtx', 0, 0, 1, 1)
+    lbl_tab[1] = nib.cifti2.Cifti2Label(1, 'minima', 0, 0, 1, 1)
+    lbl_tab[2] = nib.cifti2.Cifti2Label(2, 'maxima', 1, 0, 0, 1)
     hemi_map = np.zeros(hemi_shape, dtype=np.uint8)
     for mask_vtx in mask_vertices:
         neighbor_vertices = list(vtx2neighbors[mask_vtx])
         assert len(neighbor_vertices) != 0
         if np.all(src_map[neighbor_vertices] > src_map[mask_vtx]):
             hemi_map[mask_vtx] = 1
-    offset, count = hemi2offset_count[hemi]
+        elif np.all(src_map[neighbor_vertices] < src_map[mask_vtx]):
+            hemi_map[mask_vtx] = 2
     out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
 
     # save out
@@ -203,9 +208,6 @@ def get_lowest_seeds():
     ex_vertices = []
     out_file = pjoin(work_dir, f'lowest-seed_thr-{thr}_{mask_name}.dlabel.nii')
 
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
     # prepare map information
@@ -214,7 +216,7 @@ def get_lowest_seeds():
     assert reader.full_data.shape[1] == LR_count_32k
     bms = reader.brain_models()
     src_map = reader.get_data(hemi2stru[hemi], True)[1]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
     mask = (src_map < thr).astype(np.uint8)
     mask[ex_vertices] = 0
 
@@ -240,7 +242,6 @@ def get_lowest_seeds():
         lbl_tab[seed_key] = nib.cifti2.Cifti2Label(
             seed_key, seed_names[seed_idx],
             *cmap(color_indices[seed_idx]))
-    offset, count = hemi2offset_count[hemi]
     out_map[0, offset:(offset+count)] = hemi_map[idx2vtx]
     save2cifti(out_file, out_map, bms, label_tables=[lbl_tab])
 
@@ -259,9 +260,6 @@ def expand_seed_combo():
     """
     hemi = 'rh'
     mask_name = 'MMP-vis3-R'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
 
@@ -289,7 +287,7 @@ def expand_seed_combo():
     bms = reader.brain_models()
     lbl_tab = reader.label_tables()[0]
     seed_map = reader.get_data(hemi2stru[hemi], True)[0]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
 
     # get vertex neighbors
     mmp_map = CiftiReader(mmp_map_file).get_data(
@@ -309,7 +307,6 @@ def expand_seed_combo():
     out_maps = np.zeros((n_combo, LR_count_32k), np.uint8)
     map_names = []
     lbl_tabs = []
-    offset, count = hemi2offset_count[hemi]
     for combo_idx, combo in enumerate(seed_combos):
         hemi_map = np.zeros(hemi_shape, np.uint8)
         base_vertices = []
@@ -397,9 +394,6 @@ def expand_EDLV_seeds(hemi='rh'):
     """
     Hemi = hemi2Hemi[hemi]
     mask_name = f'MMP-vis3-{Hemi}'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     src_file = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
                      f'{mask_name}_zscore1_PCA-subj.dscalar.nii')
 
@@ -419,7 +413,7 @@ def expand_EDLV_seeds(hemi='rh'):
         local2key[v.label] = k
     seed_maps = reader.get_data(hemi2stru[hemi], True)
     props = reader.map_names()
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
 
     # get vertex neighbors
     mmp_map = CiftiReader(mmp_map_file).get_data(
@@ -442,7 +436,6 @@ def expand_EDLV_seeds(hemi='rh'):
     map_idx = 0
     lbl_tabs = []
     map_names = []
-    offset, count = hemi2offset_count[hemi]
     for local_idx, local_name in enumerate(local_names):
         prob_map = np.zeros(hemi_shape)
         for prop_idx, prop in enumerate(props):
@@ -551,9 +544,6 @@ def expand_observed_seeds(hemi='rh'):
     """
     Hemi = hemi2Hemi[hemi]
     mask_name = f'MMP-vis3-{Hemi}'
-    hemi2offset_count = {
-        'lh': (L_offset_32k, L_count_32k),
-        'rh': (R_offset_32k, R_count_32k)}
     hemi2geo_file = {
         'lh': s1200_midthickness_L,
         'rh': s1200_midthickness_R}
@@ -574,7 +564,7 @@ def expand_observed_seeds(hemi='rh'):
     for k, v in lbl_tab.items():
         local2key[v.label] = k
     seed_map = reader.get_data(hemi2stru[hemi], True)[0]
-    _, hemi_shape, idx2vtx = reader.get_data(hemi2stru[hemi], False)
+    offset, count, hemi_shape, idx2vtx = reader.get_stru_pos(hemi2stru[hemi])
 
     # get vertex neighbors
     mmp_map = CiftiReader(mmp_map_file).get_data(
@@ -594,7 +584,6 @@ def expand_observed_seeds(hemi='rh'):
     out_maps = np.zeros((n_local, LR_count_32k), np.uint8)
     lbl_tabs = []
     map_names = []
-    offset, count = hemi2offset_count[hemi]
     for local_idx, local_name in enumerate(local_names):
         if 'lateral' in local_name:
             def compare_func(x, y):
@@ -704,14 +693,73 @@ def expand_observed_seeds1(hemi='rh'):
     save2cifti(out_file, out_maps, bms, map_names, label_tables=lbl_tabs)
 
 
+def watershed_PC2():
+    Hemis = ('L', 'R')
+    Hemi2geo_file = {
+        'L': s1200_midthickness_L,
+        'R': s1200_midthickness_R}
+    pc_files = pjoin(anal_dir, 'decomposition/HCPY-M+corrT_'
+                     '{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    seed_file = pjoin(anal_dir, 'mask_map/EDLV-seed-v1.dlabel.nii')
+    out_file = pjoin(work_dir, 'watershed-PC2_EDLV-seed-v1.dlabel.nii')
+
+    # prepare map information
+    reader = CiftiReader(seed_file)
+    assert reader.full_data.shape == (1, LR_count_32k)
+    bms = reader.brain_models()
+    lbl_tab1 = reader.label_tables()[0]
+    reader_mmp = CiftiReader(mmp_map_file)
+
+    boundary_key = np.max(list(lbl_tab1.keys())) + 1
+    out_maps = np.zeros((2, LR_count_32k), np.uint8)
+    mns = ['basins and boundary', 'boundary']
+    lbl_tab2 = nib.cifti2.Cifti2LabelTable()
+    lbl_tab2[0] = nib.cifti2.Cifti2Label(0, '???', 1, 1, 1, 0)
+    for Hemi in Hemis:
+        vis_name = f'MMP-vis3-{Hemi}'
+        pc_file = pc_files.format(vis_name=vis_name)
+        pc_map = CiftiReader(pc_file).get_data(Hemi2stru[Hemi], True)[1]
+        vtx2label = reader.get_data(Hemi2stru[Hemi], True)[0]
+        offset, count, hemi_shape, idx2vtx = \
+            reader.get_stru_pos(Hemi2stru[Hemi])
+
+        # get vertex neighbors
+        mmp_map = reader_mmp.get_data(Hemi2stru[Hemi], True)[0]
+        mask = np.zeros(hemi_shape, np.uint8)
+        for roi in get_rois(vis_name):
+            mask[mmp_map == mmp_name2label[roi]] = 1
+        faces = GiftiReader(Hemi2geo_file[Hemi]).faces
+        vtx2neighbors = get_n_ring_neighbor(faces, mask=mask)
+
+        vtx2label = watershed(pc_map, vtx2label, vtx2neighbors)
+        hemi_map1 = vtx2label[idx2vtx]
+        hemi_map2 = np.zeros(count, np.uint8)
+        boundary_idx_map = hemi_map1 == -1
+        hemi_map1[boundary_idx_map] = boundary_key
+        hemi_map2[boundary_idx_map] = boundary_key
+        lbl = nib.cifti2.Cifti2Label(
+            boundary_key, f'{Hemi}_boundary', 1, 1, 1, 1)
+        lbl_tab1[boundary_key] = lbl
+        lbl_tab2[boundary_key] = lbl
+
+        out_maps[0, offset:(offset+count)] = hemi_map1
+        out_maps[1, offset:(offset+count)] = hemi_map2
+        boundary_key += 1
+
+    save2cifti(out_file, out_maps, bms, mns,
+               label_tables=[lbl_tab1, lbl_tab2])
+
+
 if __name__ == '__main__':
-    # get_lowest_vertices()
+    # get_extremum_vertices(hemi='lh')
+    # get_extremum_vertices(hemi='rh')
     # get_lowest_seeds()
     # expand_seed_combo()
 
     # get_EDLV_seeds(Hemi='R')
     # expand_EDLV_seeds(hemi='rh')
 
-    get_observed_seeds(hemi='rh')
+    # get_observed_seeds(hemi='rh')
     # expand_observed_seeds(hemi='rh')
-    expand_observed_seeds1(hemi='rh')
+    # expand_observed_seeds1(hemi='rh')
+    watershed_PC2()

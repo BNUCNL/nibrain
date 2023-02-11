@@ -12,8 +12,7 @@ from magicbox.io.io import CiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import All_count_32k, proj_dir,\
     s1200_1096_thickness, s1200_1096_myelin, Atlas, s1200_avg_eccentricity,\
     get_rois, LR_count_32k, mmp_map_file, s1200_group_rsfc_mat
-from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow,\
-    smooth_cii
+from cxy_visual_dev.lib.algo import decompose, transform, AgeSlideWindow
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'decomposition')
@@ -264,10 +263,10 @@ def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
     用每个滑窗(slide window)内的所有被试的myelin和thickness map做联合空间PCA
     """
     m_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_myelin.dscalar.nii')
-    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_thickness.dscalar.nii')
+    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_corrThickness.dscalar.nii')
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
-    out_name = f'{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width{width}-step{step}'
+    out_name = f'{dataset_name}-M+corrT_{vis_name}_zscore1_PCA-subj_SW-width{width}-step{step}'
     if merge_remainder:
         out_name += '-merge'
     out_file = pjoin(work_dir, f'{out_name}.pkl')
@@ -505,36 +504,22 @@ if __name__ == '__main__':
     #     map_mask=None, zscore0='split', zscore1=None, n_component=20, random_state=7
     # )
 
-    # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
-    # 联合myelin和thickness做空间PCA
+    # 在成人数据上，分别对左右脑HCP-MMP1_visual-cortex3做zscore
+    # 联合myelin和corrThickness做空间PCA
+    # vis_mask = 'MMP-vis3-L'  # MMP-vis3-L, MMP-vis3-R
     # decompose(
     #     fpaths=[
     #         pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii'),
     #         pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')],
     #     cat_shape=(2, 1), method='PCA', axis=0,
     #     csv_files=[
-    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_M.csv'),
-    #         pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_corrT.csv')],
-    #     cii_files=[pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')],
-    #     pkl_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.pkl'),
-    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois('MMP-vis3-R'))[0]],
+    #         pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj_M.csv'),
+    #         pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj_corrT.csv')],
+    #     cii_files=[pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj.dscalar.nii')],
+    #     pkl_file=pjoin(work_dir, f'HCPY-M+corrT_{vis_mask}_zscore1_PCA-subj.pkl'),
+    #     vtx_masks=[Atlas('HCP-MMP').get_mask(get_rois(vis_mask))[0]],
     #     map_mask=None, zscore0=None, zscore1='split', n_component=20, random_state=7
     # )
-    # smooth_cii(
-    #     src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-    #     hemi='rh', n_ring=1,
-    #     out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-1ring.dscalar.nii')
-    # )
-    # smooth_cii(
-    #     src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-    #     hemi='rh', n_ring=2,
-    #     out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-2ring.dscalar.nii')
-    # )
-    smooth_cii(
-        src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii'),
-        hemi='rh', n_ring=3,
-        out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_s-3ring.dscalar.nii')
-    )
 
     # 在成人数据上，对右脑HCP-MMP1_visual-cortex3做zscore
     # 对myelin做空间PCA
@@ -662,17 +647,31 @@ if __name__ == '__main__':
     #                 step=10, merge_remainder=True, n_component=10, random_state=7)
     # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
     #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-L', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-L', width=50,
+    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
 
     # pca_HCPDA_MT_SW_param(
-    #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
-    #     out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    #     out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
     # pca_HCPDA_MT_SW_param(
-    #     src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
-    #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    #     out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
+    pca_HCPDA_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    )
+    pca_HCPDA_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
+    )
 
     # pca_HCPDA_MT_SW_param_local(
     #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),

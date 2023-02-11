@@ -9,12 +9,98 @@ from magicbox.io.io import CiftiReader
 
 proj_dir = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 
+meas2color = {
+    'Myelination': 'cornflowerblue', 'Thickness': 'limegreen',
+    'PC1': 'red', 'PC2': 'orange'}
+
+# 所有属于Cognition的测量变量
+cognition_cols = [
+    'PicSeq_Unadj', 'PicSeq_AgeAdj', 'CardSort_Unadj',
+    'CardSort_AgeAdj', 'Flanker_Unadj', 'Flanker_AgeAdj',
+    'PMAT24_A_CR', 'PMAT24_A_SI', 'PMAT24_A_RTCR', 'ReadEng_Unadj',
+    'ReadEng_AgeAdj', 'PicVocab_Unadj', 'PicVocab_AgeAdj',
+    'ProcSpeed_Unadj', 'ProcSpeed_AgeAdj', 'DDisc_SV_1mo_200',
+    'DDisc_SV_6mo_200', 'DDisc_SV_1yr_200', 'DDisc_SV_3yr_200',
+    'DDisc_SV_5yr_200', 'DDisc_SV_10yr_200', 'DDisc_SV_1mo_40K',
+    'DDisc_SV_6mo_40K', 'DDisc_SV_1yr_40K', 'DDisc_SV_3yr_40K',
+    'DDisc_SV_5yr_40K', 'DDisc_SV_10yr_40K', 'DDisc_AUC_200',
+    'DDisc_AUC_40K', 'VSPLOT_TC', 'VSPLOT_CRTE', 'VSPLOT_OFF',
+    'SCPT_TP', 'SCPT_TN', 'SCPT_FP', 'SCPT_FN', 'SCPT_TPRT',
+    'SCPT_SEN', 'SCPT_SPEC', 'SCPT_LRNR', 'IWRD_TOT', 'IWRD_RTC',
+    'ListSort_Unadj', 'ListSort_AgeAdj', 'CogFluidComp_Unadj',
+    'CogFluidComp_AgeAdj', 'CogEarlyComp_Unadj', 'CogEarlyComp_AgeAdj',
+    'CogTotalComp_Unadj', 'CogTotalComp_AgeAdj',
+    'CogCrystalComp_Unadj', 'CogCrystalComp_AgeAdj']
+
+# 所有属于Sensory的测量变量
+sensory_cols = [
+    'Noise_Comp', 'Odor_Unadj', 'Odor_AgeAdj', 'PainIntens_RawScore',
+    'PainInterf_Tscore', 'Taste_Unadj', 'Taste_AgeAdj', 'Color_Vision',
+    'Eye', 'EVA_Num', 'EVA_Denom', 'Correction', 'Mars_Log_Score',
+    'Mars_Errs', 'Mars_Final']
+
+# 视觉相关行为类型到其测量变量的映射
+vis_beh_domain2meas = {
+    'Episodic Memory': ['PicSeq_Unadj', 'PicSeq_AgeAdj'],
+    'Fluid Intelligence': ['PMAT24_A_CR', 'PMAT24_A_SI', 'PMAT24_A_RTCR',
+                           'PMAT24_CR/RT', 'PMAT24_CR/SI'],
+    'Processing Speed': ['ProcSpeed_Unadj', 'ProcSpeed_AgeAdj'],
+    'Spatial Orientation': ['VSPLOT_TC', 'VSPLOT_CRTE', 'VSPLOT_OFF',
+                            'VSPLOT_CR/RT', 'VSPLOT_CR/OFF'],
+    'Emotion Recognition': ['ER40_CR', 'ER40_CRT', 'ER40ANG', 'ER40FEAR',
+                            'ER40HAP', 'ER40NOE', 'ER40SAD', 'ER40_CR/RT'],
+    'Color Vision': ['Color_Vision', 'Eye'],
+    'Contrast Sensitivity': ['Mars_Log_Score', 'Mars_Errs', 'Mars_Final'],
+    'Visual Acuity': ['EVA_Num', 'EVA_Denom', 'Correction'],
+    'Emotion Processing (MRI)': [
+        'Emotion_Task_Acc', 'Emotion_Task_Median_RT', 'Emotion_Task_CR/RT',
+        'Emotion_Task_Face_Acc', 'Emotion_Task_Face_Median_RT',
+        'Emotion_Task_Shape_Acc', 'Emotion_Task_Shape_Median_RT'],
+    'Working Memory (MRI)': [
+        'WM_Task_Acc', 'WM_Task_Median_RT', 'WM_Task_CR/RT',
+        'WM_Task_2bk_Acc', 'WM_Task_2bk_Median_RT', 'WM_Task_2bk_CR/RT',
+        'WM_Task_0bk_Acc', 'WM_Task_0bk_Median_RT', 'WM_Task_0bk_CR/RT',
+        'WM_Task_0bk_Body_Acc', 'WM_Task_0bk_Body_Acc_Target', 'WM_Task_0bk_Body_Acc_Nontarget',
+        'WM_Task_0bk_Face_Acc', 'WM_Task_0bk_Face_Acc_Target', 'WM_Task_0bk_Face_ACC_Nontarget',
+        'WM_Task_0bk_Place_Acc', 'WM_Task_0bk_Place_Acc_Target', 'WM_Task_0bk_Place_Acc_Nontarget',
+        'WM_Task_0bk_Tool_Acc', 'WM_Task_0bk_Tool_Acc_Target', 'WM_Task_0bk_Tool_Acc_Nontarget',
+        'WM_Task_2bk_Body_Acc', 'WM_Task_2bk_Body_Acc_Target', 'WM_Task_2bk_Body_Acc_Nontarget',
+        'WM_Task_2bk_Face_Acc', 'WM_Task_2bk_Face_Acc_Target', 'WM_Task_2bk_Face_Acc_Nontarget',
+        'WM_Task_2bk_Place_Acc', 'WM_Task_2bk_Place_Acc_Target', 'WM_Task_2bk_Place_Acc_Nontarget',
+        'WM_Task_2bk_Tool_Acc', 'WM_Task_2bk_Tool_Acc_Target', 'WM_Task_2bk_Tool_Acc_Nontarget',
+        'WM_Task_0bk_Body_Median_RT', 'WM_Task_0bk_Body_Median_RT_Target', 'WM_Task_0bk_Body_Median_RT_Nontarget',
+        'WM_Task_0bk_Face_Median_RT', 'WM_Task_0bk_Face_Median_RT_Target', 'WM_Task_0bk_Face_Median_RT_Nontarget',
+        'WM_Task_0bk_Place_Median_RT', 'WM_Task_0bk_Place_Median_RT_Target', 'WM_Task_0bk_Place_Median_RT_Nontarget',
+        'WM_Task_0bk_Tool_Median_RT', 'WM_Task_0bk_Tool_Median_RT_Target', 'WM_Task_0bk_Tool_Median_RT_Nontarget',
+        'WM_Task_2bk_Body_Median_RT', 'WM_Task_2bk_Body_Median_RT_Target', 'WM_Task_2bk_Body_Median_RT_Nontarget',
+        'WM_Task_2bk_Face_Median_RT', 'WM_Task_2bk_Face_Median_RT_Target', 'WM_Task_2bk_Face_Median_RT_Nontarget',
+        'WM_Task_2bk_Place_Median_RT', 'WM_Task_2bk_Place_Median_RT_Target', 'WM_Task_2bk_Place_Median_RT_Nontarget',
+        'WM_Task_2bk_Tool_Median_RT', 'WM_Task_2bk_Tool_Median_RT_Target', 'WM_Task_2bk_Tool_Median_RT_Nontarget']
+}
+
+# 行为正确率除以反应时的命名映射
+beh_CR_div_RT_dict = {
+    'PMAT24_CR/RT': ('PMAT24_A_CR', 'PMAT24_A_RTCR'),
+    'PMAT24_CR/SI': ('PMAT24_A_CR', 'PMAT24_A_SI'),
+    'VSPLOT_CR/RT': ('VSPLOT_TC', 'VSPLOT_CRTE'),
+    'VSPLOT_CR/OFF': ('VSPLOT_TC', 'VSPLOT_OFF'),
+    'ER40_CR/RT': ('ER40_CR', 'ER40_CRT'),
+    'Emotion_Task_CR/RT': ('Emotion_Task_Acc', 'Emotion_Task_Median_RT'),
+    'WM_Task_CR/RT': ('WM_Task_Acc', 'WM_Task_Median_RT'),
+    'WM_Task_2bk_CR/RT': ('WM_Task_2bk_Acc', 'WM_Task_2bk_Median_RT'),
+    'WM_Task_0bk_CR/RT': ('WM_Task_0bk_Acc', 'WM_Task_0bk_Median_RT')
+}
+
 # >>>CIFTI brain structure
 hemi2stru = {
     'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
     'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
 }
 hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+Hemi2stru = {
+    'L': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+    'R': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+}
 # CIFTI brain structure<<<
 
 # >>>32k_fs_LR CIFTI

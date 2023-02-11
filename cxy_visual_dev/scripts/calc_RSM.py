@@ -9,7 +9,8 @@ from pandas.api.types import is_numeric_dtype
 from magicbox.io.io import CiftiReader
 from cxy_visual_dev.lib.predefine import proj_dir, Atlas,\
     s1200_avg_angle, s1200_avg_eccentricity, LR_count_32k, get_rois,\
-    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru
+    s1200_avg_RFsize, s1200_avg_R2, s1200_avg_curv, hemi2stru,\
+    beh_CR_div_RT_dict
 from cxy_visual_dev.lib.algo import cat_data_from_cifti
 
 anal_dir = pjoin(proj_dir, 'analysis')
@@ -69,22 +70,19 @@ def calc_RSM1(mask, out_file):
     map_names = ['stru-C1', 'stru-C2']
     maps = [map_stru_pc]
 
-    # 离距状沟(旧), (新)的距离: distFromCS1, distFromCS2;
+    # 离距状沟的距离: distFromCS;
     # 离枕极, MT的距离: distFromOP, distFromMT;
-    map_dist_cs1 = nib.load(pjoin(
+    map_dist_cs = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-CalcarineSulcus.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_dist_cs2 = nib.load(pjoin(
-        anal_dir, 'gdist/gdist_src-CalcarineSulcus-split.dscalar.nii'
-    )).get_fdata()[0, mask][None, :]
     map_dist_op = nib.load(pjoin(
-        anal_dir, 'gdist/gdist_src-OccipitalPole.dscalar.nii'
+        anal_dir, 'gdist/gdist_src-OP.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
     map_dist_mt = nib.load(pjoin(
         anal_dir, 'gdist/gdist_src-MT.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCS1', 'distFromCS2', 'distFromOP', 'distFromMT'])
-    maps.extend([map_dist_cs1, map_dist_cs2, map_dist_op, map_dist_mt])
+    map_names.extend(['distFromCS', 'distFromOP', 'distFromMT'])
+    maps.extend([map_dist_cs, map_dist_op, map_dist_mt])
 
     # C1和C2的几何模型
     map_dist_model1 = nib.load(pjoin(
@@ -108,8 +106,13 @@ def calc_RSM1(mask, out_file):
     map_dist_model7 = nib.load(pjoin(
         anal_dir, 'gdist/gdist4_src-observed-seed-v4_R.dscalar.nii'
     )).get_fdata()[0, mask][None, :]
-    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4', 'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min'])
-    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4, map_dist_model5, map_dist_model6, map_dist_model7])
+    map_dist_model8 = nib.load(pjoin(
+        anal_dir, 'gdist/gdist4_src-EDLV-seed_R.dscalar.nii'
+    )).get_fdata()[0, mask][None, :]
+    map_names.extend(['distFromCalc+MT', 'distFromCalc+MT=V4', 'distFromOP+MT', 'distFromOP+MT=V4',
+                      'distFromSeedv3', 'distFromSeedv4', 'distFromSeedv4-min', 'distFromEDLV'])
+    maps.extend([map_dist_model1, map_dist_model2, map_dist_model3, map_dist_model4,
+                 map_dist_model5, map_dist_model6, map_dist_model7, map_dist_model8])
 
     # Curvature; VertexArea;
     reader = CiftiReader(s1200_avg_curv)
@@ -651,12 +654,12 @@ def calc_RSM7(dataset_name, vis_name):
     """
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     hcpy_file = pjoin(
-        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+        anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     n_hcpy_pc = 2
     hcpda_file = pjoin(
-        anal_dir, f'decomposition/{dataset_name}-M+T_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
+        anal_dir, f'decomposition/{dataset_name}-M+corrT_{vis_name}_zscore1_PCA-subj_SW-width50-step10-merge.pkl')
     n_hcpda_pc = 10
-    out_file = pjoin(work_dir, f'RSM7_M+T_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
+    out_file = pjoin(work_dir, f'RSM7_M+corrT_{vis_name}_zscore1_PCA-subj_HCPY_corr_{dataset_name}_SW-width50-step10-merge.pkl')
 
     hcpda_data = pkl.load(open(hcpda_file, 'rb'))
     row_names = hcpda_data['component name']
@@ -734,32 +737,65 @@ def calc_RSM9():
     """
     用个体差异法计算各种指标之间的相关
     """
-    n_subj = 1096
+    n_subj = 1070
     out_file = pjoin(work_dir, 'RSM9.pkl')
 
     # ---PCA权重---
     pc_names = ('C1', 'C2')
-    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中myelin的权重及其绝对值
-    weight_m_file = pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_M.csv')
-    weight_m_df = pd.read_csv(weight_m_file, usecols=pc_names)
-    weight_m_arr = np.c_[weight_m_df, np.abs(weight_m_df)].T
-    map_names = [f'{i}_weight_M' for i in pc_names]
-    map_names.extend([f'{i}_abs(weight)_M' for i in pc_names])
-    maps = [weight_m_arr]
 
-    # HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj中thickness的权重及其绝对值
-    weight_t_file = pjoin(
-        anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj_T.csv')
-    weight_t_df = pd.read_csv(weight_t_file, usecols=pc_names)
-    weight_t_arr = np.c_[weight_t_df, np.abs(weight_t_df)].T
-    map_names.extend([f'{i}_weight_T' for i in pc_names])
-    map_names.extend([f'{i}_abs(weight)_T' for i in pc_names])
-    maps.append(weight_t_arr)
+    # HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj中myelin的权重及其绝对值
+    weight_m_rh_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_M.csv')
+    weight_m_rh_df = pd.read_csv(weight_m_rh_file, usecols=pc_names)
+    weight_m_rh_arr = np.c_[weight_m_rh_df, np.abs(weight_m_rh_df)].T
+    map_names = [f'{i}_weight_M_R' for i in pc_names]
+    map_names.extend([f'{i}_abs(weight)_M_R' for i in pc_names])
+    maps = [weight_m_rh_arr]
+
+    # HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj中thickness的权重及其绝对值
+    weight_t_rh_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_corrT.csv')
+    weight_t_rh_df = pd.read_csv(weight_t_rh_file, usecols=pc_names)
+    weight_t_rh_arr = np.c_[weight_t_rh_df, np.abs(weight_t_rh_df)].T
+    map_names.extend([f'{i}_weight_T_R' for i in pc_names])
+    map_names.extend([f'{i}_abs(weight)_T_R' for i in pc_names])
+    maps.append(weight_t_rh_arr)
+
+    # HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj中
+    # myelin和thickness的权重绝对值之和
+    weight_mt_rh = np.abs(weight_m_rh_df) + np.abs(weight_t_rh_df)
+    weight_mt_rh = np.array(weight_mt_rh).T
+    map_names.extend([f'{i}_abs(weight)_M+T_R' for i in pc_names])
+    maps.append(weight_mt_rh)
+
+    # HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj中myelin的权重及其绝对值
+    weight_m_lh_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj_M.csv')
+    weight_m_lh_df = pd.read_csv(weight_m_lh_file, usecols=pc_names)
+    weight_m_lh_arr = np.c_[weight_m_lh_df, np.abs(weight_m_lh_df)].T
+    map_names.extend([f'{i}_weight_M_L' for i in pc_names])
+    map_names.extend([f'{i}_abs(weight)_M_L' for i in pc_names])
+    maps.append(weight_m_lh_arr)
+
+    # HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj中thickness的权重及其绝对值
+    weight_t_lh_file = pjoin(
+        anal_dir, 'decomposition/HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj_corrT.csv')
+    weight_t_lh_df = pd.read_csv(weight_t_lh_file, usecols=pc_names)
+    weight_t_lh_arr = np.c_[weight_t_lh_df, np.abs(weight_t_lh_df)].T
+    map_names.extend([f'{i}_weight_T_L' for i in pc_names])
+    map_names.extend([f'{i}_abs(weight)_T_L' for i in pc_names])
+    maps.append(weight_t_lh_arr)
+
+    # HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj中
+    # myelin和thickness的权重绝对值之和
+    weight_mt_lh = np.abs(weight_m_lh_df) + np.abs(weight_t_lh_df)
+    weight_mt_lh = np.array(weight_mt_lh).T
+    map_names.extend([f'{i}_abs(weight)_M+T_L' for i in pc_names])
+    maps.append(weight_mt_lh)
 
     # ---behavior measures---
-    beh_file1 = '/nfs/m1/hcp/S1200_behavior.csv'
-    beh_file2 = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
+    beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
+    beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
     info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
     beh_df1 = pd.read_csv(beh_file1)
     beh_df2 = pd.read_csv(beh_file2)
@@ -772,21 +808,44 @@ def calc_RSM9():
     beh_arr = np.c_[np.array(beh_df1[cols1], np.float64),
                     np.array(beh_df2[cols2], np.float64)]
     cols = cols1 + cols2
-    # limited in 1096 subjects
+    # limited in 1070 subjects
     subj_ids_beh = beh_df1['Subject'].to_list()
     subj_indices = [subj_ids_beh.index(i) for i in info_df['subID']]
     beh_arr = beh_arr[subj_indices].T
     map_names.extend(cols)
     maps.append(beh_arr)
 
-    # ---HCPY-M+T_fit_PC_subj-wise---
-    mt_fit_pc_file = pjoin(anal_dir, 'fit/HCPY-M+T_fit_PC_subj-wise.pkl')
-    mt_fit_pc_data = pkl.load(open(mt_fit_pc_file, 'rb'))
-    mt_fit_pc_maps = np.zeros((len(mt_fit_pc_data), n_subj))
-    for k_idx, k in enumerate(mt_fit_pc_data.keys()):
-        mt_fit_pc_maps[k_idx] = mt_fit_pc_data[k]
+    # 构建行为正确率除以反应时的指标
+    CR_div_RT_maps = []
+    CR_div_RT_names = []
+    for CR_div_RT_name, CR_div_RT_combo in beh_CR_div_RT_dict.items():
+        beh_col_idx1 = cols.index(CR_div_RT_combo[0])
+        beh_col_idx2 = cols.index(CR_div_RT_combo[1])
+        CR_div_RT_map = beh_arr[beh_col_idx1] / beh_arr[beh_col_idx2]
+        CR_div_RT_maps.append(CR_div_RT_map)
+        CR_div_RT_names.append(CR_div_RT_name)
+    CR_div_RT_maps = np.array(CR_div_RT_maps)
+    np.nan_to_num(CR_div_RT_maps, copy=False, nan=np.nan, posinf=np.nan, neginf=np.nan)
+    map_names.extend(CR_div_RT_names)
+    maps.append(CR_div_RT_maps)
+
+    # ---HCPY-M+corrT_MMP-vis3-L_fit_PC_subj-wise---
+    mt_fit_pc_lh_file = pjoin(anal_dir, 'fit/HCPY-M+corrT_MMP-vis3-L_fit_PC_subj-wise.pkl')
+    mt_fit_pc_lh_data = pkl.load(open(mt_fit_pc_lh_file, 'rb'))
+    mt_fit_pc_lh_maps = np.zeros((len(mt_fit_pc_lh_data), n_subj))
+    for k_idx, k in enumerate(mt_fit_pc_lh_data.keys()):
+        mt_fit_pc_lh_maps[k_idx] = mt_fit_pc_lh_data[k]
         map_names.append(k)
-    maps.append(mt_fit_pc_maps)
+    maps.append(mt_fit_pc_lh_maps)
+
+    # ---HCPY-M+corrT_MMP-vis3-R_fit_PC_subj-wise---
+    mt_fit_pc_rh_file = pjoin(anal_dir, 'fit/HCPY-M+corrT_MMP-vis3-R_fit_PC_subj-wise.pkl')
+    mt_fit_pc_rh_data = pkl.load(open(mt_fit_pc_rh_file, 'rb'))
+    mt_fit_pc_rh_maps = np.zeros((len(mt_fit_pc_rh_data), n_subj))
+    for k_idx, k in enumerate(mt_fit_pc_rh_data.keys()):
+        mt_fit_pc_rh_maps[k_idx] = mt_fit_pc_rh_data[k]
+        map_names.append(k)
+    maps.append(mt_fit_pc_rh_maps)
 
     # calculate correlation
     maps = np.concatenate(maps, 0)
@@ -869,7 +928,7 @@ def calc_RSM10():
 
 
 if __name__ == '__main__':
-    calc_RSM1_main(mask_name='MMP-vis3-R')
+    # calc_RSM1_main(mask_name='MMP-vis3-R')
     # calc_RSM1_main(mask_name='MMP-vis3-R-early')
     # calc_RSM1_main(mask_name='MMP-vis3-R-dorsal')
     # calc_RSM1_main(mask_name='MMP-vis3-R-lateral')
@@ -902,8 +961,10 @@ if __name__ == '__main__':
     # calc_RSM3()
     # calc_RSM5()
     # calc_RSM6()
-    # calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
-    # calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-R')
+    calc_RSM7(dataset_name='HCPD', vis_name='MMP-vis3-L')
+    calc_RSM7(dataset_name='HCPA', vis_name='MMP-vis3-L')
 
     # calc_RSM8(dataset_name='HCPD', local_name='MMP-vis3-R-EDMV')
     # calc_RSM8(dataset_name='HCPA', local_name='MMP-vis3-R-EDMV')

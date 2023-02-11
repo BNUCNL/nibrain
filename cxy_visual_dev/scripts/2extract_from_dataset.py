@@ -896,7 +896,7 @@ def get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right'):
               f'cost {time.time() - time1} seconds.')
 
 
-def get_HCPY_rsfc_mat(Hemi='R'):
+def get_HCPY_rsfc_mat_bak(Hemi='R'):
     """
     只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
@@ -967,9 +967,65 @@ def get_HCPY_rsfc_mat(Hemi='R'):
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def get_HCPY_rsfc_mat(Hemi='R'):
+    """
+    对1070名中的每一位被试，选用状态是ok=(1200, 91282)的run。
+    每个run都会计算视觉皮层内两两顶点之间的RSFC, 然后为每个被试
+    计算跨ta的所有run的平均RSFC，最终得到跨被试平均的RSFC。
+    """
+    # prepare
+    vis_name = f'MMP-vis3-{Hemi}'
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/z1/HCP/HCPYA/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_file = pjoin(work_dir, f'HCPY-avg_RSFC-{vis_name}.pkl')
+
+    # loading
+    vis_mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name), 'grayordinate')[0]
+    vtx_indices = np.where(vis_mask)[0]
+    n_vtx = len(vtx_indices)
+    df = pd.read_csv(info_file, index_col='subID')
+    n_sid = df.shape[0]
+    df_ck = pd.read_csv(check_file, sep='\t', index_col='subID')
+
+    # start
+    rs = np.zeros((n_vtx, n_vtx))
+    n_sid_valid = 0
+    for sidx, sid in enumerate(df.index, 1):
+        time1 = time.time()
+
+        rs_sub = np.zeros((n_vtx, n_vtx))
+        n_run_valid = 0
+        for run in runs:
+            if df_ck.loc[sid, run] != 'ok=(1200, 91282)':
+                continue
+            run_file = run_files.format(sid, run)
+            X = nib.load(run_file).get_fdata()[:, vtx_indices].T
+            rs_run = 1 - pairwise_distances(X, metric='correlation', n_jobs=8)
+            rs_sub = rs_sub + rs_run
+            n_run_valid += 1
+        if n_run_valid == 0:
+            continue
+
+        rs_sub = rs_sub / n_run_valid
+        rs = rs + rs_sub
+        n_sid_valid += 1
+        print(f'Finish subj-{sid}_{sidx}/{n_sid}, '
+              f'cost {time.time()-time1} seconds')
+    print('n_sid_valid:', n_sid_valid)
+
+    # save out
+    data = {'matrix': rs / n_sid_valid,
+            'row-idx_to_32k-fs-LR-idx': vtx_indices}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 def get_HCPY_rsfc_mat_roi():
     """
-    只选用1096名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
+    只选用1070名中'rfMRI_REST1_RL', 'rfMRI_REST2_RL', 'rfMRI_REST1_LR',
     'rfMRI_REST2_LR'的状态都是ok=(1200, 91282)的被试。
     每个被试的4个run都先沿时间轴做去均值中心化然后拼接在一起，来做
     HCP-MMP1所有脑区之间的连接矩阵。
@@ -981,9 +1037,9 @@ def get_HCPY_rsfc_mat_roi():
     check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
     runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
             'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
-    run_files = '/nfs/m1/hcp/{0}/MNINonLinear/Results/{1}/'\
+    run_files = '/nfs/z1/HCP/HCPYA/{0}/MNINonLinear/Results/{1}/'\
         '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
-    out_file = pjoin(work_dir, f'HCPY-avg_RSFC_HCP-MMP.pkl')
+    out_file = pjoin(work_dir, 'HCPY-avg_RSFC_HCP-MMP.pkl')
 
     # loading
     mask_map = atlas.maps[0]
@@ -1036,6 +1092,72 @@ def get_HCPY_rsfc_mat_roi():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def get_HCPY_Destrieux_atlas():
+    """
+    基于1070名被试的{sid}.aparc.a2009s.32k_fs_LR.dlabel.nii
+    制作Destrieux Atlas各ROI的概率图以及MPM
+    """
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    src_files = '/nfs/z1/HCP/HCPYA/{sid}/MNINonLinear/fsaverage_LR32k/'\
+        '{sid}.aparc.a2009s.32k_fs_LR.dlabel.nii'
+    out_file1 = pjoin(work_dir, 'HCPY_aparc-a2009s_prob_32k_fs_LR.dscalar.nii')
+    out_file2 = pjoin(work_dir, 'HCPY_aparc-a2009s_MPM_32k_fs_LR.dlabel.nii')
+
+    df = pd.read_csv(info_file, index_col='subID')
+    n_sid = df.shape[0]
+
+    lbl_tab = None
+    lbl2key = None
+    prob_maps = None
+    map_names = None
+    bms = None
+    vol = None
+    n_sid_valid = 0
+    for sidx, sid in enumerate(df.index, 1):
+        src_file = src_files.format(sid=sid)
+        if not os.path.exists(src_file):
+            continue
+        reader = CiftiReader(src_file)
+        ind_map = reader.get_data()[0]
+
+        lbl_tab_tmp = reader.label_tables()[0]
+        lbl2key_tmp = {}
+        for k, v in lbl_tab_tmp.items():
+            if k == 0:
+                continue
+            lbl2key_tmp[v.label] = k
+        if lbl2key is None:
+            lbl_tab = lbl_tab_tmp
+            lbl2key = lbl2key_tmp
+            prob_maps = np.zeros((len(lbl2key), ind_map.shape[0]))
+            map_names = list(lbl2key.keys())
+            bms = reader.brain_models()
+            vol = reader.volume
+        else:
+            assert lbl2key == lbl2key_tmp
+
+        for map_idx, map_name in enumerate(map_names):
+            prob_maps[map_idx] = prob_maps[map_idx] +\
+                (ind_map == lbl2key[map_name]).astype(int)
+
+        n_sid_valid += 1
+        print(f'Finished {sid}-{sidx}/{n_sid}')
+    print('n_sid_valid:', n_sid_valid)
+
+    prob_maps = prob_maps / n_sid_valid
+    mpm_map = np.argmax(prob_maps, 0)
+    mpm_map_tmp = mpm_map + 1
+    for vtx_idx in range(mpm_map.shape[0]):
+        lbl = map_names[mpm_map[vtx_idx]]
+        mpm_map[vtx_idx] = lbl2key[lbl]
+    assert np.all(mpm_map == mpm_map_tmp)
+    mpm_map = np.expand_dims(mpm_map, 0)
+
+    save2cifti(out_file1, prob_maps, bms, map_names, vol)
+    save2cifti(out_file2, mpm_map, bms, None, vol,
+               label_tables=[lbl_tab])
+
+
 if __name__ == '__main__':
     # merge_data(dataset_name='HCPD', meas_name='thickness')
     # merge_data(dataset_name='HCPD', meas_name='myelin')
@@ -1075,7 +1197,7 @@ if __name__ == '__main__':
     #     tr=0.8, low_freq_band=(0.008, 0.1), linear_detrend=True
     # )
 
-    # subj_par = '/nfs/m1/hcp'
+    # subj_par = '/nfs/z1/HCP/HCPYA'
     # ColeParcel_fc_vtx(
     #     subj_par=subj_par,
     #     check_file=pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv'),
@@ -1094,6 +1216,7 @@ if __name__ == '__main__':
 
     # fc_strength_mine(825, 1095)
     # fc_strength_mine_merge()
+
     # get_HCPY_morph(
     #     src_file=s1200_1096_myelin,
     #     out_file=pjoin(work_dir, 'HCPY_myelin.dscalar.nii')
@@ -1102,6 +1225,7 @@ if __name__ == '__main__':
     #     src_file=s1200_1096_corrThickness,
     #     out_file=pjoin(work_dir, 'HCPY_corrThickness.dscalar.nii')
     # )
+
     # get_HCPY_alff()
     # get_HCPY_GBC()
     # get_HCPY_GBC1('FC-strength1')
@@ -1113,5 +1237,8 @@ if __name__ == '__main__':
     # get_HCPY_rsfc_mat_old(hemi='rh')
     # get_HCPDA_rsfc_mat(dataset_name='HCPD', Hemi='Right')
     # get_HCPDA_rsfc_mat(dataset_name='HCPA', Hemi='Right')
+    # get_HCPY_rsfc_mat_bak(Hemi='R')
     # get_HCPY_rsfc_mat(Hemi='R')
+    # get_HCPY_rsfc_mat(Hemi='L')
     # get_HCPY_rsfc_mat_roi()
+    get_HCPY_Destrieux_atlas()

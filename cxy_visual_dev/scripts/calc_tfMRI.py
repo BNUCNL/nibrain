@@ -142,63 +142,67 @@ def summary_category_prob_map(fpath, methods, thr=0.2):
 
 def get_WM_cope_map():
     """
-    提取1069名被试WM任务中'BODY', 'FACE', 'PLACE', 'TOOL',
+    提取1070名被试WM任务中'BODY', 'FACE', 'PLACE', 'TOOL',
     'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG'的平均beta map
     """
     subj_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
     copes = ['BODY', 'FACE', 'PLACE', 'TOOL',
              'BODY-AVG', 'FACE-AVG', 'PLACE-AVG', 'TOOL-AVG']
-    feat_dir = '/nfs/m1/hcp/{sid}/MNINonLinear/Results/tfMRI_WM/'\
-        'tfMRI_WM_hp200_s2_level2_MSMAll.feat'
+    feat_dir = '/nfs/z1/HCP/HCPYA/{sid}/MNINonLinear/Results/'\
+        'tfMRI_WM/tfMRI_WM_hp200_s2_level2_MSMAll.feat'
     contrast_file = pjoin(feat_dir.format(sid='100307'),
                           'Contrasts.txt')
     cope_files = pjoin(
-        feat_dir, 'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
+        feat_dir,
+        'GrayordinatesStats/cope{c_num}.feat/cope1.dtseries.nii')
     out_file = pjoin(work_dir, 'tfMRI-WM-cope.dscalar.nii')
-    log_file = pjoin(work_dir, 'tfMRI-WM-cope_log')
+    log_file = pjoin(work_dir, 'tfMRI-WM-cope_file-status.csv')
 
     sids = pd.read_csv(subj_file)['subID'].values
     n_sid = len(sids)
     contrasts = open(contrast_file).read().splitlines()
     c_nums = [contrasts.index(i) + 1 for i in copes]
 
-    out_maps = []
     bms = None
     vol = None
-    log_handle = open(log_file, 'w')
+    out_maps = []
+    out_dict = {}
     for c_idx, c_num in enumerate(c_nums):
+        c_name = copes[c_idx]
         c_map = 0
         n_sid_valid = 0
+        out_dict[c_name] = []
         for sidx, sid in enumerate(sids, 1):
             time1 = time.time()
             cope_file = cope_files.format(sid=sid, c_num=c_num)
             try:
                 cope_map = nib.load(cope_file).get_fdata()[0]
-            except Exception as err:
-                msg = f'{cope_file} meets error: {err}'
-                print(msg)
-                log_handle.write(msg + '\n')
+            except Exception:
+                out_dict[c_name].append('err')
                 continue
+            out_dict[c_name].append('ok')
             n_sid_valid += 1
             if bms is None:
-                bms = CiftiReader(cope_file).brain_models()
-                vol = CiftiReader(cope_file).volume
+                reader = CiftiReader(cope_file)
+                bms = reader.brain_models()
+                vol = reader.volume
             c_map = c_map + cope_map
-            print(f'Finished {copes[c_idx]}-{sidx}/{n_sid}, cost: '
+            print(f'Finished {c_name}-{sidx}/{n_sid}, cost: '
                   f'{time.time()-time1} seconds.')
         c_map = c_map / n_sid_valid
         out_maps.append(c_map)
-        log_handle.write(f'n_sid_valid of {copes[c_idx]}: {n_sid_valid}\n')
     out_maps = np.array(out_maps)
+    out_df = pd.DataFrame(out_dict)
 
     # save out
     save2cifti(out_file, out_maps, bms, copes, vol)
+    out_df.to_csv(log_file, index=False)
 
 
 def add_avg_for_WM_cope_map():
     """
     这里的AVG是直接基于BODY, FACE, PLACE, 和TOOL
-    四个被试间平均map做平均。由于拥有这四个条件的被试应该是一致的。
+    四个被试间平均map做平均。由于拥有这四个条件的被试是一致的。
     所以这里直接基于被试间平均map做平均和
     先基于单个被试做平均，然后跨被试平均是一样的。
     """

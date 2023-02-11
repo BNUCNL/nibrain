@@ -9,7 +9,8 @@ from magicbox.io.io import CiftiReader, GiftiReader, save2cifti
 from cxy_visual_dev.lib.predefine import Atlas, get_rois, proj_dir,\
     mmp_map_file, L_offset_32k, L_count_32k, R_offset_32k, R_count_32k,\
     LR_count_32k, hemi2stru, s1200_midthickness_L, s1200_midthickness_R,\
-    MedialWall, mmp_name2label, hemi2Hemi
+    MedialWall, mmp_name2label, hemi2Hemi, L_OccipitalPole_32k,\
+    R_OccipitalPole_32k, Hemi2stru
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'gdist')
@@ -61,27 +62,33 @@ def calc_gdist_map_from_src(src_lh, src_rh, out_file=None):
         save2cifti(out_file, data, reader.brain_models())
 
 
-def calc_gdist1():
+def calc_gdist1(hemi):
     """
     计算视觉皮层内两两顶点之间的测地距离
     """
+    Hemi = hemi2Hemi[hemi]
+    hemi2geo = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R
+    }
     # find vertex numbers
-    vis_name = 'MMP-vis3-R'
+    vis_name = f'MMP-vis3-{Hemi}'
     rois = get_rois(vis_name)
     reader = CiftiReader(mmp_map_file)
-    mask_map = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)[0]
+    mask_map = reader.get_data(hemi2stru[hemi], True)[0]
     mask = np.zeros_like(mask_map, bool)
     for roi in rois:
         mask = np.logical_or(mask, mask_map == mmp_name2label[roi])
     vertices = np.where(mask)[0].astype(np.int32)
     n_vtx = len(vertices)
+    out_file = pjoin(work_dir, f'gdist-between-all-pair-vtx_{vis_name}.pkl')
 
     # prepare geometry
     mw = MedialWall()
-    gii = GiftiReader(s1200_midthickness_R)
+    gii = GiftiReader(hemi2geo[hemi])
     coords = gii.coords.astype(np.float64)
     faces = gii.faces.astype(np.int32)
-    faces = mw.remove_from_faces('rh', faces)
+    faces = mw.remove_from_faces(hemi, faces)
 
     # calculate gdist
     ds = np.zeros((n_vtx, n_vtx))
@@ -91,8 +98,7 @@ def calc_gdist1():
         print(f'Finished {vtx_idx + 1}/{n_vtx}, cost {time.time() - time1} seconds.')
 
     # save out
-    out_dict = {'gdist': ds, 'vtx_number_in_32k_fs_R': vertices}
-    out_file = pjoin(work_dir, f'gdist-between-all-pair-vtx_{vis_name}.pkl')
+    out_dict = {'gdist': ds, f'vtx_number_in_32k_fs_{Hemi}': vertices}
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
@@ -172,39 +178,22 @@ def calc_gdist3(seed_file, hemi, out_file):
 def calc_gdist4(seed_file, hemi, out_file):
     """
     Calculate the minimum geodesic distance from each vertex
-    to the four seeds (EDLV).
-    """
-    Hemi = hemi2Hemi[hemi]
-    local_names = ['early', 'dorsal', 'lateral', 'ventral']
-    local_names = [f'{Hemi}_{i}' for i in local_names]
-
-    reader1 = CiftiReader(seed_file)
-    seed_map = reader1.get_data(hemi2stru[hemi], True)[0]
-    lbl_tab1 = reader1.label_tables()[0]
-    local2seed_key = {}
-    for k, v in lbl_tab1.items():
-        local2seed_key[v.label] = k
-
-    out_maps = np.zeros((len(local_names), LR_count_32k))
-    for local_idx, local_name in enumerate(local_names):
-        seed_vertices = np.where(seed_map == local2seed_key[local_name])[0]
-        if Hemi == 'L':
-            src_lh, src_rh = seed_vertices, [0]
-        elif Hemi == 'R':
-            src_lh, src_rh = [0], seed_vertices
-        gdist_map = calc_gdist_map_from_src(src_lh, src_rh, None)
-        out_maps[local_idx] = gdist_map
-    out_map = np.min(out_maps, axis=0, keepdims=True)
-
-    save2cifti(out_file, out_map, reader1.brain_models())
-
-
-def calc_gdist5(seed_file, hemi, out_file):
-    """
-    Calculate the minimum geodesic distance from each vertex
     to all non-zeros vertices.
     """
-    pass
+    assert hemi in ('lh', 'rh', 'lr')
+    if hemi == 'lr':
+        Hemis = ['L', 'R']
+    else:
+        Hemis = [hemi2Hemi[hemi]]
+    Hemi2src = {'L': [0], 'R': [0]}
+    reader = CiftiReader(seed_file)
+    for Hemi in Hemis:
+        seed_map = reader.get_data(Hemi2stru[Hemi], True)[0]
+        Hemi2src[Hemi] = np.where(seed_map != 0)[0]
+    gdist_map = calc_gdist_map_from_src(Hemi2src['L'], Hemi2src['R'], None)
+
+    save2cifti(out_file, np.expand_dims(gdist_map, 0),
+               CiftiReader(mmp_map_file).brain_models())
 
 
 if __name__ == '__main__':
@@ -230,6 +219,10 @@ if __name__ == '__main__':
     #     src_rh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/R_OccipitalPole.label')),
     #     out_file=pjoin(work_dir, 'gdist_src-OccipitalPole.dscalar.nii')
     # )
+    # calc_gdist_map_from_src(
+    #     src_lh=[L_OccipitalPole_32k], src_rh=[R_OccipitalPole_32k],
+    #     out_file=pjoin(work_dir, 'gdist_src-OP.dscalar.nii')
+    # )
 
     # calc_gdist_map_from_src(
     #     src_lh=nib.freesurfer.read_label(pjoin(proj_dir, 'data/L_OpMt.label')),
@@ -254,7 +247,8 @@ if __name__ == '__main__':
     # save2cifti(out_file, out_maps,
     #            CiftiReader(mmp_map_file).brain_models(), map_names)
 
-    # calc_gdist1()
+    # calc_gdist1(hemi='lh')
+    # calc_gdist1(hemi='rh')
 
     # calc_gdist2(
     #     v1_gdist_file=pjoin(work_dir, 'gdist_src-CalcarineSulcus.dscalar.nii'),
@@ -293,12 +287,22 @@ if __name__ == '__main__':
     #     out_file=pjoin(work_dir, 'gdist4_src-observed-seed-v4_R.dscalar.nii')
     # )
     # calc_gdist4(
-    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v1_R.dlabel.nii'),
+    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed_L.dlabel.nii'),
+    #     hemi='lh',
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_L.dscalar.nii')
+    # )
+    # calc_gdist4(
+    #     seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed_R.dlabel.nii'),
     #     hemi='rh',
-    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1_R.dscalar.nii')
+    #     out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed_R.dscalar.nii')
     # )
     calc_gdist4(
-        seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v2_R.dlabel.nii'),
-        hemi='rh',
-        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v2_R.dscalar.nii')
+        seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed.dlabel.nii'),
+        hemi='lr',
+        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed.dscalar.nii')
+    )
+    calc_gdist4(
+        seed_file=pjoin(anal_dir, 'mask_map/EDLV-seed-v1.dlabel.nii'),
+        hemi='lr',
+        out_file=pjoin(work_dir, 'gdist4_src-EDLV-seed-v1.dscalar.nii')
     )

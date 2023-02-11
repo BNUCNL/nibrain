@@ -6,12 +6,13 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, permutation_test
 from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.cross_decomposition import CCA
 from matplotlib import pyplot as plt
 from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, Atlas,\
     get_rois, hemi2Hemi, mmp_map_file, s1200_avg_RFsize, s1200_1096_myelin, s1200_1096_thickness,\
@@ -161,12 +162,12 @@ def HCPDA_MT_fit_PC12_SW(dataset_name, vis_name, width, step, merge_remainder):
     """
     n_pc = 2
     m_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_myelin.dscalar.nii')
-    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_thickness.dscalar.nii')
+    t_file = pjoin(proj_dir, f'data/HCP/{dataset_name}_corrThickness.dscalar.nii')
     pc_file = pjoin(
-        anal_dir, f'decomposition/HCPY-M+T_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+        anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
-    out_name = f'{dataset_name}-M+T=PC12_SW-width{width}-step{step}'
+    out_name = f'{dataset_name}-M+corrT=PC12_{vis_name}_SW-width{width}-step{step}'
     if merge_remainder:
         out_name += '-merge'
     out_file = pjoin(work_dir, f'{out_name}.pkl')
@@ -551,12 +552,11 @@ def PC12_fit_func2():
     fig.savefig(out_fig)
 
 
-def PC12_fit_func3():
+def PC12_fit_func3(Hemi):
     """
     用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
     在整个视觉皮层以及EDLV四个部分线性拟合WM任务激活+fALFF
     """
-    Hemi = 'R'
     vis_name = f'MMP-vis3-{Hemi}'
     mask_names = (vis_name, f'{vis_name}-early', f'{vis_name}-dorsal',
                   f'{vis_name}-lateral', f'{vis_name}-ventral')
@@ -580,14 +580,14 @@ def PC12_fit_func3():
     n_mask = len(mask_names)
 
     fname1 = 'PC1+2=func3'
-    out_file1 = pjoin(work_dir, f'{fname1}.pkl')
+    out_file1 = pjoin(work_dir, f'{fname1}_{Hemi}.pkl')
     rs = np.zeros((n_mask, n_trg))
     ps = np.zeros((n_mask, n_trg))
     for mask_idx, mask_name in enumerate(mask_names):
         fname2 = f'{fname1}_{mask_name}'
         out_file2 = pjoin(work_dir, f'{fname2}.dscalar.nii')
         if mask_name == vis_name:
-            mask = atlas.get_mask('R')[0]
+            mask = atlas.get_mask(Hemi)[0]
         else:
             edlv_name = f"{Hemi}_{mask_name.split('-')[-1]}"
             mask = atlas.get_mask(edlv_name)[0]
@@ -603,40 +603,134 @@ def PC12_fit_func3():
             r, p = pearsonr(y, y_pred)
             rs[mask_idx, trg_idx] = r
             ps[mask_idx, trg_idx] = p
-        save2cifti(out_file2, out_maps, bms)
+        save2cifti(out_file2, out_maps, bms, trg_names)
     out_data = {'row_name': mask_names, 'col_name': trg_names,
                 'r': rs, 'p': ps}
     pkl.dump(out_data, open(out_file1, 'wb'))
 
 
-def HCPY_MT_fit_PC12():
+def PC12_fit_func4(Hemi):
+    """
+    用HCPY-M+corrT_MMP-vis3-{Hemi}_zscore1_PCA-subj的PC1和PC2
+    在整个视觉皮层以及用分水岭算法得到的EDLV四个部分线性拟合WM任务激活+fALFF
+    """
+    vis_name = f'MMP-vis3-{Hemi}'
+    mask_names = (vis_name, f'{vis_name}-early', f'{vis_name}-dorsal',
+                  f'{vis_name}-lateral', f'{vis_name}-ventral')
+    pc_file = pjoin(
+        anal_dir, 'decomposition/'
+        f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
+    pc_names = ['PC1', 'PC2']
+    func_file = pjoin(anal_dir, 'tfMRI/tfMRI-WM-cope.dscalar.nii')
+    faff_file = pjoin(anal_dir, 'AFF/HCPY-faff.dscalar.nii')
+    edlv_file = pjoin(anal_dir, 'divide_map/'
+                      'watershed-PC2_EDLV-seed-v1.dlabel.nii')
+
+    def statistic(x, y):
+        return r2_score(x, y)
+
+    n_pc = len(pc_names)
+    pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
+    reader = CiftiReader(func_file)
+    bms = reader.brain_models([hemi2stru['lh'], hemi2stru['rh']])
+    func_data = reader.get_data()[:, :LR_count_32k]
+    trg_names = reader.map_names()
+    falff_map = nib.load(faff_file).get_fdata()[[0], :LR_count_32k]
+    func_data = np.r_[func_data, falff_map]
+    trg_names.append('fALFF')
+    n_trg = len(trg_names)
+    n_mask = len(mask_names)
+    reader_edlv = CiftiReader(edlv_file)
+    edlv_map = reader_edlv.get_data()[0]
+    lbl_tab = reader_edlv.label_tables()[0]
+    edlv_label2key = {}
+    for k, v in lbl_tab.items():
+        edlv_label2key[v.label] = k
+
+    fname1 = 'PC1+2=func4'
+    out_file1 = pjoin(work_dir, f'{fname1}_{Hemi}.pkl')
+    rs = np.zeros((n_mask, n_trg))
+    ps = np.zeros((n_mask, n_trg))
+    R2s = np.zeros((n_mask, n_trg))
+    R2_ps = np.zeros((n_mask, n_trg))
+    weights = np.zeros((n_mask, n_trg, n_pc))
+    for mask_idx, mask_name in enumerate(mask_names):
+        fname2 = f'{fname1}_{mask_name}'
+        out_file2 = pjoin(work_dir, f'{fname2}.dscalar.nii')
+        if mask_name == vis_name:
+            mask = np.zeros_like(edlv_map, bool)
+            for lbl, k in edlv_label2key.items():
+                if lbl.startswith(f'{Hemi}_'):
+                    mask = np.logical_or(mask, edlv_map == k)
+        else:
+            edlv_lbl = f"{Hemi}_{mask_name.split('-')[-1]}"
+            mask = edlv_map == edlv_label2key[edlv_lbl]
+        X = pc_maps[:, mask].T
+        out_maps = np.ones((n_trg, LR_count_32k)) * np.nan
+        for trg_idx, trg_name in enumerate(trg_names):
+            time1 = time.time()
+            y = func_data[trg_idx, mask]
+            model = Pipeline([('preprocesser', StandardScaler()),
+                              ('regressor', LinearRegression())])
+            model.fit(X, y)
+            y_pred = model.predict(X)
+            out_maps[trg_idx, mask] = y_pred
+            r, p = pearsonr(y, y_pred)
+            rs[mask_idx, trg_idx] = r
+            ps[mask_idx, trg_idx] = p
+            pmt_test = permutation_test(
+                (y, y_pred), statistic, permutation_type='pairings',
+                vectorized=False, n_resamples=10000, alternative='greater',
+                random_state=7)
+            R2s[mask_idx, trg_idx] = pmt_test.statistic
+            R2_ps[mask_idx, trg_idx] = pmt_test.pvalue
+            assert model.named_steps['regressor'].coef_.shape == (n_pc,)
+            weights[mask_idx, trg_idx] = \
+                model.named_steps['regressor'].coef_
+            print('pmt_test.statistic:', pmt_test.statistic)
+            print('model.score:', model.score(X, y))
+            print(f'Finished {mask_name}-{mask_idx+1}/{n_mask} '
+                  f'{trg_name}-{trg_idx+1}/{n_trg}: '
+                  f'cost {time.time()-time1} seconds.')
+        save2cifti(out_file2, out_maps, bms, trg_names)
+    out_data = {'row_name': mask_names, 'col_name': trg_names,
+                'r': rs, 'p': ps, 'R2': R2s, 'R2_p': R2_ps,
+                'weight': weights}
+    pkl.dump(out_data, open(out_file1, 'wb'))
+
+
+def HCPY_MT_fit_PC12(Hemi):
     """
     对每个被试用其myelin和thickness map拟合PC1/2
     整体和局部的拟合都做，用以得到在整体或是局部视觉皮层中
     每个被试对PC1/2的贡献
     """
-    out_file = pjoin(work_dir, 'HCPY-M+T_fit_PC_subj-wise.pkl')
+    vis_name = f'MMP-vis3-{Hemi}'
+    out_file = pjoin(work_dir, f'HCPY-M+corrT_{vis_name}_fit_PC_subj-wise.pkl')
+
     # preparation for feature
-    m_maps = nib.load(s1200_1096_myelin).get_fdata()
-    t_maps = nib.load(s1200_1096_thickness).get_fdata()
+    m_file = pjoin(proj_dir, 'data/HCP/HCPY_myelin.dscalar.nii')
+    t_file = pjoin(proj_dir, 'data/HCP/HCPY_corrThickness.dscalar.nii')
+    m_maps = nib.load(m_file).get_fdata()
+    t_maps = nib.load(t_file).get_fdata()
     n_subj = m_maps.shape[0]
 
     # preparation for target
     n_pc = 2
     pc_names = ['C1', 'C2']
-    pc_file = pjoin(anal_dir, 'decomposition/HCPY-M+T_MMP-vis3-R_zscore1_PCA-subj.dscalar.nii')
+    pc_file = pjoin(anal_dir, f'decomposition/HCPY-M+corrT_{vis_name}_zscore1_PCA-subj.dscalar.nii')
     pc_maps = nib.load(pc_file).get_fdata()[:n_pc]
 
     # preparation for mask
     out_data = {}
-    atlas_names = ['HCP-MMP', 'MMP-vis3-EDMV']
+    atlas_names = ['HCP-MMP', 'MMP-vis3-EDLV']
     for atlas_name in atlas_names:
         atlas = Atlas(atlas_name)
         if atlas_name == 'HCP-MMP':
-            mask_names = ['MMP-vis3-R']
-            mask_names.extend(get_rois('MMP-vis3-R'))
-        elif atlas_name == 'MMP-vis3-EDMV':
-            mask_names = [i for i in atlas.roi2label.keys() if i.startswith('R_')]
+            mask_names = [vis_name]
+            mask_names.extend(get_rois(vis_name))
+        elif atlas_name == 'MMP-vis3-EDLV':
+            mask_names = [i for i in atlas.roi2label.keys() if i.startswith(f'{Hemi}_')]
         else:
             raise ValueError('not supported atlas name:', atlas_name)
         n_mask = len(mask_names)
@@ -645,7 +739,7 @@ def HCPY_MT_fit_PC12():
         for mask_idx, mask_name in enumerate(mask_names, 1):
             time1 = time.time()
 
-            if mask_name == 'MMP-vis3-R':
+            if mask_name == vis_name:
                 mask = atlas.get_mask(get_rois(mask_name))[0]
             else:
                 mask = atlas.get_mask(mask_name)[0]
@@ -664,17 +758,171 @@ def HCPY_MT_fit_PC12():
                 for pc_idx, pc_name in enumerate(pc_names):
                     out_data[f'{mask_name}_{pc_name}'][subj_idx] = \
                         r2_score(Y[:, pc_idx], Y_pred[:, pc_idx])
-            
+
             print(f'Finished {atlas_name}-{mask_name}-{mask_idx}/{n_mask}: '
                   f'cost {time.time() - time1} seconds.')
 
     pkl.dump(out_data, open(out_file, 'wb'))
 
 
+def weight_CCA_beh(vis_name):
+
+    # 0. 用上C2的M和T的权重作为特征（一共2个）
+    # 1. 选择Unadjusted Scale Score，而非Age-Adjusted Scale Score
+    # 2. 只保留正确率
+    # 3. 对于Delay Discounting，只用两个AUC指标
+    # 4. 对于Sustained Attention，只用sensitivity和specificity
+    # 5. 去掉分类变量
+    # 6. Visual Acuity保留EVA_Denom
+    # 7. Contrast Sensitivity保留Mars_Final
+    n_component = 2
+    meas_names = ('M', 'T')
+    pc_names = ('C2',)
+    cognition_cols = [
+        'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
+        'PMAT24_A_CR', 'ReadEng_Unadj', 'PicVocab_Unadj',
+        'ProcSpeed_Unadj', 'DDisc_AUC_200', 'DDisc_AUC_40K',
+        'VSPLOT_TC', 'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT',
+        'ListSort_Unadj', 'CogFluidComp_Unadj', 'CogEarlyComp_Unadj',
+        'CogTotalComp_Unadj', 'CogCrystalComp_Unadj']
+    sensory_cols = [
+        'Noise_Comp', 'Odor_Unadj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_Unadj', 'EVA_Denom', 'Mars_Final']
+    beh_cols = cognition_cols + sensory_cols
+
+    # prepare file
+    meas2file = {
+        'M': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_M.csv'),
+        'T': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_corrT.csv')}
+    beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
+    beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v7.pkl')
+
+    # load data
+    feat_names = []
+    weight_arr = []
+    for meas_name in meas_names:
+        weight_df = pd.read_csv(meas2file[meas_name], usecols=pc_names)
+        weight_arr.append(weight_df.values)
+        feat_names.extend([f'{i}_{meas_name}_weight' for i in pc_names])
+    weight_arr = np.concatenate(weight_arr, axis=1)
+    beh_df1 = pd.read_csv(beh_file1, index_col='Subject')
+    beh_df2 = pd.read_csv(beh_file2, index_col='Subject')
+    assert np.all(beh_df1.index == beh_df2.index)
+    beh_df = pd.concat([beh_df1, beh_df2], axis=1)
+    info_df = pd.read_csv(info_file, index_col='subID')
+    beh_df = beh_df.loc[info_df.index, beh_cols]
+
+    # prepare X and Y
+    Y = beh_df.values
+    non_nan_vec = ~np.any(np.isnan(Y), 1)
+    Y = Y[non_nan_vec]
+    X = weight_arr[non_nan_vec]
+    print('feature names:', feat_names)
+    print('X.shape:', X.shape)
+    print('behavior names:', beh_cols)
+    print('Y.shape:', Y.shape)
+
+    # CCA
+    cca = CCA(n_components=n_component, scale=True)
+    cca.fit(X, Y)
+    X_trans, Y_trans = cca.transform(X, Y)
+
+    # save out
+    out_dict = {
+        'model': cca, 'feature names': feat_names,
+        'target names': beh_cols, 'X_trans': X_trans,
+        'Y_trans': Y_trans}
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
+def weight_CCA_beh1(vis_name):
+
+    # 0. 用上C1和C2的（M和T的权重绝对值之和）作为特征（一共2个）
+    # 1. 选择Unadjusted Scale Score，而非Age-Adjusted Scale Score
+    # 2. 只保留正确率
+    # 3. 对于Delay Discounting，只用两个AUC指标
+    # 4. 对于Sustained Attention，只用sensitivity和specificity
+    # 5. 去掉分类变量
+    # 6. Visual Acuity保留EVA_Denom
+    # 7. Contrast Sensitivity保留Mars_Final
+    n_component = 2
+    meas_names = ('M', 'T')
+    pc_names = ('C1', 'C2')
+    cognition_cols = [
+        'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
+        'PMAT24_A_CR', 'ReadEng_Unadj', 'PicVocab_Unadj',
+        'ProcSpeed_Unadj', 'DDisc_AUC_200', 'DDisc_AUC_40K',
+        'VSPLOT_TC', 'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT',
+        'ListSort_Unadj', 'CogFluidComp_Unadj', 'CogEarlyComp_Unadj',
+        'CogTotalComp_Unadj', 'CogCrystalComp_Unadj']
+    sensory_cols = [
+        'Noise_Comp', 'Odor_Unadj', 'PainIntens_RawScore',
+        'PainInterf_Tscore', 'Taste_Unadj', 'EVA_Denom', 'Mars_Final']
+    beh_cols = cognition_cols + sensory_cols
+
+    # prepare file
+    meas2file = {
+        'M': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_M.csv'),
+        'T': pjoin(
+            anal_dir, 'decomposition/'
+            f'HCPY-M+corrT_{vis_name}_zscore1_PCA-subj_corrT.csv')}
+    beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
+    beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
+    info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v8.pkl')
+
+    # load data
+    feat_names = [f'{i}_abs(w)_M+T' for i in pc_names]
+    weight_arr = 0
+    for meas_name in meas_names:
+        weight_df = pd.read_csv(meas2file[meas_name], usecols=pc_names)
+        weight_arr = weight_arr + np.abs(weight_df.values)
+    beh_df1 = pd.read_csv(beh_file1, index_col='Subject')
+    beh_df2 = pd.read_csv(beh_file2, index_col='Subject')
+    assert np.all(beh_df1.index == beh_df2.index)
+    beh_df = pd.concat([beh_df1, beh_df2], axis=1)
+    info_df = pd.read_csv(info_file, index_col='subID')
+    beh_df = beh_df.loc[info_df.index, beh_cols]
+
+    # prepare X and Y
+    Y = beh_df.values
+    non_nan_vec = ~np.any(np.isnan(Y), 1)
+    Y = Y[non_nan_vec]
+    X = weight_arr[non_nan_vec]
+    print('feature names:', feat_names)
+    print('X.shape:', X.shape)
+    print('behavior names:', beh_cols)
+    print('Y.shape:', Y.shape)
+
+    # CCA
+    cca = CCA(n_components=n_component, scale=True)
+    cca.fit(X, Y)
+    X_trans, Y_trans = cca.transform(X, Y)
+
+    # save out
+    out_dict = {
+        'model': cca, 'feature names': feat_names,
+        'target names': beh_cols, 'X_trans': X_trans,
+        'Y_trans': Y_trans}
+    pkl.dump(out_dict, open(out_file, 'wb'))
+
+
 if __name__ == '__main__':
     # gdist_fit_PC1()
     # gdist_fit_PC12()
     # HCPDA_fit_PC12()
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-L',
+    #                      width=50, step=10, merge_remainder=True)
+    # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-L',
+    #                      width=50, step=10, merge_remainder=True)
     # HCPDA_MT_fit_PC12_SW(dataset_name='HCPD', vis_name='MMP-vis3-R',
     #                      width=50, step=10, merge_remainder=True)
     # HCPDA_MT_fit_PC12_SW(dataset_name='HCPA', vis_name='MMP-vis3-R',
@@ -687,5 +935,13 @@ if __name__ == '__main__':
     # PC12_fit_func()
     # PC12_fit_func1()
     # PC12_fit_func2()
-    PC12_fit_func3()
-    # HCPY_MT_fit_PC12()
+    # PC12_fit_func3(Hemi='L')
+    # PC12_fit_func3(Hemi='R')
+    PC12_fit_func4(Hemi='L')
+    PC12_fit_func4(Hemi='R')
+    # HCPY_MT_fit_PC12(Hemi='L')
+    # HCPY_MT_fit_PC12(Hemi='R')
+    # weight_CCA_beh(vis_name='MMP-vis3-R')
+    # weight_CCA_beh(vis_name='MMP-vis3-L')
+    # weight_CCA_beh1(vis_name='MMP-vis3-R')
+    # weight_CCA_beh1(vis_name='MMP-vis3-L')
