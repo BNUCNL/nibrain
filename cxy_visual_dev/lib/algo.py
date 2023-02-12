@@ -1,11 +1,9 @@
 import time
-import decimal
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from decimal import Decimal
 from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
@@ -21,36 +19,6 @@ from magicbox.io.io import CiftiReader, save2cifti, GiftiReader
 from magicbox.graph.triangular_mesh import get_n_ring_neighbor
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir,\
     hemi2stru, s1200_midthickness_L, s1200_midthickness_R
-
-
-def round_decimal(number, ndigits, round_type='half_up'):
-    """
-    Round a number to a given precision in decimal digits.
-
-    Args:
-        number (float): a float number
-        ndigits (int): the number of decimal digits
-            Only support positive integer at present
-        round_type (str): Default is half_up
-            half_up, floor, ceil
-
-    Return:
-        number (Decimal): a Decimal number after rounding
-    """
-    assert ndigits > 0 and isinstance(ndigits, int)
-    number = Decimal(str(number))
-    ctx = decimal.getcontext()
-    if round_type == 'half_up':
-        ctx.rounding = decimal.ROUND_HALF_UP
-    elif round_type == 'floor':
-        ctx.rounding = decimal.ROUND_FLOOR
-    elif round_type == 'ceil':
-        ctx.rounding = decimal.ROUND_CEILING
-    else:
-        raise ValueError('Not supported round type:', round_type)
-    number = round(number, ndigits)
-
-    return number
 
 
 def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
