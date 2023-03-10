@@ -20,6 +20,7 @@ from cxy_visual_dev.lib.predefine import All_count_32k, LR_count_32k, proj_dir, 
 from cxy_visual_dev.lib.algo import cat_data_from_cifti,\
     linear_fit1, AgeSlideWindow
 from magicbox.io.io import CiftiReader, save2cifti
+from magicbox.stats.outlier import outlier_iqr
 
 anal_dir = pjoin(proj_dir, 'analysis')
 work_dir = pjoin(anal_dir, 'fit')
@@ -767,18 +768,15 @@ def HCPY_MT_fit_PC12(Hemi):
 
 def weight_CCA_beh(vis_name):
 
-    # 0. 用上PC2的M和T的权重作为特征（一共2个）
-    # 1. 选择晶体和流体认知能力的Unadjusted Scale Score
-    n_component = 2
-    meas_names = ('M', 'T')
+    iqr_coef = 2  # None, 1.5, ...
+    # 用上PC2的M和T的权重作为特征（一共2个）
     pc_names = ('C2',)
-    beh_cols = ['CogFluidComp_Unadj', 'CogCrystalComp_Unadj']
-    # beh_cols = [
-    #     'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
-    #     'PMAT24_A_CR', 'ReadEng_Unadj', 'PicVocab_Unadj',
-    #     'ProcSpeed_Unadj', 'DDisc_AUC_200', 'DDisc_AUC_40K',
-    #     'VSPLOT_TC', 'SCPT_SEN', 'SCPT_SPEC', 'IWRD_TOT',
-    #     'ListSort_Unadj']
+    meas_names = ('M', 'T')
+    n_component = 2
+    beh_cols = [
+        'PicSeq_Unadj', 'CardSort_Unadj', 'Flanker_Unadj',
+        'PMAT24_A_CR', 'ReadEng_Unadj', 'DDisc_AUC_200',
+        'DDisc_AUC_40K', 'IWRD_TOT', 'ListSort_Unadj']
 
     # prepare file
     meas2file = {
@@ -791,7 +789,7 @@ def weight_CCA_beh(vis_name):
     beh_file1 = '/nfs/z1/HCP/HCPYA/S1200_behavior.csv'
     beh_file2 = '/nfs/z1/HCP/HCPYA/S1200_behavior_restricted.csv'
     info_file = pjoin(proj_dir, 'data/HCP/HCPY_SubjInfo.csv')
-    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v10.pkl')
+    out_file = pjoin(work_dir, f'weight-CCA-beh_{vis_name}_v22.pkl')
 
     # load data
     feat_names = []
@@ -813,6 +811,15 @@ def weight_CCA_beh(vis_name):
     non_nan_vec = ~np.any(np.isnan(Y), 1)
     Y = Y[non_nan_vec]
     X = weight_arr[non_nan_vec]
+    if iqr_coef is not None:
+        outlier_mask1 = outlier_iqr(X, iqr_coef, 0)
+        outlier_mask2 = outlier_iqr(Y, iqr_coef, 0)
+        outlier_mask1 = np.any(outlier_mask1, 1)
+        outlier_mask2 = np.any(outlier_mask2, 1)
+        outlier_mask = np.logical_or(outlier_mask1, outlier_mask2)
+        mask = ~outlier_mask
+        X = X[mask]
+        Y = Y[mask]
     print('feature names:', feat_names)
     print('X.shape:', X.shape)
     print('behavior names:', beh_cols)
