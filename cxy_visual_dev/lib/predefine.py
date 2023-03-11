@@ -10,7 +10,7 @@ proj_dir = '/nfs/z1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 
 meas2color = {
     'Myelination': 'cornflowerblue', 'Thickness': 'limegreen',
-    'PC1': 'red', 'PC2': 'orange'}
+    'PC1': 'purple', 'PC2': 'orange'}
 
 beh_name2abbr = {
     'CogFluidComp_Unadj': 'FluidCog', 'CogCrystalComp_Unadj': 'CrystalCog',

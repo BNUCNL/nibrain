@@ -858,13 +858,13 @@ def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
 
 class AgeSlideWindow:
     """
-    按照月龄升序排序，将被试划分到不同年龄窗口中。
+    按照岁数升序排序，将被试划分到不同年龄窗口中。
     """
 
     def __init__(self, dataset_name, width, step, merge_remainder):
         """
         Args:
-            dataset_name (str): "HCPD" or "HCPA"
+            dataset_name (str): "HCPD", "HCPA", or "HCPY"
             width (int): window width
                 with units of subjects
             step (int): step size
@@ -880,7 +880,10 @@ class AgeSlideWindow:
         self.subj_info = pd.read_csv(pjoin(
             proj_dir, f'data/HCP/{dataset_name}_SubjInfo.csv'))
         self.n_subj = self.subj_info.shape[0]
-        self.sorted_indices = np.argsort(self.subj_info['age in months'])
+        if dataset_name == 'HCPY':
+            self.sorted_indices = np.argsort(self.subj_info['age in years'])
+        else:
+            self.sorted_indices = np.argsort(self.subj_info['age in months'])
 
         # width and step information
         assert width < self.n_subj
@@ -919,13 +922,17 @@ class AgeSlideWindow:
             age_type (str): 'month' or 'year'
         """
         indices = self.get_subj_indices(win_id)
-        ages = self.subj_info.loc[indices, 'age in months']
-        if age_type == 'year':
-            ages = ages / 12
-        elif age_type == 'month':
-            pass
+        if self.dataset_name == 'HCPY':
+            assert age_type == 'year', "HCPY only has age in years."
+            ages = self.subj_info.loc[indices, 'age in years']
         else:
-            raise ValueError('not supported age_type:', age_type)
+            ages = self.subj_info.loc[indices, 'age in months']
+            if age_type == 'year':
+                ages = ages / 12
+            elif age_type == 'month':
+                pass
+            else:
+                raise ValueError('not supported age_type:', age_type)
 
         return ages
 
@@ -941,7 +948,11 @@ class AgeSlideWindow:
         fig, ax = plt.subplots(figsize=figsize)
         for win_id in win_ids:
             ages = self.get_ages(win_id, age_type)
-            ax.plot([ages.min(), ages.max()], [win_id, win_id], c='k')
+            age_range = [ages.min(), ages.max()]
+            if age_range[0] == age_range[1]:
+                ax.scatter(age_range[0], win_id, s=3, c='k')
+            else:
+                ax.plot(age_range, [win_id, win_id], c='k')
         xticks = (self.get_ages(1, age_type).min(),
                   self.get_ages(int(self.n_win/2), age_type).median(),
                   self.get_ages(self.n_win, age_type).max())

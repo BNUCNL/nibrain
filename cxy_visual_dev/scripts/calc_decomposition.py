@@ -5,7 +5,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats.stats import zscore
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from magicbox.io.io import CiftiReader, save2cifti
@@ -257,8 +257,8 @@ def pca_HCPY_avg_rsfc_mat(mask_name0, mask_name1, dtype='z',
     pkl.dump(transformer, open(out_model_file, 'wb'))
 
 
-def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
-                    merge_remainder, n_component, random_state):
+def pca_HCP_MT_SW(dataset_name, vis_name, width, step,
+                  merge_remainder, n_component, random_state):
     """
     用每个滑窗(slide window)内的所有被试的myelin和thickness map做联合空间PCA
     """
@@ -267,13 +267,13 @@ def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
     mask = Atlas('HCP-MMP').get_mask(get_rois(vis_name))[0]
     asw = AgeSlideWindow(dataset_name, width, step, merge_remainder)
     out_name = f'{dataset_name}-M+corrT_{vis_name}_zscore1_PCA-subj_SW-width{width}-step{step}'
-    if merge_remainder:
+    if asw.merge_remainder:
         out_name += '-merge'
     out_file = pjoin(work_dir, f'{out_name}.pkl')
 
     m_maps = nib.load(m_file).get_fdata()[:, mask]
     t_maps = nib.load(t_file).get_fdata()[:, mask]
-    out_dict = {'n_win': asw.n_win, 'age in months': np.zeros(asw.n_win),
+    out_dict = {'n_win': asw.n_win, 'age in years': np.zeros(asw.n_win),
                 'component name': [f'C{i}' for i in range(1, n_component+1)],
                 '32k_LR_mask': mask}
     for win_idx in range(asw.n_win):
@@ -291,18 +291,18 @@ def pca_HCPDA_MT_SW(dataset_name, vis_name, width, step,
         out_dict[f'Win{win_id}_weight_Myelination'] = transformer.components_[:, :n_idx]
         out_dict[f'Win{win_id}_weight_Thickness'] = transformer.components_[:, n_idx:]
         out_dict[f'Win{win_id}_model'] = transformer
-        out_dict['age in months'][win_idx] = asw.get_ages(win_id, 'month').mean()
+        out_dict['age in years'][win_idx] = asw.get_ages(win_id, 'year').mean()
         print(f'Finished Win-{win_id}/{asw.n_win}, cost: {time.time() - time1} seconds.')
 
     pkl.dump(out_dict, open(out_file, 'wb'))
 
 
-def pca_HCPDA_MT_SW_param(src_file, pc_names, out_file):
+def pca_HCP_MT_SW_param(src_file, pc_names, out_file):
     """
     获取每个年龄窗口指定成分的各种参数
     """
     data = pkl.load(open(src_file, 'rb'))
-    out_data = {'n_win': data['n_win'], 'age in months': data['age in months']}
+    out_data = {'n_win': data['n_win'], 'age in years': data['age in years']}
     for pc_name in pc_names:
         pc_idx = data['component name'].index(pc_name)
         out_data[f'{pc_name} explanation ratio'] = np.zeros(data['n_win'])
@@ -315,7 +315,7 @@ def pca_HCPDA_MT_SW_param(src_file, pc_names, out_file):
                 data[f'Win{win_id}_model'].explained_variance_ratio_[pc_idx]
             out_data[f'{pc_name} gradient range'][win_idx] = \
                 pc_map.max() - pc_map.min()
-            out_data[f'{pc_name} gradient variation'][win_idx] = pc_map.std()
+            out_data[f'{pc_name} gradient variation'][win_idx] = pc_map.std(ddof=1)
 
     out_data['gradient dispersion'] = np.zeros(data['n_win'])
     pc_indices = [data['component name'].index(i) for i in pc_names]
@@ -643,46 +643,49 @@ if __name__ == '__main__':
     #     mask_name0='grayordinate', mask_name1='grayordinate',
     #     dtype='r', zscore0=True, n_component=20, random_state=7)
 
-    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
-    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
-    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
-    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
-    # pca_HCPDA_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-L', width=50,
-    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
-    # pca_HCPDA_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-L', width=50,
-    #                 step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-R', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-R', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPD', vis_name='MMP-vis3-L', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPA', vis_name='MMP-vis3-L', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPY', vis_name='MMP-vis3-R', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
+    # pca_HCP_MT_SW(dataset_name='HCPY', vis_name='MMP-vis3-L', width=50,
+    #               step=10, merge_remainder=True, n_component=10, random_state=7)
 
-    # pca_HCPDA_MT_SW_param(
+    # pca_HCP_MT_SW_param(
     #     src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
     #     out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
-    # pca_HCPDA_MT_SW_param(
+    # pca_HCP_MT_SW_param(
     #     src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
     #     pc_names=['C1', 'C2'],
     #     out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
-    pca_HCPDA_MT_SW_param(
-        src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-        pc_names=['C1', 'C2'],
-        out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
-    )
-    pca_HCPDA_MT_SW_param(
-        src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-        pc_names=['C1', 'C2'],
-        out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
-    )
-
-    # pca_HCPDA_MT_SW_param_local(
-    #     src_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-    #     pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
-    #     out_file=pjoin(work_dir, 'HCPD-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    # pca_HCP_MT_SW_param(
+    #     src_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'],
+    #     out_file=pjoin(work_dir, 'HCPD-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
-    # pca_HCPDA_MT_SW_param_local(
-    #     src_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
-    #     pc_names=['C1', 'C2'], local_name='MMP-vis3-R-EDMV',
-    #     out_file=pjoin(work_dir, 'HCPA-M+T_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10-merge_param_local-EDMV.pkl')
+    # pca_HCP_MT_SW_param(
+    #     src_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge.pkl'),
+    #     pc_names=['C1', 'C2'],
+    #     out_file=pjoin(work_dir, 'HCPA-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10-merge_param.pkl')
     # )
+    pca_HCP_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-L_zscore1_PCA-subj_SW-width50-step10_param.pkl')
+    )
+    pca_HCP_MT_SW_param(
+        src_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10.pkl'),
+        pc_names=['C1', 'C2'],
+        out_file=pjoin(work_dir, 'HCPY-M+corrT_MMP-vis3-R_zscore1_PCA-subj_SW-width50-step10_param.pkl')
+    )
 
     # get_MT_PC_individual()
     # 对HCPY-1069_MMP-vis3-R_M+corrT-zscore_PC1做空间PCA
