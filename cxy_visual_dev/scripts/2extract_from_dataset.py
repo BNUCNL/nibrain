@@ -7,7 +7,7 @@ import pandas as pd
 import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
-from scipy.stats.stats import zscore
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist, pdist
 from sklearn.metrics import pairwise_distances
 from magicbox.io.io import CiftiReader, save2cifti
@@ -1092,6 +1092,80 @@ def get_HCPY_rsfc_mat_roi():
     pkl.dump(data, open(out_file, 'wb'))
 
 
+def get_HCPY_rsfc_mat_roi1():
+    """
+    每个被试（一共1070个）的有效run（状态是ok=(1200, 91282)）都先
+    沿时间轴做zscore，然后拼接在一起来做HCP-MMP所有脑区之间的连接矩阵。
+    为了得到被试间平均的连接矩阵，先对个体被试的连接矩阵进行Fisher Z变换，
+    接着做被试间平均，最终转换回r值。同时再保存一份相关距离矩阵，该矩阵根据
+    cosine theorem从r值转换而来(d=sqrt(2*(1-r)))。
+    """
+    # prepare
+    atlas = Atlas('HCP-MMP')
+    info_file = pjoin(work_dir, 'HCPY_SubjInfo.csv')
+    check_file = pjoin(work_dir, 'HCPY_rfMRI_file_check.tsv')
+    runs = ['rfMRI_REST1_LR', 'rfMRI_REST1_RL',
+            'rfMRI_REST2_LR', 'rfMRI_REST2_RL']
+    run_files = '/nfs/z1/HCP/HCPYA/{0}/MNINonLinear/Results/{1}/'\
+        '{1}_Atlas_MSMAll_hp2000_clean.dtseries.nii'
+    out_file = pjoin(work_dir, 'HCPY-avg_RSFC_HCP-MMP1.pkl')
+
+    # loading
+    mask_map = atlas.maps[0]
+    rois = list(atlas.roi2label.keys())
+    n_roi = len(rois)
+    df = pd.read_csv(info_file, index_col=0)
+    n_subj = df.shape[0]
+    df_ck = pd.read_csv(check_file, sep='\t', index_col=0)
+    n_tp = 1200
+
+    # start
+    zs = np.zeros((n_roi, n_roi), dtype=np.float64)
+    roi2indices = {}
+    for roi in rois:
+        mask = mask_map == atlas.roi2label[roi]
+        roi2indices[roi] = np.where(mask)[0]
+    n_subj_valid = 0
+    for subj_idx, subj_id in enumerate(df.index, 1):
+        time1 = time.time()
+
+        # find valid runs
+        runs_valid = []
+        for run in runs:
+            if df_ck.loc[subj_id, run] == 'ok=(1200, 91282)':
+                runs_valid.append(run)
+        n_run = len(runs_valid)
+        if n_run == 0:
+            continue
+
+        # loop all runs
+        t_series_sub = np.zeros((LR_count_32k, n_run*n_tp), dtype=np.float64)
+        t_series_roi = np.zeros((n_roi, n_run*n_tp), dtype=np.float64)
+        for run_idx, run in enumerate(runs_valid):
+            run_file = run_files.format(subj_id, run)
+            t_series_run = nib.load(run_file).get_fdata()[:, :LR_count_32k]
+            t_series_run = zscore(t_series_run, 0)
+            s_idx = run_idx * n_tp
+            e_idx = (run_idx + 1) * n_tp
+            t_series_sub[:, s_idx:e_idx] = t_series_run.T
+        for roi_idx, roi in enumerate(rois):
+            t_series_roi[roi_idx] = np.mean(t_series_sub[roi2indices[roi]], 0)
+
+        rs_sub = 1 - cdist(t_series_roi, t_series_roi, 'correlation')
+        zs_sub = np.arctanh(rs_sub)
+        zs = zs + zs_sub
+        n_subj_valid += 1
+        print(f'Finish subj-{subj_id}_{subj_idx}/{n_subj}, '
+              f'cost {time.time()-time1} seconds')
+    print('n_subj_valid:', n_subj_valid)
+    zs = zs / n_subj_valid
+    rs = np.tanh(zs)
+    ds = np.sqrt(2 * (1 - rs))
+
+    data = {'roi_name': rois, 'r-matrix': rs, 'd-matrix': ds}
+    pkl.dump(data, open(out_file, 'wb'))
+
+
 def get_HCPY_Destrieux_atlas():
     """
     基于1070名被试的{sid}.aparc.a2009s.32k_fs_LR.dlabel.nii
@@ -1241,4 +1315,5 @@ if __name__ == '__main__':
     # get_HCPY_rsfc_mat(Hemi='R')
     # get_HCPY_rsfc_mat(Hemi='L')
     # get_HCPY_rsfc_mat_roi()
-    get_HCPY_Destrieux_atlas()
+    get_HCPY_rsfc_mat_roi1()
+    # get_HCPY_Destrieux_atlas()

@@ -3,16 +3,21 @@ import pandas as pd
 import nibabel as nib
 from scipy.io import loadmat
 from os.path import join as pjoin
-
 from magicbox.io.io import CiftiReader
 
 
-proj_dir = '/nfs/h1/userhome/ChenXiaYu/workingdir/study/visual_dev'
+proj_dir = '/nfs/z1/userhome/ChenXiaYu/workingdir/study/visual_dev'
 
 meas2color = {
     'Myelination': 'cornflowerblue', 'Thickness': 'limegreen',
-    'PC1': 'red', 'PC2': 'orange'}
+    'PC1': 'purple', 'PC2': 'orange'}
 
+beh_name2abbr = {
+    'CogFluidComp_Unadj': 'FluidCog', 'CogCrystalComp_Unadj': 'CrystalCog',
+    'CogTotalComp_Unadj': 'TotalCog', 'PicSeq_Unadj': 'PicSeq',
+    'CardSort_Unadj': 'CardSort', 'Flanker_Unadj': 'Flanker',
+    'ReadEng_Unadj': 'ReadEng', 'PicVocab_Unadj': 'PicVocab',
+    'ProcSpeed_Unadj': 'ProcSpeed', 'ListSort_Unadj': 'ListSort'}
 # 所有属于Cognition的测量变量
 cognition_cols = [
     'PicSeq_Unadj', 'PicSeq_AgeAdj', 'CardSort_Unadj',
