@@ -1,26 +1,28 @@
+import os
+import numpy as np
+import pandas as pd
 from os.path import join as pjoin
+from scipy.io import loadmat
+from scipy.stats.stats import ttest_ind
+from statsmodels.stats.multitest import multipletests
+from magicbox.stats import EffectSize
 from cxy_hcp_ffa.lib.predefine import proj_dir, net2label_cole, \
     mmp_name2label
 
 anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 work_dir = pjoin(anal_dir, 'grouping/rfMRI')
 
-
 def pre_ANOVA_3factors():
     """
     准备好3因素被试间设计方差分析需要的数据。
     2 hemispheres x groups x ROIs
     """
-    import numpy as np
-    import pandas as pd
-    from scipy.io import loadmat
-
     gids = (0, 1, 2)
     hemis = ('lh', 'rh')
     seeds = ('pFus', 'mFus')
     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-gid012.csv')
+    trg_file = pjoin(work_dir, 'rsfc_FFA2Cole_preANOVA-3factor-gid012_new.csv')
 
     data = loadmat(src_file)
     gid_df = pd.read_csv(gid_file)
@@ -43,76 +45,20 @@ def pre_ANOVA_3factors():
     out_df.to_csv(trg_file, index=False)
 
 
-def pre_ANOVA_3factors_mix():
-    """
-    准备好3因素混合设计方差分析需要的数据。
-    被试间因子：group
-    被试内因子：hemisphere，ROI
-    2 groups x 2 hemispheres x 2 ROIs
-    """
-    import numpy as np
-    import pandas as pd
-    from scipy.io import loadmat
-
-    gids = (1, 2)
-    hemis = ('lh', 'rh')
-    rois = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2.csv')
-    trg_file = pjoin(work_dir, 'rsfc_FFA2MMP_preANOVA-3factor-mix.csv')
-
-    data = loadmat(src_file)
-    gid_df = pd.read_csv(gid_file)
-    out_dict = {'gid': []}
-    for idx, gid in enumerate(gids):
-        gid_idx_vec = np.logical_and(gid_df['lh'] == gid,
-                                     gid_df['rh'] == gid)
-        nan_vec = None
-        for hemi in hemis:
-            for roi in rois:
-                meas_vec = np.mean(data[f'{hemi}_{roi}'][gid_idx_vec], 1)
-
-                if nan_vec is None:
-                    nan_vec = np.isnan(meas_vec)
-                    non_nan_vec = ~nan_vec
-                    n_valid = np.sum(non_nan_vec)
-                    print('#NAN:', np.sum(nan_vec))
-                    print(f'G{gid}:', n_valid)
-                else:
-                    assert np.all(nan_vec == np.isnan(meas_vec))
-
-                meas_vec = meas_vec[non_nan_vec]
-                if idx == 0:
-                    out_dict[f"{hemi}_{roi.split('-')[0]}"] = meas_vec.tolist()
-                else:
-                    out_dict[f"{hemi}_{roi.split('-')[0]}"].extend(meas_vec)
-        out_dict['gid'].extend([gid] * n_valid)
-
-    out_df = pd.DataFrame(out_dict)
-    out_df.to_csv(trg_file, index=False)
-
-
-def roi_ttest(gid, trg_name2label):
+def roi_ttest(src_file, gid, trg_name2label):
     """
     compare rsfc difference between ROIs
-    scheme: hemi-separately network-wise
+    scheme: hemi-separately network/area-wise
     """
-    import numpy as np
-    import pandas as pd
-    from scipy.io import loadmat
-    from scipy.stats.stats import ttest_ind
-    from magicbox.stats import EffectSize
-
     # parameters
     hemis = ('lh', 'rh')
     roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat')
     gid_file = pjoin(anal_dir, 'grouping/group_id_v2_012.csv')
+    fname = os.path.basename(src_file).split('.')[0]
     vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
 
     # outputs
-    out_file = pjoin(work_dir,
-                     f"rsfc_FFA2Cole_G{gid}_{vs_name}_ttest.csv")
+    out_file = pjoin(work_dir, f"{fname}_G{gid}_{vs_name}_ttest.csv")
 
     # start
     data = loadmat(src_file)
@@ -131,6 +77,8 @@ def roi_ttest(gid, trg_name2label):
         out_data[f'CohenD_{hemi}'] = []
         out_data[f't_{hemi}'] = []
         out_data[f'P_{hemi}'] = []
+        out_data[f'size1_{hemi}'] = []
+        out_data[f'size2_{hemi}'] = []
         for trg_idx, trg_lbl in enumerate(data['target_label'][0]):
             sample1 = data[item1][gid_vec_idx, trg_idx]
             sample2 = data[item2][gid_vec_idx, trg_idx]
@@ -145,87 +93,22 @@ def roi_ttest(gid, trg_name2label):
             out_data[f'CohenD_{hemi}'].append(d)
             out_data[f't_{hemi}'].append(t)
             out_data[f'P_{hemi}'].append(p)
+            out_data[f'size1_{hemi}'].append(len(sample1))
+            out_data[f'size2_{hemi}'].append(len(sample2))
 
     # save out
     out_data = pd.DataFrame(out_data)
     out_data.to_csv(out_file, index=False)
 
 
-def roi_pair_ttest(gid, trg_name2label):
-    """
-    compare rsfc difference between ROIs
-    scheme: hemi-separately network-wise
-    """
-    import numpy as np
-    import pandas as pd
-    from scipy.io import loadmat
-    from scipy.stats.stats import ttest_rel
-    from magicbox.stats import EffectSize
-
+def multitest_correct_ttest(src_file):
     # inputs
     hemis = ('lh', 'rh')
-    roi_pair = ('pFus', 'mFus')
-    src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat')
-    gid_file = pjoin(anal_dir, 'grouping/group_id_v2_merged.csv')
-    vs_name = f"{roi_pair[0]}_vs_{roi_pair[1]}"
-
-    # outputs
-    out_file = pjoin(work_dir,
-                     f"rsfc_FFA2MMP_G{gid}_{vs_name}_ttest-paired.csv")
+    fname = os.path.basename(src_file).split('.')[0]
+    out_file = pjoin(work_dir, f'{fname}_mtc.csv')
 
     # start
-    data = loadmat(src_file)
-    gid_df = pd.read_csv(gid_file)
-    trg_label2name = {}
-    for k, v in trg_name2label.items():
-        trg_label2name[v] = k
-    out_data = {}
-    out_data['target_name'] = [trg_label2name[lbl]
-                               for lbl in data['target_label'][0]]
-    es = EffectSize()
-    for hemi in hemis:
-        gid_vec_idx = np.array(gid_df[hemi]) == gid
-        item1 = f'{hemi}_{roi_pair[0]}'
-        item2 = f'{hemi}_{roi_pair[1]}'
-        out_data[f'CohenD_{hemi}'] = []
-        out_data[f't_{hemi}'] = []
-        out_data[f'P_{hemi}'] = []
-        for trg_idx, trg_lbl in enumerate(data['target_label'][0]):
-            sample1 = data[item1][gid_vec_idx, trg_idx]
-            sample2 = data[item2][gid_vec_idx, trg_idx]
-            nan_vec1 = np.isnan(sample1)
-            nan_vec2 = np.isnan(sample2)
-            nan_vec = np.logical_or(nan_vec1, nan_vec2)
-            print('#NAN in sample1 or sample2:', np.sum(nan_vec))
-            sample1 = sample1[~nan_vec]
-            sample2 = sample2[~nan_vec]
-            d = es.cohen_d(sample1, sample2)
-            t, p = ttest_rel(sample1, sample2)
-            out_data[f'CohenD_{hemi}'].append(d)
-            out_data[f't_{hemi}'].append(t)
-            out_data[f'P_{hemi}'].append(p)
-
-    # save out
-    out_data = pd.DataFrame(out_data)
-    out_data.to_csv(out_file, index=False)
-
-
-def multitest_correct_ttest(gid=1):
-    import numpy as np
-    import pandas as pd
-    from statsmodels.stats.multitest import multipletests
-
-    # inputs
-    hemis = ('lh', 'rh')
-    data_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
-                                '_pFus_vs_mFus_ttest.csv')
-
-    # outputs
-    out_file = pjoin(work_dir, f'rsfc_FFA2Cole_G{gid}'
-                               '_pFus_vs_mFus_ttest_mtc.csv')
-
-    # start
-    data = pd.read_csv(data_file)
+    data = pd.read_csv(src_file)
     for hemi in hemis:
         item = f'P_{hemi}'
         ps = np.asarray(data[item])
@@ -238,39 +121,85 @@ def multitest_correct_ttest(gid=1):
     data.to_csv(out_file, index=False)
 
 
-def mtc_file2cifti():
-    import numpy as np
-    import pandas as pd
-    from magicbox.io.io import CiftiReader, save2cifti
-    from cxy_visual_dev.lib.predefine import Atlas, mmp_map_file
-
+def ttest_stats(src_file):
     hemis = ('lh', 'rh')
-    fpaths = (
-        pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'),
-        pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv')
-    )
-    gnames = ('continuous', 'separate')
-    out_file = pjoin(work_dir, 'rsfc_FFA2MMP_pFus_vs_mFus_ttest_mtc_cohenD.dscalar.nii')
+    fname = os.path.basename(src_file).split('.')[0]
+    out_file = pjoin(work_dir, f'{fname}_stats.txt')
 
-    atlas = Atlas('HCP_MMP1')
-    reader = CiftiReader(mmp_map_file)
-    data = np.ones((4, atlas.maps.shape[1]), np.float64) * np.nan
-    map_names = []
-    row_idx = 0
-    for f_idx, fpath in enumerate(fpaths):
-        df = pd.read_csv(fpath, index_col='target_name')
-        for hemi in hemis:
-            es_col = f'CohenD_{hemi}'
-            p_col = f'P_{hemi}(fdr_bh)'
-            map_names.append(f'{hemi}_{gnames[f_idx]}')
-            for idx in df.index:
-                if df.loc[idx, p_col] >= 0.05:
-                    continue
-                roi_idx_map = atlas.maps[0] == atlas.roi2label[idx]
-                data[row_idx, roi_idx_map] = df.loc[idx, es_col]
-            row_idx += 1
+    df = pd.read_csv(src_file)
+    wf = open(out_file, 'w')
 
-    save2cifti(out_file, data, reader.brain_models(), map_names)
+    wf.write(f'#targets: {df.shape[0]}\n')
+    for hemi in hemis:
+        wf.write(f'\n==={hemi}===\n')
+
+        size1s = np.unique(df[f'size1_{hemi}'])
+        assert len(size1s) == 1
+        wf.write(f'size1: {size1s[0]}\t')
+
+        size2s = np.unique(df[f'size2_{hemi}'])
+        assert len(size2s) == 1
+        wf.write(f'size2: {size2s[0]}\n')
+
+        sig_vec = df[f'P_{hemi}(fdr_bh)'] < 0.05
+        non_sig_vec = ~sig_vec
+
+        wf.write(f'\n---P(fdr_bh) < 0.05---\n')
+        n_sig = np.sum(sig_vec)
+        wf.write(f'#targets: {n_sig}\n')
+        if n_sig != 0:
+            sig_df = df.loc[sig_vec, :]
+            pos_vec = sig_df[f't_{hemi}'] > 0
+            neg_vec = ~pos_vec
+
+            wf.write('\n***ROI1 > ROI2***\n')
+            n_pos = np.sum(pos_vec)
+            wf.write(f'#targets: {n_pos}\n')
+            if n_pos != 0:
+                pos_df = sig_df.loc[pos_vec, :]
+                ds = pos_df[f'CohenD_{hemi}']
+                ts = pos_df[f't_{hemi}']
+                ps = pos_df[f'P_{hemi}(fdr_bh)']
+                wf.write(f"CohenD (min): {np.min(ds)}\n")
+                wf.write(f"t (min): {np.min(ts)}\n")
+                wf.write(f"P(fdr_bh) (max): {np.max(ps)}\n")
+                wf.write(f"target name: {' | '.join(pos_df['target_name'])}\n")
+                wf.write(f"CohenD: {' | '.join([str(i) for i in ds])}\n")
+                wf.write(f"t: {' | '.join([str(i) for i in ts])}\n")
+                wf.write(f"P(fdr_bh): {' | '.join([str(i) for i in ps])}\n")
+            
+            wf.write('\n***ROI1 < ROI2***\n')
+            n_neg = np.sum(neg_vec)
+            wf.write(f'#targets: {n_neg}\n')
+            if n_neg != 0:
+                neg_df = sig_df.loc[neg_vec, :]
+                ds = neg_df[f'CohenD_{hemi}']
+                ts = neg_df[f't_{hemi}']
+                ps = neg_df[f'P_{hemi}(fdr_bh)']
+                wf.write(f"CohenD (max): {np.max(ds)}\n")
+                wf.write(f"t (max): {np.max(ts)}\n")
+                wf.write(f"P(fdr_bh) (max): {np.max(ps)}\n")
+                wf.write(f"target name: {' | '.join(neg_df['target_name'])}\n")
+                wf.write(f"CohenD: {' | '.join([str(i) for i in ds])}\n")
+                wf.write(f"t: {' | '.join([str(i) for i in ts])}\n")
+                wf.write(f"P(fdr_bh): {' | '.join([str(i) for i in ps])}\n")
+
+        wf.write(f'\n---P(fdr_bh) >= 0.05---\n')
+        n_not_sig = np.sum(non_sig_vec)
+        wf.write(f'#targets: {n_not_sig}\n')
+        if n_not_sig != 0:
+            not_sig_df = df.loc[non_sig_vec, :]
+            ds = not_sig_df[f'CohenD_{hemi}']
+            ts = not_sig_df[f't_{hemi}']
+            ps = not_sig_df[f'P_{hemi}(fdr_bh)']
+            wf.write(f"CohenD (min, max): {np.min(ds)}, {np.max(ds)}\n")
+            wf.write(f"t (min, max): {np.min(ts)}, {np.max(ts)}\n")
+            wf.write(f"P(fdr_bh) (min): {np.min(ps)}\n")
+            wf.write(f"target name: {' | '.join(not_sig_df['target_name'])}\n")
+            wf.write(f"CohenD: {' | '.join([str(i) for i in ds])}\n")
+            wf.write(f"t: {' | '.join([str(i) for i in ts])}\n")
+            wf.write(f"P(fdr_bh): {' | '.join([str(i) for i in ps])}\n")
+    wf.close()
 
 
 # ---old---
@@ -323,16 +252,36 @@ def prepare_plot(gid=1, hemi='lh'):
 
 if __name__ == '__main__':
     # pre_ANOVA_3factors()
-    # pre_ANOVA_3factors_mix()
-    # roi_ttest(gid=0, trg_name2label=net2label_cole)
-    # roi_ttest(gid=1, trg_name2label=net2label_cole)
-    # roi_ttest(gid=2, trg_name2label=net2label_cole)
-    # roi_pair_ttest(gid=1, trg_name2label=mmp_name2label)
-    # roi_pair_ttest(gid=2, trg_name2label=mmp_name2label)
-    # multitest_correct_ttest(gid=0)
-    # multitest_correct_ttest(gid=1)
-    # multitest_correct_ttest(gid=2)
-    mtc_file2cifti()
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat'),
+    #     gid=0, trg_name2label=net2label_cole)
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat'),
+    #     gid=1, trg_name2label=net2label_cole)
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2Cole.mat'),
+    #     gid=2, trg_name2label=net2label_cole)
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
+    #     gid=0, trg_name2label=mmp_name2label)
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
+    #     gid=1, trg_name2label=mmp_name2label)
+    # roi_ttest(
+    #     src_file = pjoin(anal_dir, 'rfMRI/rsfc_FFA2MMP.mat'),
+    #     gid=2, trg_name2label=mmp_name2label)
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2Cole_G0_pFus_vs_mFus_ttest.csv'))
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest.csv'))
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest.csv'))
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2MMP_G0_pFus_vs_mFus_ttest.csv'))
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest.csv'))
+    # multitest_correct_ttest(pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2Cole_G0_pFus_vs_mFus_ttest_mtc.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2Cole_G1_pFus_vs_mFus_ttest_mtc.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2Cole_G2_pFus_vs_mFus_ttest_mtc.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G0_pFus_vs_mFus_ttest_mtc.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G1_pFus_vs_mFus_ttest_mtc.csv'))
+    ttest_stats(pjoin(work_dir, 'rsfc_FFA2MMP_G2_pFus_vs_mFus_ttest_mtc.csv'))
 
     # old
     # prepare_plot(gid=1, hemi='lh')

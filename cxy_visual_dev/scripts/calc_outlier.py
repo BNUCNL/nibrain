@@ -1,19 +1,21 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle as pkl
 import nibabel as nib
 from os.path import join as pjoin
 from matplotlib import pyplot as plt
 from magicbox.io.io import CiftiReader, save2cifti
+from magicbox.algorithm.plot import plot_bar
 from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k,\
-    mmp_map_file, dataset_name2info
+    mmp_map_file, dataset_name2info, proj_dir
 
-proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/visual_dev'
-work_dir = pjoin(proj_dir, 'analysis/outlier')
+anal_dir = pjoin(proj_dir, 'analysis')
+work_dir = pjoin(anal_dir, 'outlier')
 if not os.path.isdir(work_dir):
     os.makedirs(work_dir)
 
-
+# >>>之前为了去除些outlier顶点做的尝试
 def select_subject(dataset_name):
     """
     从每个年龄随机选一个被试
@@ -272,25 +274,90 @@ def make_non_outlier_map(fpath, thr, roi_name,
         prob_map[0, roi_idx_map] = data_tmp
         assert out_file_prob.endswith('.dscalar.nii')
         save2cifti(out_file_prob, prob_map, mmp_reader.brain_models())
+# 之前为了去除些outlier顶点做的尝试<<<
+
+
+def find_outlier_subj_per_age_RSM(fpaths, out_file, dataset_name='HCPD',
+                                  ages='all', iqr_coef=1.5):
+    """
+    根据各年龄内被试之间thickness或myelin的空间pattern的相似性矩阵
+    对相似性矩阵的每一行求平均（不计入对角线的值），以这个值来找到iqr_coef倍IQR以外的被试
+
+    Args:
+        fpaths (str): file path with place holders
+            占位符关键字分别对应dataset_name, age
+        out_file (str): file path for saving out
+            存为.npy的numpy bool向量，True为outlier
+            长度和数据集被试总数相同，一一对应
+        dataset_name (str, optional): Defaults to 'HCPD'.
+            HCPD | HCPY | HCPA
+        ages (str | sequence, optional): Defaults to 'all'.
+            感兴趣的年龄
+        iqr_coef (float, optional): Defaults to 1.5.
+    """
+    info_df = pd.read_csv(dataset_name2info[dataset_name])
+    sids = info_df['subID'].to_list()
+    age_name = 'age in years'
+    if ages == 'all':
+        ages = np.unique(info_df[age_name])
+
+    outlier_vec = np.zeros(len(sids), bool)
+    n_outliers = np.zeros(len(ages), int)
+    for age_idx, age in enumerate(ages):
+        fpath = fpaths.format(dataset_name=dataset_name, age=age)
+        data = pkl.load(open(fpath, 'rb'))
+        n_subj = len(data['row_name'])
+        arr = data['r'].copy()
+        arr[np.eye(n_subj, dtype=bool)] = np.nan
+        corrs = np.nanmean(arr, 1)
+        Q1, Q3 = np.percentile(corrs, [25, 75])
+        IQR = Q3 - Q1
+        step = iqr_coef * IQR
+        thr_l = Q1 - step
+        thr_h = Q3 + step
+        outlier_mask = np.logical_or(corrs < thr_l, corrs > thr_h)
+        n_outliers[age_idx] = np.sum(outlier_mask)
+        indices = [sids.index(data['row_name'][i]) for i in range(n_subj) if outlier_mask[i]]
+        outlier_vec[indices] = True
+
+    title1 = '_'.join(os.path.basename(fpath).split('_')[:-1])
+    title2 = f'{title1}\nIQR-{iqr_coef}'
+    plot_bar(n_outliers, figsize=(3.2, 2.4), x=ages, fc_ec_flag=True, fc=('w',), ec=('k',),
+             show_height='', xlabel=age_name, ylabel='#outliers', title=title2,
+             mode=pjoin(work_dir, f'{title1}.jpg'))
+    np.save(out_file, outlier_vec)
 
 
 if __name__ == '__main__':
+    # >>>之前为了去除些outlier顶点做的尝试
     # select_subject(dataset_name='HCPD')
-    plot_box_violin(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
-    plot_box_violin(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
-    plot_histgram(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
-    plot_histgram(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
-    find_outlier_per_subject(
-        dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual',
-        fixed_range=(0.1, 5)
+    # plot_box_violin(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
+    # plot_box_violin(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
+    # plot_histgram(dataset_name='HCPD', meas_name='thickness', roi_name='R_cole_visual')
+    # plot_histgram(dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual')
+    # find_outlier_per_subject(
+    #     dataset_name='HCPD', meas_name='myelin', roi_name='R_cole_visual',
+    #     fixed_range=(0.1, 5)
+    # )
+    # plot_outlier_distribution(
+    #     fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
+    #     title='HCPD_myelin_R_cole_visual_outlier_0.1-5'
+    # )
+    # make_non_outlier_map(
+    #     fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
+    #     thr=0, roi_name='R_cole_visual',
+    #     out_file_mask=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_mask.npy'),
+    #     out_file_prob=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_prob.dscalar.nii')
+    # )
+    # 之前为了去除些outlier顶点做的尝试<<<
+
+    find_outlier_subj_per_age_RSM(
+        fpaths=pjoin(anal_dir, 'RSM/RSM_{dataset_name}-myelin_MMP-vis3-R_age-{age}.pkl'),
+        out_file=pjoin(work_dir, 'HCPD-myelin_MMP-vis3-R_RSM-IQR3.npy'),
+        dataset_name='HCPD', ages='all', iqr_coef=3
     )
-    plot_outlier_distribution(
-        fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
-        title='HCPD_myelin_R_cole_visual_outlier_0.1-5'
-    )
-    make_non_outlier_map(
-        fpath=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_outlier_0.1-5.npy'),
-        thr=0, roi_name='R_cole_visual',
-        out_file_mask=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_mask.npy'),
-        out_file_prob=pjoin(work_dir, 'HCPD_myelin_R_cole_visual_0.1-5_thr0_prob.dscalar.nii')
+    find_outlier_subj_per_age_RSM(
+        fpaths=pjoin(anal_dir, 'RSM/RSM_{dataset_name}-thickness_MMP-vis3-R_age-{age}.pkl'),
+        out_file=pjoin(work_dir, 'HCPD-thickness_MMP-vis3-R_RSM-IQR3.npy'),
+        dataset_name='HCPD', ages='all', iqr_coef=3
     )

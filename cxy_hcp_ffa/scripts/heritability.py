@@ -1,9 +1,15 @@
+import numpy as np
+import pandas as pd
+import pickle as pkl
 from os.path import join as pjoin
+from scipy.stats import pearsonr
+from magicbox.io.io import CiftiReader
+from cxy_hcp_ffa.lib.predefine import zyg2label
 from cxy_hcp_ffa.lib import heritability as h2
 
 proj_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern'
-work_dir = pjoin(proj_dir,
-                 'analysis/s2/1080_fROI/refined_with_Kevin/heritability')
+anal_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
+work_dir = pjoin(anal_dir, 'heritability')
 
 
 def get_twinsID():
@@ -23,9 +29,6 @@ def filter_twinsID_1080():
     Check if it's a subset of 1080 subjects.
     If not, filter twins which are not in 1080 subjects.
     """
-    import numpy as np
-    import pandas as pd
-
     twins_file = pjoin(work_dir, 'twins_id.csv')
     subjs_file = pjoin(proj_dir, 'analysis/s2/subject_id')
     trg_file = pjoin(work_dir, 'twins_id_1080.csv')
@@ -43,19 +46,33 @@ def filter_twinsID_1080():
         h2.count_twins_id(trg_file)
 
 
-def filter_twinsID_rfMRI():
+def filter_twinsID_1053():
+    """
+    Check if it's a subset of 1053 subjects.
+    If not, filter twins which are not in 1053 subjects.
+    """
+    twins_file = pjoin(work_dir, 'twins_id.csv')
+    subjs_file = pjoin(anal_dir, 'subj_info/subject_id1.txt')
+    trg_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv')
+
+    twins_df = pd.read_csv(twins_file)
+    subjs_twin = set(np.concatenate([twins_df['twin1'], twins_df['twin2']]))
+    subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
+    flag = subjs_twin.issubset(subjs_id)
+    if flag:
+        print('All twins is a subset of 1053 subjects.')
+    else:
+        print('Filter twins which are not in 1053 subjects.')
+        h2.filter_twins_id(data=twins_df, limit_set=subjs_id,
+                           trg_file=trg_file)
+        h2.count_twins_id(trg_file)
+
+
+def filter_twinsID_rfMRI(twins_file, subjs_file, trg_file):
     """
     Check if a subject have all 4 rfMRI runs.
     If not, filter twins which don't have all 4 rfMRI runs.
     """
-    import numpy as np
-    import pandas as pd
-
-    twins_file = pjoin(work_dir, 'twins_id.csv')
-    subjs_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                       'rfMRI/rfMRI_REST_id')
-    trg_file = pjoin(work_dir, 'twins_id_rfMRI.csv')
-
     twins_df = pd.read_csv(twins_file)
     subjs_twin = set(np.concatenate([twins_df['twin1'], twins_df['twin2']]))
     subjs_id = set([int(_) for _ in open(subjs_file).read().splitlines()])
@@ -103,11 +120,9 @@ def filter_twinsID_G1G2():
             h2.count_twins_id(trg_file_tmp)
 
 
-def count_gender():
-    import pandas as pd
+def count_gender(twin_file):
 
     # inputs
-    twin_file = pjoin(work_dir, 'twins_id_1080.csv')
     gender_file = '/nfs/m1/hcp/S1200_behavior_restricted.csv'
 
     # prepare
@@ -614,16 +629,20 @@ def plot_Falconer_h2():
     # plt.show()
 
 
-def calc_pattern_corr_between_twins(meas_name='thickness'):
+def calc_pattern_corr_between_twins(meas_name, mpm_file, twins_id_file, out_file):
     """
     Calculate spatial pattern correlation between each twin pair.
     """
-    import pandas as pd
-    import nibabel as nib
-    from magicbox.io.io import CiftiReader
-    from scipy.stats import pearsonr
+    hemis = ('lh', 'rh')
+    hemi2Hemi = {'lh': 'L', 'rh': 'R'}
+    rois = ('pFus-faces', 'mFus-faces')
 
-    twins_id_file = pjoin(work_dir, 'twins_id_1080.csv')
+    key2name = {0: '???', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
+                3: 'L_pFus-faces', 4: 'L_mFus-faces'}
+    name2key = {}
+    for k, n in key2name.items():
+        name2key[n] = k
+
     meas2file = {
         'thickness': '/nfs/p1/public_dataset/datasets/hcp/DATA/'
                      'HCP_S1200_GroupAvg_v1/HCP_S1200_GroupAvg_v1/'
@@ -633,57 +652,43 @@ def calc_pattern_corr_between_twins(meas_name='thickness'):
                   'S1200.All.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii',
         'activ': pjoin(proj_dir, 'analysis/s2/activation.dscalar.nii')
     }
-    hemis = ('lh', 'rh')
-    hemi2stru = {
-        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
-        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
-    }
-    mpm_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                     'MPM_v3_{hemi}_0.25.nii.gz')
-    roi2label = {'IOG-face': 1, 'pFus-face': 2, 'mFus-face': 3}
-    zyg2label = {'MZ': 1, 'DZ': 2}
-    out_file = pjoin(work_dir, f'twins_pattern-corr_{meas_name}.csv')
 
     df = pd.read_csv(twins_id_file)
     meas_reader = CiftiReader(meas2file[meas_name])
     meas_ids = [int(name.split('_')[0]) for name in meas_reader.map_names()]
     twin1_indices = [meas_ids.index(i) for i in df['twin1']]
     twin2_indices = [meas_ids.index(i) for i in df['twin2']]
+    meas_maps = meas_reader.get_data()
+    meas1 = meas_maps[twin1_indices]
+    meas2 = meas_maps[twin2_indices]
+    mpm_reader = CiftiReader(mpm_file)
+    mpm_map = mpm_reader.get_data()[0]
+    assert mpm_map.shape[0] == meas_maps.shape[1]
+    lbl_tab = mpm_reader.label_tables()[0]
 
     out_df = pd.DataFrame()
     out_df['zygosity'] = df['zygosity']
     out_df['zyg'] = [zyg2label[zyg] for zyg in df['zygosity']]
     for hemi in hemis:
-        meas1 = meas_reader.get_data(hemi2stru[hemi], True)[twin1_indices]
-        meas2 = meas_reader.get_data(hemi2stru[hemi], True)[twin2_indices]
-        mpm = nib.load(mpm_file.format(hemi=hemi)).get_data().squeeze()
-        for roi, lbl in roi2label.items():
-            idx_vec = mpm == lbl
+        for roi in rois:
+            name = f'{hemi2Hemi[hemi]}_{roi}'
+            key = name2key[name]
+            assert lbl_tab[key].label == name
+            idx_vec = mpm_map == key
             out_df[f"{hemi}_{roi.split('-')[0]}"] = [
                 pearsonr(i[idx_vec], j[idx_vec])[0]
                 for i, j in zip(meas1, meas2)]
+
     out_df.to_csv(out_file, index=False)
 
 
-def calc_pattern_corr_between_twins_rsfc():
+def calc_pattern_corr_between_twins_rsfc(subj_id_file, twins_id_file, rsfc_file, out_file):
     """
     Calculate connectivity pattern correlation between each twin pair.
     """
-    import pandas as pd
-    import pickle as pkl
-    from scipy.stats import pearsonr
-    from cxy_hcp_ffa.lib.predefine import zyg2label
-
     # inputs
     hemis = ('lh', 'rh')
     rois = ('pFus-face', 'mFus-face')
-    subj_id_file = pjoin(proj_dir, 'analysis/s2/subject_id')
-    twins_id_file = pjoin(work_dir, 'twins_id_rfMRI.csv')
-    rsfc_file = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin/'
-                      'rfMRI/rsfc_mpm2Cole_{hemi}.pkl')
-
-    # outputs
-    out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc.csv')
 
     # prepare
     df = pd.read_csv(twins_id_file)
@@ -697,6 +702,7 @@ def calc_pattern_corr_between_twins_rsfc():
     out_df['zyg'] = [zyg2label[zyg] for zyg in df['zygosity']]
     for hemi in hemis:
         rsfc_dict = pkl.load(open(rsfc_file.format(hemi=hemi), 'rb'))
+        assert subj_ids == [int(_) for _ in rsfc_dict['subject']]
         for roi in rois:
             rsfc1 = rsfc_dict[roi][twin1_indices]
             rsfc2 = rsfc_dict[roi][twin2_indices]
@@ -966,21 +972,54 @@ def plot_SEM_h2_RSFC():
 if __name__ == '__main__':
     # get_twinsID()
     # filter_twinsID_1080()
-    # filter_twinsID_rfMRI()
+    # filter_twinsID_1053()
+    # filter_twinsID_rfMRI(
+    #     twins_file=pjoin(work_dir, 'twins_id.csv'),
+    #     subjs_file=pjoin(anal_dir, 'rfMRI/rfMRI_REST_id'),
+    #     trg_file = pjoin(work_dir, 'twins_id_rfMRI.csv'))
+    # filter_twinsID_rfMRI(
+    #     twins_file=pjoin(work_dir, 'twins_id.csv'),
+    #     subjs_file=pjoin(anal_dir, 'subj_info/subject_id2.txt'),
+    #     trg_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_id_rfMRI.csv'))
     # filter_twinsID_G1G2()
-    # count_gender()
+    # count_gender(
+    #     twin_file=pjoin(work_dir, 'twins_id_1080.csv'))
+    count_gender(
+        twin_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv'))
     # map_twinsID_to_groupID()
     # plot_twinsID_distribution_G0G1G2()
-    count_twin_pair_same_group()
+    # count_twin_pair_same_group()
     # plot_probability_if_twins_belong_to_same_group()
     # prepare_heritability_calculation_TMAV()
     # prepare_heritability_calculation_RSFC()
     # prepare_heritability_calculation_meanRSFC()
     # calc_Falconer_h2()
     # plot_Falconer_h2()
+
     # calc_pattern_corr_between_twins(meas_name='thickness')
     # calc_pattern_corr_between_twins(meas_name='myelin')
     # calc_pattern_corr_between_twins(meas_name='activ')
+    # calc_pattern_corr_between_twins(
+    #     meas_name='thickness',
+    #     mpm_file=pjoin(anal_dir, 'HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii'),
+    #     twins_id_file=pjoin(work_dir, 'twins_id_1080.csv'),
+    #     out_file=pjoin(work_dir, 'twins_pattern-corr_thickness_new.csv'))
+    # calc_pattern_corr_between_twins(
+    #     meas_name='thickness',
+    #     mpm_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii'),
+    #     twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_thickness.csv'))
+    # calc_pattern_corr_between_twins(
+    #     meas_name='myelin',
+    #     mpm_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii'),
+    #     twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_myelin.csv'))
+    # calc_pattern_corr_between_twins(
+    #     meas_name='activ',
+    #     mpm_file=pjoin(anal_dir, 'NI_R1/data_1053/HCP-YA_FFA-MPM_thr-25.32k_fs_LR.dlabel.nii'),
+    #     twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_1053.csv'),
+    #     out_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_activ.csv'))
+
     # pattern_corr_fisher_z(meas='thickness')
     # pattern_corr_fisher_z(meas='myelin')
     # pattern_corr_fisher_z(meas='activ')
@@ -988,4 +1027,14 @@ if __name__ == '__main__':
     # plot_pattern_corr2()
     # plot_SEM_h2_TMA()
     # plot_SEM_h2_RSFC()
-    # calc_pattern_corr_between_twins_rsfc()
+
+    # calc_pattern_corr_between_twins_rsfc(
+    #     subj_id_file=pjoin(proj_dir, 'analysis/s2/subject_id'),
+    #     twins_id_file=pjoin(work_dir, 'twins_id_rfMRI.csv'),
+    #     rsfc_file=pjoin(anal_dir, 'rfMRI/rsfc_mpm2Cole_{hemi}.pkl'),
+    #     out_file = pjoin(work_dir, 'twins_pattern-corr_rsfc.csv'))
+    # calc_pattern_corr_between_twins_rsfc(
+    #     subj_id_file=pjoin(proj_dir, 'analysis/s2/subject_id'),
+    #     twins_id_file=pjoin(anal_dir, 'NI_R1/data_1053/twins_id_rfMRI.csv'),
+    #     rsfc_file=pjoin(anal_dir, 'rfMRI/rsfc_1053mpm2Cole_{hemi}.pkl'),
+    #     out_file = pjoin(anal_dir, 'NI_R1/data_1053/twins_pattern-corr_rsfc.csv'))

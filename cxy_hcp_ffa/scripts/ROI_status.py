@@ -1,9 +1,14 @@
+import os
+import numpy as np
+import pandas as pd
+import nibabel as nib
 from os.path import join as pjoin
-
-from numpy import dtype
+from scipy.stats.stats import ttest_rel, ttest_ind
+from magicbox.io.io import CiftiReader, save2cifti
 from magicbox.algorithm.triangular_mesh import get_n_ring_neighbor
+from magicbox.stats import EffectSize
 from cxy_hcp_ffa.lib.tools import bfs
-from cxy_hcp_ffa.lib.predefine import proj_dir
+from cxy_hcp_ffa.lib.predefine import proj_dir, mmp_map_file
 
 work_dir = pjoin(proj_dir, 'analysis/s2/1080_fROI/refined_with_Kevin')
 
@@ -68,7 +73,7 @@ def calc_gdist(method='peak'):
             and the most anterior vertex of pFus-face is A.
             This distance is calculated as: y coordinate of P - y coordinate of A.
 
-            If AP_gap-geo, use the geodesic distance between P and A.
+            If 'AP_gap-geo', use the geodesic distance between P and A.
             Defaults to 'peak'.
     """
     import os
@@ -189,12 +194,14 @@ def calc_gdist(method='peak'):
                                 out_dict[k][subj_idx] = np.min(ds)
                             elif method == 'max':
                                 roi1_vertices = np.where(roi1_idx_map)[0]
-                                roi1_vertices = roi1_vertices.astype(np.int32)
                                 roi2_vertices = np.where(roi2_idx_map)[0]
                                 roi2_vertices = roi2_vertices.astype(np.int32)
-                                ds = gdist.compute_gdist(coords, faces,
-                                                         roi1_vertices,
-                                                         roi2_vertices)
+                                ds = np.zeros(len(roi1_vertices), np.float64)
+                                for roi1_vtx_idx, roi1_vtx in enumerate(roi1_vertices):
+                                    roi1_vtx = np.array([roi1_vtx], np.int32)
+                                    ds[roi1_vtx_idx] = np.max(gdist.compute_gdist(
+                                        coords, faces, roi1_vtx, roi2_vertices
+                                    ))
                                 out_dict[k][subj_idx] = np.max(ds)
                             elif method == 'min1':
                                 roi1_vertices = np.where(roi1_idx_map)[0]
@@ -315,11 +322,7 @@ def plot_gdist():
     plt.show()
 
 
-def compare_gdist():
-    import numpy as np
-    import pandas as pd
-    from scipy.stats.stats import ttest_rel
-
+def compare_gdist_paired():
     items = ('pFus-mFus',)
     data_file = pjoin(work_dir, 'gdist_peak.csv')
 
@@ -338,6 +341,31 @@ def compare_gdist():
         print(f'{col1} vs {col2}:', ttest_rel(data1, data2))
 
 
+def pre_ANOVA_gdist_peak():
+
+    hemis = ('lh', 'rh')
+    gids = (1, 2)
+    data_file = pjoin(work_dir, 'gdist_peak.csv')
+    gid_file = pjoin(work_dir, 'grouping/group_id_v2.csv')
+    out_file = pjoin(work_dir, 'gdist_peak_preANOVA.csv')
+
+    df = pd.read_csv(data_file)
+    gid_df = pd.read_csv(gid_file)
+
+    out_dict = {'hemi': [], 'gid': [], 'meas': []}
+    for hemi in hemis:
+        for gid in gids:
+            gid_vec_idx = gid_df[hemi] == gid
+            meas_vec = df[f'{hemi}_pFus-mFus'][gid_vec_idx]
+            n_valid = len(meas_vec)
+            out_dict['hemi'].extend([hemi] * n_valid)
+            out_dict['gid'].extend([gid] * n_valid)
+            out_dict['meas'].extend(meas_vec)
+            print(f'#{hemi}_pFus-mFus:', n_valid)
+    out_df = pd.DataFrame(out_dict)
+    out_df.to_csv(out_file, index=False)
+
+
 def calc_prob_map(hemi='lh'):
     import numpy as np
     import nibabel as nib
@@ -350,7 +378,7 @@ def calc_prob_map(hemi='lh'):
     roi_file = pjoin(work_dir, f'rois_v3_{hemi}.nii.gz')
 
     # outputs
-    out_file = pjoin(work_dir, f'prob_maps_v3_{hemi}.nii.gz')
+    out_file = pjoin(work_dir, f'prob_maps_v3_{hemi}_new.nii.gz')
 
     # prepare
     rois = nib.load(roi_file).get_fdata().squeeze().T
@@ -383,7 +411,7 @@ def get_mpm(hemi='lh'):
 
     # inputs
     thr = 0.25
-    map_indices = (1, 2)
+    map_indices = (1, 2)  # 必须是由小到大
     idx2roi = {
         0: 'IOG-face',
         1: 'pFus-face',
@@ -391,7 +419,7 @@ def get_mpm(hemi='lh'):
     prob_file = pjoin(work_dir, f'prob_maps_v3_{hemi}.nii.gz')
 
     # outputs
-    out_file = pjoin(work_dir, f'MPM_v3_{hemi}_{thr}_FFA.nii.gz')
+    out_file = pjoin(work_dir, f'MPM_v3_{hemi}_{thr}_FFA_new.nii.gz')
 
     # prepare
     prob_maps = nib.load(prob_file).get_fdata()[..., map_indices]
@@ -408,7 +436,7 @@ def get_mpm(hemi='lh'):
         idx_arr[valid_idx_arr] = mpm_tmp == i
         mpm_map[idx_arr] = roi2label[roi]
 
-    # verification
+    # verification 验证概率图重叠部分没有相等概率的顶点
     valid_supra_thr_idx_arr = supra_thr_idx_arr[valid_idx_arr, :]
     valid_count_vec = np.sum(valid_supra_thr_idx_arr, -1)
     valid_count_vec_uniq = np.zeros_like(valid_count_vec)
@@ -505,6 +533,213 @@ def roi2cifti(roi_type):
     save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
 
 
+# ===整理需要发布的数据===
+key2name = {0: '???', 1: 'R_pFus-faces', 2: 'R_mFus-faces',
+            3: 'L_pFus-faces', 4: 'L_mFus-faces'}
+key2rgba = {
+    0: (1.0, 1.0, 1.0, 0.0),
+    1: (0.0, 1.0, 0.0, 1.0),
+    2: (0.0, 0.0, 1.0, 1.0),
+    3: (0.0, 1.0, 0.0, 1.0),
+    4: (0.0, 0.0, 1.0, 1.0)
+}
+name2key = {}
+for k, n in key2name.items():
+    name2key[n] = k
+
+def neaten_FFA_indiv():
+    """
+    把自己手动定的个体FFA整理成CIFTI格式
+    包含1080名被试的个体FFA，被试ID；各FFA的名称(name)与值(key)
+    """
+    subj_file = pjoin(proj_dir, 'analysis/s2/subject_id')
+    data_lh_file = pjoin(work_dir, 'rois_v3_lh.nii.gz')
+    data_rh_file = pjoin(work_dir, 'rois_v3_rh.nii.gz')
+    out_file = pjoin(work_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii')
+
+    bms = CiftiReader(mmp_map_file).brain_models()
+    idx2vtx_lh = list(bms[0].vertex_indices)
+    idx2vtx_rh = list(bms[1].vertex_indices)
+
+    map_names = open(subj_file).read().splitlines()
+
+    data_lh = nib.load(data_lh_file).get_fdata().squeeze().T
+    data_rh = nib.load(data_rh_file).get_fdata().squeeze().T
+    data_lh = data_lh.astype(np.uint8)
+    data_rh = data_rh.astype(np.uint8)
+
+    data_rh[data_rh == 1] = 0
+    data_rh[data_rh == 2] = 1
+    data_rh[data_rh == 3] = 2
+    data_lh[data_lh == 1] = 0
+    data_lh[data_lh == 3] = 4
+    data_lh[data_lh == 2] = 3
+    data_lh = data_lh[:, idx2vtx_lh]
+    data_rh = data_rh[:, idx2vtx_rh]
+    data = np.concatenate((data_lh, data_rh), axis=1, dtype=np.uint8)
+
+    label_tables = []
+    for row in data:
+        lbl_tb = nib.cifti2.Cifti2LabelTable()
+        for key in np.unique(row):
+            key = int(key)
+            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key],
+                                                 *key2rgba[key])
+        label_tables.append(lbl_tb)
+
+    save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
+
+
+def resave_FFA_indiv():
+    """
+    转存一下HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii，把单精度改成uint8
+    以及为每个map清除多余的label信息
+    核对过后会将新文件改成与原文件同名，即会删除原文件。
+    """
+    src_file = pjoin(work_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii')
+    out_file = pjoin(work_dir, 'HCP-YA_FFA-indiv_new.164k_fsavg_LR.dlabel.nii')
+
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = reader.map_names()
+    data = reader.get_data().astype(np.uint8)
+
+    label_tables = []
+    for row in data:
+        lbl_tb = nib.cifti2.Cifti2LabelTable()
+        for key in np.unique(row):
+            key = int(key)
+            lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key],
+                                                 *key2rgba[key])
+        label_tables.append(lbl_tb)
+
+    save2cifti(out_file, data, bms, map_names, label_tables=label_tables)
+
+
+def create_FFA_prob(src_file, out_file):
+    """
+    基于CIFTI文件中的个体FFA，为各FFA计算基于所有被试的概率图
+    每个顶点的值代表在出现该FFA的被试中，该顶点属于对应FFA的概率
+    和calc_prob_map算出来的是一样的
+    """
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = ('pFus-faces', 'mFus-faces')
+    data = reader.get_data()
+
+    out_dict = {}
+    for key, name in key2name.items():
+        if key == 0:
+            continue
+        idx_arr = data == key
+        idx_vec = np.any(idx_arr, 1)
+        idx_arr = idx_arr[idx_vec]
+        out_dict[name] = np.mean(idx_arr, 0)
+
+    out_data = np.zeros((2, data.shape[1]), np.float64)
+    for map_idx, map_name in enumerate(map_names):
+        out_data[map_idx] = out_dict[f'L_{map_name}'] + out_dict[f'R_{map_name}']
+
+    save2cifti(out_file, out_data, bms, map_names)
+
+
+def create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.25):
+    """
+    基于CIFTI文件中的概率图，为各FFA计算最大概率图。
+    包含各FFA的名称(name)与值(key)，以及对应的颜色(rgba)。
+    将概率图中概率大于thr的那些顶点分配给具有较大概率的FFA。
+    和get_mpm算出来是一样的
+
+    Args:
+        space (str, optional): Defaults to '32k_fs_LR'.
+            surface mesh
+        thr (float, optional): Defaults to 0.25.
+            threshold of probability
+    """
+    Hemi2stru = {
+        'L': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'R': 'CIFTI_STRUCTURE_CORTEX_RIGHT'}
+    src_file = pjoin(out_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(out_dir, f'HCP-YA_FFA-MPM_thr-{int(thr*100)}.{space}.dlabel.nii')
+
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = reader.map_names()
+
+    out_dict = {}
+    for Hemi, stru in Hemi2stru.items():
+        data, _, _ = reader.get_data(stru)
+        assert data.shape[0] == 2
+        out_dict[Hemi] = np.zeros((1, data.shape[1]), np.uint8)
+        idx_vec = np.any(data > thr, 0)
+        data = data[:, idx_vec]
+        assert np.all(data[0] != data[1])
+        mpm_tmp = np.zeros(data.shape[1], np.uint8)
+        mpm_tmp[data[0] > data[1]] = name2key[f'{Hemi}_{map_names[0]}']
+        mpm_tmp[data[0] < data[1]] = name2key[f'{Hemi}_{map_names[1]}']
+        out_dict[Hemi][0, idx_vec] = mpm_tmp
+
+    out_data = np.c_[out_dict['L'], out_dict['R']]
+    lbl_tb = nib.cifti2.Cifti2LabelTable()
+    for key in np.unique(out_data):
+        key = int(key)
+        lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key], *key2rgba[key])
+
+    save2cifti(out_file, out_data, bms, label_tables=[lbl_tb])
+
+
+def split_FFC(out_dir=work_dir, space='32k_fs_LR'):
+    """
+    根据pFus和mFus概率图，把FFC中的顶点分配为概率高的一方。
+    包含通过拆分HCP FFC得到的FFA；各FFA的名称(name)与值(key)，以及对应的颜色(rgba) 。
+    将HCP FFC的顶点分配给具有较大概率的FFA
+
+    Args:
+        space (str, optional): Defaults to '32k_fs_LR'.
+            surface mesh
+    """
+    Hemi2FFC_key = {'L': 198, 'R': 18}
+    src_file = pjoin(out_dir, f'HCP-YA_FFA-prob.{space}.dscalar.nii')
+    out_file = pjoin(out_dir, f'HCP-YA_FFA-split.{space}.dlabel.nii')
+    if space == '32k_fs_LR':
+        mmp_map = nib.load(mmp_map_file).get_fdata()[0]
+    elif space == '164k_fsavg_LR':
+        mmp_map_L = nib.load('/nfs/z1/atlas/multimodal_glasser/surface/'
+                             'fsaverage.label.L.164k_fsavg_L.label.gii')
+        mmp_map_R = nib.load('/nfs/z1/atlas/multimodal_glasser/surface/'
+                             'fsaverage.label.R.164k_fsavg_R.label.gii')
+        mmp_map = np.r_[mmp_map_L.darrays[0].data, mmp_map_R.darrays[0].data]
+
+    # prepare CIFTI info
+    reader = CiftiReader(src_file)
+    bms = reader.brain_models()
+    map_names = reader.map_names()
+    data = reader.get_data()
+
+    # assignment
+    out_map = np.zeros((1, len(mmp_map)), np.uint8)
+    for Hemi, FFC_key in Hemi2FFC_key.items():
+        FFC_vertices = np.where(mmp_map == FFC_key)[0]
+        for vtx in FFC_vertices:
+            prob0 = data[0][vtx]
+            prob1 = data[1][vtx]
+            if prob0 > prob1:
+                out_map[0, vtx] = name2key[f'{Hemi}_{map_names[0]}']
+            elif prob0 < prob1:
+                out_map[0, vtx] = name2key[f'{Hemi}_{map_names[1]}']
+            else:
+                raise ValueError("There is no such case.")
+
+    # prepare label table
+    lbl_tb = nib.cifti2.Cifti2LabelTable()
+    for key in np.unique(out_map):
+        key = int(key)
+        lbl_tb[key] = nib.cifti2.Cifti2Label(key, key2name[key], *key2rgba[key])
+
+    # save out
+    save2cifti(out_file, out_map, bms, label_tables=[lbl_tb])
+
+
 if __name__ == '__main__':
     # get_roi_idx_vec()
     # count_roi()
@@ -513,12 +748,72 @@ if __name__ == '__main__':
     # calc_gdist(method='AP_gap-y')
     # calc_gdist(method='AP_gap-geo')
     # calc_gdist(method='min1')
-    calc_gdist(method='max')
+    # calc_gdist(method='max')
     # plot_gdist()
-    # compare_gdist()
+    # compare_gdist_paired()
+    # pre_ANOVA_gdist_peak()
     # calc_prob_map(hemi='lh')
     # calc_prob_map(hemi='rh')
     # get_mpm(hemi='lh')
     # get_mpm(hemi='rh')
     # roi2cifti(roi_type='FFA')
     # roi2cifti(roi_type='FSR')
+
+    # ===整理需要发布的数据===
+    # neaten_FFA_indiv()
+    # resave_FFA_indiv()
+
+    # create_FFA_prob(
+    #     src_file=pjoin(work_dir, 'HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+    #     out_file=pjoin(work_dir, 'HCP-YA_FFA-prob.32k_fs_LR.dscalar.nii'))
+    # create_FFA_prob(
+    #     src_file=pjoin(work_dir, 'HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii'),
+    #     out_file=pjoin(work_dir, 'HCP-YA_FFA-prob.164k_fsavg_LR.dscalar.nii'))
+    create_FFA_prob(
+        src_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.32k_fs_LR.dlabel.nii'),
+        out_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob.32k_fs_LR.dscalar.nii'))
+    create_FFA_prob(
+        src_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-indiv.164k_fsavg_LR.dlabel.nii'),
+        out_file=pjoin(work_dir, 'NI_R1/data_1053/HCP-YA_FFA-prob.164k_fsavg_LR.dscalar.nii'))
+
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.1)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.25)
+    # create_FFA_mpm(out_dir=work_dir, space='32k_fs_LR', thr=0.50)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.1)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.25)
+    # create_FFA_mpm(out_dir=work_dir, space='164k_fsavg_LR', thr=0.50)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.1)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.25)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR', thr=0.50)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.1)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.25)
+    create_FFA_mpm(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR', thr=0.50)
+
+    # split_FFC(out_dir=work_dir, space='32k_fs_LR')
+    # split_FFC(out_dir=work_dir, space='164k_fsavg_LR')
+    split_FFC(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='32k_fs_LR')
+    split_FFC(
+        out_dir=pjoin(work_dir, 'NI_R1/data_1053'),
+        space='164k_fsavg_LR')

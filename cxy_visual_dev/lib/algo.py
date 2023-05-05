@@ -1,355 +1,288 @@
+import time
 import numpy as np
-from numpy.lib.arraysetops import isin
 import pandas as pd
 import pickle as pkl
 import nibabel as nib
-from scipy.stats import zscore, sem
+from os.path import join as pjoin
+from scipy.stats import zscore
 from scipy.spatial.distance import cdist
 from scipy.signal import detrend
 from scipy.fft import fft, fftfreq
-from sklearn.decomposition import PCA, FactorAnalysis, DictionaryLearning, FastICA
-from magicbox.io.io import CiftiReader, save2cifti
-from cxy_visual_dev.lib.predefine import Atlas, L_offset_32k, L_count_32k,\
-    R_offset_32k, R_count_32k, LR_count_32k, mmp_map_file, All_count_32k
+from sklearn.decomposition import PCA, FactorAnalysis, DictionaryLearning,\
+    FastICA
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.pipeline import Pipeline
+from matplotlib import pyplot as plt
+from magicbox.io.io import CiftiReader, save2cifti, GiftiReader
+from magicbox.graph.triangular_mesh import get_n_ring_neighbor
+from cxy_visual_dev.lib.predefine import Atlas, LR_count_32k, proj_dir,\
+    hemi2stru, s1200_midthickness_L, s1200_midthickness_R
 
 
-def zscore_data(data_file, out_file):
+def cat_data_from_cifti(fpaths, cat_shape, vtx_masks=None, map_mask=None,
+                        zscore0=None, zscore1=None):
     """
-    对每个被试做全脑zscore
+    对来自多个cifti文件中的数据进行拼接，同时可以进行zscore
 
     Args:
-        data_file (str): .dscalar.nii
-        out_file (str): .dscalar.nii
+        fpaths (list): a list of file paths
+            shape=(n_map, n_vtx)
+        cat_shape (tuple): (n_row, n_col)
+            按照这个形状，以行优先的顺序拼接数据
+        vtx_masks (list, optional): a list of 1D index arraies
+            指定大脑区域
+        map_mask (ndarray, optional): 1D index array
+            指定使用的map
+            如果是bool类型，则长度为n_map
+            如果是int类型，则值域为[0, n_map-1]
+        zscore0 (str, optional): split, whole
+            split: do zscore across subjects of each row
+            whole: do zscore across subjects of all rows
+            split-minmax: do MinMaxScale across subjects of each row
+            whole-minmax: do MinMaxScale across subjects of all rows
+        zscore1 (str, optional): split, whole
+            split: do zscore across vertices of each mask of each column
+            whole: do zscore across vertices of all columns
+            split-minmax: do MinMaxScale across vertices of each mask of each column
+            whole-minmax: do MinMaxScale across vertices of all columns
+
+    Returns:
+        [tuple]: (data, n_vertices, n_maps, reader)
+            data: 拼接后的数据
+            n_vertices：记录每次纵向拼接的顶点数量与上一次记录的加和
+            n_maps: 记录每次横向拼接的map数量与上一次记录的加和
+            reader: 返回第一个cifti文件的CiftiReader实例
     """
-    reader = CiftiReader(data_file)
-    data = reader.get_data()
-    data = zscore(data, 1)
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    # check
+    n_row, n_col = cat_shape
+    assert len(fpaths) == n_row * n_col
+
+    # prepare data
+    reader = None
+    n_vertices = [0]
+    n_maps = [0]
+    data = []
+    f_idx = 0
+    for _ in range(n_row):
+        data1 = []
+        for _ in range(n_col):
+            fpath = fpaths[f_idx]
+
+            # load maps
+            if f_idx == 0:
+                reader = CiftiReader(fpath)
+                maps = reader.get_data()
+            else:
+                maps = nib.load(fpath).get_fdata()
+
+            if vtx_masks is None:
+                data2 = maps
+                n_vertices.append(n_vertices[-1] + data2.shape[1])
+                if zscore1 == 'split':
+                    data2 = zscore(data2, 1)
+                elif zscore1 == 'split-minmax':
+                    data2 = MinMaxScaler(
+                        feature_range=(0, 1)).fit_transform(data2.T).T
+            else:
+                # extract masked data
+                data2 = []
+                for vtx_mask in vtx_masks:
+                    maps_mask = maps[:, vtx_mask]
+                    n_vertices.append(n_vertices[-1] + maps_mask.shape[1])
+                    if zscore1 == 'split':
+                        maps_mask = zscore(maps_mask, 1)
+                    elif zscore1 == 'split-minmax':
+                        maps_mask = MinMaxScaler(
+                            feature_range=(0, 1)).fit_transform(maps_mask.T).T
+                    data2.append(maps_mask)
+                data2 = np.concatenate(data2, 1)
+
+            # update
+            data1.append(data2)
+            f_idx += 1
+
+        data1 = np.concatenate(data1, 1)
+        if map_mask is not None:
+            data1 = data1[map_mask]
+        if zscore0 == 'split':
+            data1 = zscore(data1, 0)
+        elif zscore0 == 'split-minmax':
+            data1 = MinMaxScaler(
+                feature_range=(0, 1)).fit_transform(data1)
+        n_maps.append(n_maps[-1] + data1.shape[0])
+
+        # update
+        data.append(data1)
+
+    data = np.concatenate(data, 0)
+    if zscore1 == 'whole':
+        data = zscore(data, 1)
+    elif zscore1 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data.T).T
+
+    if zscore0 == 'whole':
+        data = zscore(data, 0)
+    elif zscore0 == 'whole-minmax':
+        data = MinMaxScaler(
+            feature_range=(0, 1)).fit_transform(data)
+
+    return data, n_vertices, n_maps, reader
 
 
-def zscore_map(data_file, out_file, atlas_name=None, roi_name=None):
+def zscore_cii_masked(src_file, mask, out_file):
     """
-    zscore data in the ROI for each map
+    zscore maps across vertices in the mask
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        mask (1D array)
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        roi_name (str): 决定选用哪个区域内的顶点来参与zscore
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
+    reader = CiftiReader(src_file)
     maps = reader.get_data()
-    n_map = maps.shape[0]
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
-    maps = maps[:, roi_idx_map]
 
-    # calculate
-    data = np.ones((n_map, LR_count_32k), np.float64) * np.nan
-    maps = zscore(maps, 1)
-    data[:, roi_idx_map] = maps
+    data = np.ones_like(maps) * np.nan
+    maps = maps[:, mask]
+    data[:, mask] = zscore(maps, 1)
 
-    save2cifti(out_file, data, reader.brain_models(), reader.map_names())
+    save2cifti(out_file, data, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def zscore_map_subj(data_file, out_file):
+def zscore_cii(src_file, axis, out_file):
     """
-    zscore data along subjects
+    zscore across maps (axis=0) or vertices (axis=1)
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_file (str): end with .dscalar.nii
+            shape=(n_map, n_vtx)
+        axis (int): 0 | 1
         out_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+            shape=(n_map, n_vtx)
     """
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-    maps = zscore(maps, 0)
-    save2cifti(out_file, maps, reader.brain_models(), reader.map_names())
+    reader = CiftiReader(src_file)
+    maps = zscore(reader.get_data(), axis)
+    save2cifti(out_file, maps, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def concate_map(data_files, out_file):
+def stack_cii(src_files, out_file):
     """
+    Stack maps from multiple CIFTI files.
+
     Args:
-        data_files (strings): Each string is end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
+        src_files (strings): Each string is end with .dscalar.nii
+            shape=(n_map, n_vtx)
         out_file (str): end with .dscalar.nii
-            shape=(n_map_total, LR_count_32k)
+            shape=(n_map_all, n_vtx)
     """
-    reader = CiftiReader(data_files[0])
+    reader = CiftiReader(src_files[0])
     maps = reader.get_data()
     map_names = reader.map_names()
-    for data_file in data_files[1:]:
-        reader_tmp = CiftiReader(data_file)
-        maps_tmp = reader_tmp.get_data()
-        maps = np.r_[maps, maps_tmp]
+    for src_file in src_files[1:]:
+        reader_tmp = CiftiReader(src_file)
+        maps = np.r_[maps, reader_tmp.get_data()]
         map_names.extend(reader_tmp.map_names())
-    save2cifti(out_file, maps, reader.brain_models(), map_names)
+    save2cifti(out_file, maps, reader.brain_models(), map_names, reader.volume)
 
 
-def ROI_analysis(data_file, atlas_name, out_file, zscore_flag=False):
+def smooth_cii(src_file, hemi, n_ring, out_file):
     """
-    为每个被试每个ROI求均值
+    smooth cerebral cortex
+    忽略值为NAN的顶点，将非NAN顶点赋值为其本身与非NAN近邻的均值
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        out_file (str): output path
-        zscore_flag (bool, optional): Defaults to False.
-            If True, do zscore within each hemisphere.
+        src_file (str): .dscalar.nii
+        hemi (str): lh or rh
+        n_ring (int): smoothness
+        out_file (str): .dscalar.nii
     """
-    # prepare
-    meas_maps = nib.load(data_file).get_fdata()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    out_df = pd.DataFrame()
+    hemi2geo_file = {
+        'lh': s1200_midthickness_L,
+        'rh': s1200_midthickness_R}
 
-    # calculate
-    if zscore_flag:
-        meas_maps_L = meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)]
-        meas_maps_R = meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)]
-        meas_maps_L = zscore(meas_maps_L, 1)
-        meas_maps_R = zscore(meas_maps_R, 1)
-        meas_maps[:, L_offset_32k:(L_offset_32k+L_count_32k)] = meas_maps_L
-        meas_maps[:, R_offset_32k:(R_offset_32k+R_count_32k)] = meas_maps_R
-        del meas_maps_L, meas_maps_R
+    # get map info
+    reader = CiftiReader(src_file)
+    full_shape = reader.full_data.shape
+    bm = reader.brain_models([hemi2stru[hemi]])[0]
+    offset, count = bm.index_offset, bm.index_count
+    src_maps = reader.get_data(hemi2stru[hemi], True)
+    idx2vtx = reader.get_stru_pos(hemi2stru[hemi])[-1]
 
-    for roi, lbl in atlas.roi2label.items():
-        meas_vec = np.mean(meas_maps[:, atlas.maps[0] == lbl], 1)
-        out_df[roi] = meas_vec
+    # get vertex neighbors
+    faces = GiftiReader(hemi2geo_file[hemi]).faces
+    vtx2neighbors = get_n_ring_neighbor(faces, n_ring)
 
-    # save
-    out_df.to_csv(out_file, index=False)
+    # calculating
+    n_map, n_vtx = src_maps.shape
+    out_maps = np.ones(full_shape) * np.nan
+    hemi_maps = np.ones((n_map, n_vtx)) * np.nan
+    for vtx in range(n_vtx):
+        vertices = list(vtx2neighbors[vtx])
+        vertices.append(vtx)
+        for map_idx in range(n_map):
+            if np.isnan(src_maps[map_idx, vtx]):
+                continue
+            hemi_maps[map_idx, vtx] = np.nanmean(src_maps[map_idx, vertices])
+    out_maps[:, offset:(offset+count)] = hemi_maps[:, idx2vtx]
+
+    # save out
+    save2cifti(out_file, out_maps, reader.brain_models(),
+               reader.map_names(), reader.volume)
 
 
-def ROI_scalar(data_file, atlas_name, rois, metric, out_file, out_index=None):
+def decompose(fpaths, cat_shape, method, axis, csv_files, cii_files,
+              pkl_file, vtx_masks=None, map_mask=None, zscore0=None,
+              zscore1=None, n_component=None, random_state=None):
     """
-    Upgrade for "ROI_analysis"
-    为每个被试每个ROI求scalar value
+    将来自多个cifti文件n_map x n_vtx的数据拼接，并进行成分分解
 
     Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, n_vtx)
-        atlas_name (str): include ROIs' labels and mask map
-        rois (None | sequence): ROI names
-            If is None, use all ROIs of the atlas.
-        metric (str): mean, var, sem
-        out_file (str): end with .csv
-        out_index (None | str | sequence):
-            If None, don't save index to out_file.
-            If str, must be 'map name' that means using map names as indices.
-            If sequence, its length is equal to n_map.
-    """
-    # prepare
-    reader = CiftiReader(data_file)
-    maps = reader.get_data()
-
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, maps.shape[1])
-    if rois is None:
-        rois = atlas.roi2label.keys()
-
-    out_df = pd.DataFrame()
-
-    # calculate
-    for roi in rois:
-        lbl = atlas.roi2label[roi]
-        data = maps[:, atlas.maps[0] == lbl]
-        if metric == 'mean':
-            vec = np.mean(data, 1)
-        elif metric == 'var':
-            vec = np.var(data, 1)
-        elif metric == 'sem':
-            vec = sem(data, 1)
-        else:
-            raise ValueError('not supported metric')
-        out_df[roi] = vec
-
-    # save
-    if out_index is None:
-        out_df.to_csv(out_file, index=False)
-    elif out_index == 'map name':
-        out_df.index = reader.map_names()
-        out_df.to_csv(out_file, index=True)
-    else:
-        assert len(out_index) == maps.shape[0]
-        out_df.index = out_index
-        out_df.to_csv(out_file, index=True)
-
-
-def pca(data_file, atlas_name, roi_name, n_component, axis, out_name):
-    """
-    对n_subj x n_vtx形状的矩阵进行PCA降维
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        atlas_name (str): include ROIs' labels and mask map
-        roi_name (str): 决定选用哪个区域内的顶点来参与PCA
-        n_component (int): the number of components
-        axis (str): vertex | subject
-            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
-            观察某个主成分在各顶点上的权重，刻画其空间分布。
-            subject: 对被试数量进行降维，得到几个主成分map，
-            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
-        out_name (str): output name
-            1. n_subj x n_component out_name.csv
-            2. n_component x LR_count_32k out_name.dscalar.nii
-            3. out_name.pkl with fitted PCA model
-    """
-    # prepare
-    component_names = [f'C{i}' for i in range(1, n_component+1)]
-
-    meas_maps = nib.load(data_file).get_fdata()
-    atlas = Atlas(atlas_name)
-    assert atlas.maps.shape == (1, LR_count_32k)
-    roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_name]
-    meas_maps = meas_maps[:, roi_idx_map]
-
-    bms = CiftiReader(mmp_map_file).brain_models()
-
-    # calculate
-    pca = PCA(n_components=n_component)
-    data = np.ones((n_component, LR_count_32k), np.float64) * np.nan
-    if axis == 'vertex':
-        X = meas_maps
-        pca.fit(X)
-        Y = pca.transform(X)
-        df = pd.DataFrame(data=Y, columns=component_names)
-        data[:, roi_idx_map] = pca.components_
-
-    elif axis == 'subject':
-        X = meas_maps.T
-        pca.fit(X)
-        Y = pca.transform(X)
-        df = pd.DataFrame(data=pca.components_.T, columns=component_names)
-        data[:, roi_idx_map] = Y.T
-
-    else:
-        raise ValueError('Invalid axis:', axis)
-
-    # save
-    df.to_csv(f'{out_name}.csv', index=False)
-    save2cifti(f'{out_name}.dscalar.nii', data, bms, component_names)
-    pkl.dump(pca, open(f'{out_name}.pkl', 'wb'))
-
-
-def decompose_mf(data_files, masks, method, n_component, axis,
-                 zscore0, zscore1, csv_files, cii_file, pkl_file, random_state=None):
-    """
-    对n_subj x n_vtx形状的矩阵进行成分分解
-    adapted for dealing with multi files
-
-    Args:
-        data_files (str or 1D array-like): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        masks (list of 1D index arraies): 指定大脑区域
+        fpaths (list): a list of file paths
+            详见cat_data_from_cifti
+        cat_shape (tuple): (n_row, n_col)
+            详见cat_data_from_cifti
         method (str): PCA | FA | FA1 | DicL | ICA
             'PCA': Principal Component Analysis
             'FA': Factor Analysis
             'FA1': Factor Analysis with 'varimax' rotation
             'DicL': Dictionary Learning
             'ICA': Independent Component Analysis
-        n_component (int): the number of components
-        axis (str): vertex | subject
-            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
-            观察某个主成分在各顶点上的权重，刻画其空间分布。
-            subject: 对被试数量进行降维，得到几个主成分map，
-            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
-        zscore0 (str): None, split, whole
-        zscore1 (str): None, split, whole
-        csv_files (str or 1D array-like): n_subj x n_component
-            corresponding to rows of data_files
-        cii_file (str): n_component x LR_count_32k
-        pkl_file (str): fitted PCA model
+        axis (int): 0 | 1
+            0: 对map数量进行降维，得到几个主成分map，
+                观察某个主成分在各map上的权重
+            1: 对顶点数量进行降维，得到几个主成分时间序列，
+                观察某个主成分在各顶点上的权重，可刻画其空间分布
+        csv_files (list): a list of CSV files
+            shape=(n_map, n_component)
+            len(csv_files)=n_row
+        cii_files (list): a list of .dscalar.nii files
+            shape=(n_component, n_vtx)
+            len(cii_files)=n_col
+        pkl_file (str): fitted model
+        vtx_masks (list, optional): a list of 1D index arraies
+            详见cat_data_from_cifti
+        map_mask (ndarray, optional): 1D index array
+            详见cat_data_from_cifti
+        zscore0 (str, optional): split, whole
+            详见cat_data_from_cifti
+        zscore1 (str, optional): split, whole
+            详见cat_data_from_cifti
+        n_component (int, optional): the number of components
+        random_state (int, optional):
     """
     # prepare
-    if isinstance(data_files, str):
-        data_files = np.atleast_1d(data_files)
-    else:
-        data_files = np.asarray(data_files)
-        assert data_files.ndim == 1
-    n_row = len(data_files)
-
-    assert isinstance(masks, list)
-    n_col = len(masks)
-
-    if isinstance(csv_files, str):
-        csv_files = np.atleast_1d(csv_files)
-    else:
-        csv_files = np.asarray(csv_files)
-        assert csv_files.ndim == 1
+    n_row, n_col = cat_shape
     assert len(csv_files) == n_row
-
-    # prepare data
-    subj_idx_vecs = []
-    n_vertices = [0]
-    n_subjects = [0]
-    data = []
-    for col_idx in range(n_col):
-        print(f'---{col_idx}---')
-
-        # load and mask maps1
-        reader = CiftiReader(data_files[0])
-        maps1 = reader.get_data()
-        maps1 = maps1[:, masks[col_idx]]
-
-        non_nan_idx_arr1 = ~np.isnan(maps1)
-        subj_idx_vec1 = np.all(non_nan_idx_arr1, 1)
-        assert np.all(subj_idx_vec1 == np.any(non_nan_idx_arr1, 1))
-        maps1 = maps1[subj_idx_vec1]
-        print(f'{data_files[0]}\n{maps1.shape}\n')
-
-        n_vertices.append(n_vertices[-1] + maps1.shape[1])
-        if col_idx == 0:
-            n_subjects.append(n_subjects[-1] + maps1.shape[0])
-            subj_idx_vecs.append(subj_idx_vec1)
-        else:
-            assert np.all(subj_idx_vecs[0] == subj_idx_vec1)
-
-        # zscore
-        if zscore1 == 'split':
-            maps1 = zscore(maps1, 1)
-        if zscore0 == 'split':
-            maps1 = zscore(maps1, 0)
-
-        if n_row > 1:
-            for row_idx in range(1, n_row):
-                # load maps2
-                maps2 = nib.load(data_files[row_idx]).get_fdata()
-                maps2 = maps2[:, masks[col_idx]]
-
-                non_nan_idx_arr2 = ~np.isnan(maps2)
-                subj_idx_vec2 = np.all(non_nan_idx_arr2, 1)
-                assert np.all(subj_idx_vec2 == np.any(non_nan_idx_arr2, 1))
-                maps2 = maps2[subj_idx_vec2]
-                print(f'{data_files[row_idx]}\n{maps2.shape}\n')
-
-                if col_idx == 0:
-                    n_subjects.append(n_subjects[-1] + maps2.shape[0])
-                    subj_idx_vecs.append(subj_idx_vec2)
-                else:
-                    np.all(subj_idx_vecs[row_idx] == subj_idx_vec2)
-
-                # zscore
-                if zscore1 == 'split':
-                    maps2 = zscore(maps2, 1)
-                if zscore0 == 'split':
-                    maps2 = zscore(maps2, 0)
-
-                # concatenate
-                maps1 = np.r_[maps1, maps2]
-        data.append(maps1)
-    data = np.concatenate(data, 1)
-    # zscore
-    if zscore1 == 'whole':
-        data = zscore(data, 1)
-    if zscore0 == 'whole':
-        data = zscore(data, 0)
+    assert len(cii_files) == n_col
+    data, n_vertices, n_maps, reader = cat_data_from_cifti(
+        fpaths, cat_shape, vtx_masks, map_mask, zscore0, zscore1)
+    n_map, n_vtx = reader.full_data.shape
 
     # calculate
     if method == 'PCA':
@@ -366,12 +299,12 @@ def decompose_mf(data_files, masks, method, n_component, axis,
         transformer = FastICA(n_components=n_component, random_state=random_state)
     else:
         raise ValueError('not supported method:', method)
-    if axis == 'vertex':
+    if axis == 1:
         transformer.fit(data)
         Y = transformer.transform(data)
         csv_data = Y
         cii_data = transformer.components_
-    elif axis == 'subject':
+    elif axis == 0:
         data = data.T
         transformer.fit(data)
         Y = transformer.transform(data)
@@ -386,176 +319,80 @@ def decompose_mf(data_files, masks, method, n_component, axis,
     else:
         assert n_component == csv_data.shape[1]
     component_names = [f'C{i}' for i in range(1, n_component+1)]
+
     for row_idx in range(n_row):
-        subj_idx_vec = subj_idx_vecs[row_idx]
-        csv_data_tmp = np.ones(
-            (len(subj_idx_vec), csv_data.shape[1]), np.float64) * np.nan
-        s_idx = n_subjects[row_idx]
-        e_idx = n_subjects[row_idx + 1]
-        csv_data_tmp[subj_idx_vec] = csv_data[s_idx:e_idx]
+        s_idx = n_maps[row_idx]
+        e_idx = n_maps[row_idx + 1]
+        if map_mask is None:
+            csv_data_tmp = csv_data[s_idx:e_idx]
+        else:
+            csv_data_tmp = np.ones((n_map, n_component), np.float64) * np.nan
+            csv_data_tmp[map_mask] = csv_data[s_idx:e_idx]
         df = pd.DataFrame(data=csv_data_tmp, columns=component_names)
         df.to_csv(csv_files[row_idx], index=False)
 
-    maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
+    i = 0
     for col_idx in range(n_col):
-        s_idx = n_vertices[col_idx]
-        e_idx = n_vertices[col_idx + 1]
-        maps[:, masks[col_idx]] = cii_data[:, s_idx:e_idx]
-    save2cifti(cii_file, maps, reader.brain_models(), component_names)
+        if vtx_masks is None:
+            s_idx = n_vertices[i]
+            e_idx = n_vertices[i + 1]
+            cii_data_tmp = cii_data[:, s_idx:e_idx]
+            i += 1
+        else:
+            cii_data_tmp = np.ones((n_component, n_vtx), np.float64) * np.nan
+            for vtx_mask in vtx_masks:
+                s_idx = n_vertices[i]
+                e_idx = n_vertices[i + 1]
+                cii_data_tmp[:, vtx_mask] = cii_data[:, s_idx:e_idx]
+                i += 1
+        save2cifti(cii_files[col_idx], cii_data_tmp, reader.brain_models(),
+                   component_names)
 
     pkl.dump(transformer, open(pkl_file, 'wb'))
 
 
-def pca_mf1(data_files, atlas_names, roi_names, n_component, axis,
-            zscore0, zscore1, csv_files, cii_files, pkl_file):
+def transform(fpaths, cat_shape, model_file, csv_files,
+              vtx_masks=None, map_mask=None, zscore0=None):
     """
-    对n_subj x n_vtx形状的矩阵进行PCA降维
-    adapted for dealing with multi files
+    将来自多个cifti文件n_map x n_vtx的数据拼接，并用现成的model做transform
+    目前只支持对顶点数量的降维
 
     Args:
-        data_files (str or array-like): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-            If is array-like, must be 2D.
-        atlas_names (str or array-like): include ROIs' labels and mask map
-            If is array-like, must be 1D, corresponding to
-            columns of data_files.
-        roi_names (str or array-like): 决定选用哪个区域内的顶点来参与PCA
-            If is array-like, must be 1D, corresponding to atlas_names.
-        n_component (int): the number of components
-        axis (str): vertex | subject
-            vertex: 对顶点数量进行降维，得到几个主成分时间序列，
-            观察某个主成分在各顶点上的权重，刻画其空间分布。
-            subject: 对被试数量进行降维，得到几个主成分map，
-            观察某个主成分在各被试上的权重，按年龄排序即可得到时间序列。
-        zscore0 (str): None, split, whole
-        zscore1 (str): None, split, whole
-        csv_files (str or array-like): n_subj x n_component
-            If is array-like, must be 1D, corresponding to rows of data_files.
-        cii_files (str or array-like): n_component x LR_count_32k
-            If is array-like, must be 1D, corresponding to
-            columns of data_files.
-        pkl_file (str): fitted PCA model
+        fpaths (list): a list of file paths
+            详见cat_data_from_cifti
+        cat_shape (tuple): (n_row, n_col)
+            详见cat_data_from_cifti
+        model_file (str):
+        csv_files (list): a list of CSV files
+            shape=(n_map, n_component)
+            len(csv_files)=n_row
+        vtx_masks (list, optional): a list of 1D index arraies
+            详见cat_data_from_cifti
+        map_mask (ndarray, optional): 1D index array
+            详见cat_data_from_cifti
+        zscore0 (str, optional): split, whole
+            详见cat_data_from_cifti
     """
-    # prepare
-    if isinstance(data_files, str):
-        data_files = np.atleast_2d(data_files)
-    else:
-        data_files = np.asarray(data_files)
-        assert data_files.ndim == 2
-    n_row, n_col = data_files.shape
-
-    if isinstance(atlas_names, str):
-        atlas_names = np.atleast_1d(atlas_names)
-    else:
-        atlas_names = np.asarray(atlas_names)
-        assert atlas_names.ndim == 1
-    assert len(atlas_names) == n_col
-
-    if isinstance(roi_names, str):
-        roi_names = np.atleast_1d(roi_names)
-    else:
-        roi_names = np.asarray(roi_names)
-        assert roi_names.ndim == 1
-    assert len(roi_names) == n_col
-
-    if isinstance(csv_files, str):
-        csv_files = np.atleast_1d(csv_files)
-    else:
-        csv_files = np.asarray(csv_files)
-        assert csv_files.ndim == 1
+    n_row, n_col = cat_shape
     assert len(csv_files) == n_row
+    data, n_vertices, n_maps, reader = cat_data_from_cifti(
+        fpaths, cat_shape, vtx_masks, map_mask, zscore0)
+    n_map, n_vtx = reader.full_data.shape
 
-    if isinstance(cii_files, str):
-        cii_files = np.atleast_1d(cii_files)
-    else:
-        cii_files = np.asarray(cii_files)
-        assert cii_files.ndim == 1
-    assert len(cii_files) == n_col
-
+    transformer = pkl.load(open(model_file, 'rb'))
+    csv_data = transformer.transform(data)
+    n_component = csv_data.shape[1]
     component_names = [f'C{i}' for i in range(1, n_component+1)]
-
-    # prepare data
-    bm_list = []
-    roi_idx_maps = []
-    n_vertices = [0]
-    n_subjects = [0]
-    data = []
-    for col_idx in range(n_col):
-        # load maps1
-        reader = CiftiReader(data_files[0, col_idx])
-        maps1 = reader.get_data()
-        bm_list.append(reader.brain_models())
-
-        # load atlas and mask maps1
-        atlas = Atlas(atlas_names[col_idx])
-        assert atlas.maps.shape == (1, LR_count_32k)
-        roi_idx_map = atlas.maps[0] == atlas.roi2label[roi_names[col_idx]]
-        maps1 = maps1[:, roi_idx_map]
-        roi_idx_maps.append(roi_idx_map)
-        n_vertices.append(n_vertices[-1] + maps1.shape[1])
-        if col_idx == 0:
-            n_subjects.append(n_subjects[-1] + maps1.shape[0])
-
-        # zscore
-        if zscore1 == 'split':
-            maps1 = zscore(maps1, 1)
-        if zscore0 == 'split':
-            maps1 = zscore(maps1, 0)
-
-        if n_row > 1:
-            for row_idx in range(1, n_row):
-                # load maps2
-                maps2 = nib.load(data_files[row_idx, col_idx]).get_fdata()
-                maps2 = maps2[:, roi_idx_map]
-                if col_idx == 0:
-                    n_subjects.append(n_subjects[-1] + maps2.shape[0])
-
-                # zscore
-                if zscore1 == 'split':
-                    maps2 = zscore(maps2, 1)
-                if zscore0 == 'split':
-                    maps2 = zscore(maps2, 0)
-
-                # concatenate
-                maps1 = np.r_[maps1, maps2]
-        data.append(maps1)
-    data = np.concatenate(data, 1)
-    # zscore
-    if zscore1 == 'whole':
-        data = zscore(data, 1)
-    if zscore0 == 'whole':
-        data = zscore(data, 0)
-
-    # calculate
-    pca = PCA(n_components=n_component)
-    if axis == 'vertex':
-        pca.fit(data)
-        Y = pca.transform(data)
-        csv_data = Y
-        cii_data = pca.components_
-    elif axis == 'subject':
-        data = data.T
-        pca.fit(data)
-        Y = pca.transform(data)
-        csv_data = pca.components_.T
-        cii_data = Y.T
-    else:
-        raise ValueError('Invalid axis:', axis)
-
-    # save
     for row_idx in range(n_row):
-        s_idx = n_subjects[row_idx]
-        e_idx = n_subjects[row_idx + 1]
-        df = pd.DataFrame(data=csv_data[s_idx:e_idx, :],
-                          columns=component_names)
+        s_idx = n_maps[row_idx]
+        e_idx = n_maps[row_idx + 1]
+        if map_mask is None:
+            csv_data_tmp = csv_data[s_idx:e_idx]
+        else:
+            csv_data_tmp = np.ones((n_map, n_component), np.float64) * np.nan
+            csv_data_tmp[map_mask] = csv_data[s_idx:e_idx]
+        df = pd.DataFrame(data=csv_data_tmp, columns=component_names)
         df.to_csv(csv_files[row_idx], index=False)
-    for col_idx in range(n_col):
-        s_idx = n_vertices[col_idx]
-        e_idx = n_vertices[col_idx + 1]
-        maps = np.ones((n_component, LR_count_32k), np.float64) * np.nan
-        maps[:, roi_idx_maps[col_idx]] = cii_data[:, s_idx:e_idx]
-        save2cifti(cii_files[col_idx], maps, bm_list[col_idx], component_names)
-    pkl.dump(pca, open(pkl_file, 'wb'))
 
 
 def ROI_analysis_on_PC(data_file, pca_file, pc_num,
@@ -607,76 +444,6 @@ def ROI_analysis_on_PC(data_file, pca_file, pc_num,
 
     # save
     out_df.to_csv(out_file, index=False)
-
-
-def make_age_maps(data_file, info_file, out_name):
-    """
-    对每个顶点，计算跨同一年龄被试的平均和sem，分别保存在
-    out_name-mean.dscalar.nii, out_name-sem.dscalar.nii中
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_subj, LR_count_32k)
-        info_file (str): subject info file
-        out_name (str): filename to save
-    """
-    # prepare
-    data_maps = nib.load(data_file).get_fdata()
-    info_df = pd.read_csv(info_file)
-    ages = np.array(info_df['age in years'])
-    ages_uniq = np.unique(ages)
-    n_age = len(ages_uniq)
-
-    # calculate
-    mean_maps = np.ones((n_age, LR_count_32k)) * np.nan
-    sem_maps = np.ones((n_age, LR_count_32k)) * np.nan
-    for age_idx, age in enumerate(ages_uniq):
-        data = data_maps[ages == age]
-        mean_maps[age_idx] = np.mean(data, 0)
-        sem_maps[age_idx] = sem(data, 0)
-
-    # save
-    map_names = [str(i) for i in ages_uniq]
-    reader = CiftiReader(mmp_map_file)
-    save2cifti(f'{out_name}-mean.dscalar.nii', mean_maps,
-               reader.brain_models(), map_names)
-    save2cifti(f'{out_name}-sem.dscalar.nii', sem_maps,
-               reader.brain_models(), map_names)
-
-
-def merge_by_age(data_file, info_file, out_name):
-    """
-    对每个column，计算跨同一年龄被试的平均和sem，分别保存在
-    out_name-mean.csv, out_name-sem.csv中
-
-    Args:
-        data_file (str): end with .csv
-            shape=(n_subj, n_col)
-        info_file (str): subject info file
-        out_name (str): filename to save
-    """
-    # prepare
-    df = pd.read_csv(data_file)
-    n_col = df.shape[1]
-
-    info_df = pd.read_csv(info_file)
-    ages = np.array(info_df['age in years'])
-    ages_uniq = np.unique(ages)
-    n_age = len(ages_uniq)
-
-    # calculate
-    means = np.zeros((n_age, n_col), np.float64)
-    sems = np.zeros((n_age, n_col), np.float64)
-    for age_idx, age in enumerate(ages_uniq):
-        data = np.array(df.loc[ages == age])
-        means[age_idx] = np.mean(data, 0)
-        sems[age_idx] = sem(data, 0)
-
-    # save
-    mean_df = pd.DataFrame(means, ages_uniq, df.columns)
-    mean_df.to_csv(f'{out_name}-mean.csv')
-    sem_df = pd.DataFrame(sems, ages_uniq, df.columns)
-    sem_df.to_csv(f'{out_name}-sem.csv')
 
 
 def calc_map_corr(data_file1, data_file2, atlas_name, roi_name, out_file,
@@ -924,30 +691,6 @@ def map_operate_map(data_file1, data_file2, operation_method, out_file):
     save2cifti(out_file, data, reader1.brain_models(), reader1.map_names())
 
 
-def mask_maps(data_file, mask, out_file):
-    """
-    把data map在指定mask以外的部分全赋值为nan
-
-    Args:
-        data_file (str): end with .dscalar.nii
-            shape=(n_map, LR_count_32k)
-        mask (1D index array)
-        out_file (str):
-    """
-    # prepare
-    reader1 = CiftiReader(mmp_map_file)
-    reader2 = CiftiReader(data_file)
-    data = reader2.get_data()
-    if data.shape[1] == All_count_32k:
-        data = data[:, :LR_count_32k]
-
-    # calculate
-    data[:, ~mask] = np.nan
-
-    # save
-    save2cifti(out_file, data, reader1.brain_models(), reader2.map_names())
-
-
 def polyfit(data_file, info_file, deg, out_file):
     """
     对时间序列进行多项式拟合
@@ -1037,3 +780,199 @@ def calc_alff(x, tr, axis=0, low_freq_band=(0.01, 0.08),
     falff = alff / np.sum(half_band_power, axis=0)
 
     return alff, falff
+
+
+def linear_fit1(X_list, feat_names, Y, trg_names, score_metric,
+                out_file, standard_scale=True):
+    """
+    每个X的形状相同，有多少列就迭代多少次
+    每次迭代用所有X中对应的列作为features，去拟合Y的各列。
+    得到每次迭代对每个target的拟合分数，系数，截距
+
+    Args:
+        X_list (list): a list of 2D arrays
+        feat_names (strings): feature names
+        Y (2D array): target array
+        trg_names (strings): target names
+        score_metric (str): 目前只支持R2
+        out_file (str):
+            If 'df', return df
+            If ends with '.csv', save to CSV file
+        standard_scale (bool, optional):
+            是否在线性回归之前做特征内的标准化
+    """
+    n_feat = len(X_list)
+    n_iter = X_list[0].shape[1]
+    assert n_feat == len(feat_names)
+
+    n_trg = Y.shape[1]
+    assert n_trg == len(trg_names)
+    n_sample = Y.shape[0]
+
+    # fitting
+    coefs = np.zeros((n_iter, n_trg, n_feat), np.float64)
+    intercepts = np.zeros((n_iter, n_trg), np.float64)
+    scores = np.zeros((n_iter, n_trg), np.float64)
+    for iter_idx in range(n_iter):
+        time1 = time.time()
+        X = np.zeros((n_sample, n_feat), np.float64)
+        for feat_idx in range(n_feat):
+            X[:, feat_idx] = X_list[feat_idx][:, iter_idx]
+
+        if standard_scale:
+            model = Pipeline([('preprocesser', StandardScaler()),
+                             ('regressor', LinearRegression())])
+            model.fit(X, Y)
+            coefs[iter_idx] = model.named_steps['regressor'].coef_
+            intercepts[iter_idx] = model.named_steps['regressor'].intercept_
+        else:
+            model = LinearRegression()
+            model.fit(X, Y)
+            coefs[iter_idx] = model.coef_
+            intercepts[iter_idx] = model.intercept_
+
+        Y_pred = model.predict(X)
+        if score_metric == 'R2':
+            scores[iter_idx] = [
+                r2_score(Y[:, i], Y_pred[:, i]) for i in range(n_trg)]
+        else:
+            raise ValueError('not supported score metric')
+
+        print(f'Finished {iter_idx + 1}/{n_iter}, '
+              f'cost {time.time() - time1} seconds.')
+
+    # save
+    df = pd.DataFrame()
+    for trg_idx, trg_name in enumerate(trg_names):
+        for feat_idx, feat_name in enumerate(feat_names):
+            df[f'coef_{trg_name}_{feat_name}'] = coefs[:, trg_idx, feat_idx]
+        df[f'score_{trg_name}'] = scores[:, trg_idx]
+        df[f'intercept_{trg_name}'] = intercepts[:, trg_idx]
+    if out_file == 'df':
+        return df
+    elif out_file.endswith('.csv'):
+        df.to_csv(out_file, index=False)
+    else:
+        raise ValueError('not supported out_file')
+
+
+class AgeSlideWindow:
+    """
+    按照岁数升序排序，将被试划分到不同年龄窗口中。
+    """
+
+    def __init__(self, dataset_name, width, step, merge_remainder):
+        """
+        Args:
+            dataset_name (str): "HCPD", "HCPA", or "HCPY"
+            width (int): window width
+                with units of subjects
+            step (int): step size
+                with uints of subjects
+            merge_remainder (bool):
+                Merge remainder subjects whose number is less than step
+                into the last window or not.
+                If the number of remainder subjects is 0, this parameter
+                will be ignored (set as False forcibly).
+        """
+        # subject information
+        self.dataset_name = dataset_name
+        self.subj_info = pd.read_csv(pjoin(
+            proj_dir, f'data/HCP/{dataset_name}_SubjInfo.csv'))
+        self.n_subj = self.subj_info.shape[0]
+        if dataset_name == 'HCPY':
+            self.sorted_indices = np.argsort(self.subj_info['age in years'])
+        else:
+            self.sorted_indices = np.argsort(self.subj_info['age in months'])
+
+        # width and step information
+        assert width < self.n_subj
+        self.width = width
+        self.step = step
+
+        # get window start and end indices
+        step_space = self.n_subj - self.width
+        self.n_remainder = step_space % self.step
+        self.merge_remainder = False if self.n_remainder == 0 else merge_remainder
+        self.start_indices = list(range(0, step_space, step))
+        self.end_indices = [i + width for i in self.start_indices]
+        if self.merge_remainder:
+            self.end_indices[-1] = self.n_subj
+        else:
+            self.start_indices.append(step_space)
+            self.end_indices.append(self.n_subj)
+        self.n_win = len(self.start_indices)
+
+    def get_subj_indices(self, win_id):
+        """
+        Get subject indices according to window ID
+
+        Args:
+            win_id (int): Count from 1
+        """
+        idx = win_id - 1
+        return self.sorted_indices[self.start_indices[idx]:self.end_indices[idx]]
+
+    def get_ages(self, win_id, age_type):
+        """
+        Get ages according to window ID
+
+        Args:
+            win_id (int): Count from 1
+            age_type (str): 'month' or 'year'
+        """
+        indices = self.get_subj_indices(win_id)
+        if self.dataset_name == 'HCPY':
+            assert age_type == 'year', "HCPY only has age in years."
+            ages = self.subj_info.loc[indices, 'age in years']
+        else:
+            ages = self.subj_info.loc[indices, 'age in months']
+            if age_type == 'year':
+                ages = ages / 12
+            elif age_type == 'month':
+                pass
+            else:
+                raise ValueError('not supported age_type:', age_type)
+
+        return ages
+
+    def plot_sw_age_range(self, age_type='year', figsize=None, out_file='show'):
+        """
+        Plot age range of each window
+
+        Args:
+            age_type (str, optional): Defaults to 'year'.
+                'month' or 'year', the unit of the x axis
+        """
+        win_ids = np.arange(1, self.n_win + 1)
+        fig, ax = plt.subplots(figsize=figsize)
+        for win_id in win_ids:
+            ages = self.get_ages(win_id, age_type)
+            age_range = [ages.min(), ages.max()]
+            if age_range[0] == age_range[1]:
+                ax.scatter(age_range[0], win_id, s=3, c='k')
+            else:
+                ax.plot(age_range, [win_id, win_id], c='k')
+        xticks = (self.get_ages(1, age_type).min(),
+                  self.get_ages(int(self.n_win/2), age_type).median(),
+                  self.get_ages(self.n_win, age_type).max())
+        xticks = [int(i) for i in xticks]
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(xticks)
+        yticks = (1, self.n_win)
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticks)
+        ax.set_xlabel(f'Age ({age_type})')
+        ax.set_ylabel('Window')
+        title = f'{self.dataset_name}_width-{self.width}_setp-{self.step}'
+        if self.merge_remainder:
+            title += '\nmerge remainder'
+        ax.set_title(title)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        fig.tight_layout()
+        if out_file == 'show':
+            fig.show()
+        else:
+            fig.savefig(out_file)
