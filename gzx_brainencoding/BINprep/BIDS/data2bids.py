@@ -1,6 +1,6 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3
 import os, glob, argparse, string
-import subprocess as  sp
+import subprocess
 import pandas as pd
 import numpy as np
 
@@ -199,19 +199,25 @@ def task_feature_dict(scaninfo):
       
 # argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("file", type=str, help="path fetch to scaninfo.xlsx")
-parser.add_argument("-b", "--base", type=str, \
+parser.add_argument("file", help="path to fetch scaninfo.xlsx")
+parser.add_argument("-b", "--base", \
     help="base dir contains all relevant bold data, usually is /../bold", default=None)
-parser.add_argument("-i", "--input-dir", type=str, help="input", default='orig')
-parser.add_argument("-t", "--temp-dir", type=str, help="temp folds", default='orig/dicom')
-parser.add_argument("-o", "--output-dir", type=str, \
-    help="name of directory stores nifti files with BIDS specifications", default='nifti')
+parser.add_argument("-i", "--input-dir", help="input, defalut: orig", default='orig')
+parser.add_argument("-t", "--temp-dir", help="temp folds for storage of decomposed data, default: orig/dicom", default='orig/dicom')
+parser.add_argument("-o", "--output-dir", \
+    help="name of directory stores nifti files with BIDS specifications, default: nifti", default='nifti')
 
 parser.add_argument("-q", "--quality-filter", type=str, \
      help="quality filter on scaninfo.xlsx", choices=['ok', 'all','discard'], default='ok')
 parser.add_argument("-s", "--subject", type=str, nargs="+", help="subjects")
 parser.add_argument("-ss", "--session", type=str, nargs="+", help="sessions")
-parser.add_argument("--overwrite", action="store_true", help="whether overwrite")
+
+parser.add_argument("-pr", "--preview", action="store_true", \
+    help="if choose, user can preview the whole pipeline and inspect critical information without runing any process command")
+parser.add_argument("--skip-feature-validation", action="store_true", \
+    help="if choose, pipeline will compare scan features between scaninfo.xlsx and dicom.tsv")
+parser.add_argument("--overwrite", action="store_true", \
+    help="if choose, heudiconv will overwrite the existed files")
 args = parser.parse_args()
 # nargs:https://blog.csdn.net/kinggang2017/article/details/94036386
 
@@ -321,21 +327,8 @@ for _key, _value in tqdm(session_input.items()):
     if not glob.glob(pjoin(args.temp_dir,_value)):
         cmd = "tar -xzvf {:s} -C {:s}".format(pjoin(args.input_dir, _value), args.temp_dir)
         print("[news] Running command: {:s}".format(cmd))
-        # runcmd(cmd)
-
-        # 考虑要不要，if 要 放到后面？
-        # # prepare for Inspceting
-        # dcom_files = pjoin(args.input_dir,_value).replace('.tar.gz', '/*.IMA')
-        # subID, sesID = _key.split('/')[0].replace('sub-'), _key.split('/')[1].replace('ses-')
-        # cmd = "heudiconv --files {:s} -o {:s} -f convertall -s {:s} -ss {:s} -c none --overwrite"\
-        #     .format(dcom_files, args.output_dir, subID, sesID)
-        # print("[news] dicominfo")
-        # runcmd(cmd)
-        # dicominfo = pd.read_csv("{:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv"\
-        #     .format(args.output_dir, subID, sesID), sep='\t')
-        # # what squence (kinds of tasks) this scan contains
-        # for _ in tqdm(range(len(dicominfo))):
-        #     if dicominfo.iloc[_, :]:
+        if not args.preview:
+            runcmd(cmd)
     
 # step 4 Heuristic.py generation
 print(bcolors.BOLD_NODE + "[Node] Heuristic.py Generating..." + bcolors.ENDC)
@@ -354,6 +347,44 @@ print(bcolors.BOLD_NODE + "[Node] BIDS converting..." + bcolors.ENDC)
 for _key, _value in tqdm(session_input.items()):
     dcom_files = pjoin(args.input_dir,_value).replace('.tar.gz', '/*.IMA')
     subID, sesID = _key.split('/')[0].replace('sub-', ''), _key.split('/')[1].replace('ses-', '')
+    
+    if not args.skip_feature_validation:
+        # feature validation
+        if args.overwrite:
+            cmd = "heudiconv --files {:s} -o {:s} -f convertall -s {:s} -ss {:s} -c none --overwrite"\
+                .format(dcom_files, args.output_dir, subID, sesID)
+        else:
+            cmd = "heudiconv --files {:s} -o {:s} -f convertall -s {:s} -ss {:s} -c none"\
+                .format(dcom_files, args.output_dir, subID, sesID)
+        print("[news] inspecting task feature in dicominfo.tsv")
+        print("[news] command:" + bcolors.BOLD + " {}".format(cmd) + bcolors.ENDC)
+        if not args.preview:
+            runcmd(cmd)
+            dicominfo = pd.read_csv("{:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv"\
+                .format(args.output_dir, subID, sesID), sep='\t')
+            dicominfo_scan_feature = list(set([(dicominfo.iloc[_run,:]['protocol_name'], dicominfo.iloc[_run,:]['dim4']) \
+                if dicominfo.iloc[_run,:]['dim4']!=1 else (dicominfo.iloc[_run,:]['protocol_name'], dicominfo.iloc[_run,:]['dim3'])\
+                    for _run in range(len(dicominfo))]))
+            
+            _check = []
+            for _task in session_task[_key]:
+                _feature = (task_feature[_task][0], task_feature[_task][1])
+                if 'anat' in _task :
+                    if not any([_feature[0] == __[0] for __ in dicominfo_scan_feature]):
+                        _check.append(any([_feature[0] == __[0] for __ in dicominfo_scan_feature]))
+                        print(bcolors.FAIL + \
+                            "[ERROR] '{:s}' protocol name mismtach! Found no {:s} in {:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv"\
+                                .format(_task, _feature[0], args.output_dir, subID, sesID) + bcolors.ENDC)
+                else:
+                    if not _feature in dicominfo_scan_feature:
+                        _check.append(_feature in dicominfo_scan_feature)
+                        print(bcolors.FAIL + \
+                            "[EORROR] '{:s}' protocol name mismtach! Found no {:s} in {:s}/.heudiconv/{:s}/info/dicominfo_ses-{:s}.tsv"\
+                                .format(_task, _feature, args.output_dir, subID, sesID) + bcolors.ENDC)
+                if not all(_check):
+                    raise AssertionError('[ERROR] Feature validation failure! Please read [ERROR] message above for more details!')
+            del _task, _feature
+
     heuristicpy = pjoin(args.output_dir, 'code', sesID.strip(string.digits), 'heuristic.py')
     if args.overwrite:
         cmd = "heudiconv -files {:s} -o {:s} -f {:s} -s {:s} -ss {:s} -c dcm2niix -b --overwrite" \
@@ -363,7 +394,16 @@ for _key, _value in tqdm(session_input.items()):
             .format(dcom_files, args.output_dir, heuristicpy, subID, sesID)
     print("[news] Processing sub-{:s}/ses-{:s}".format(subID, sesID))
     print("    command: " + bcolors.BOLD + "{:s}".format(cmd) + bcolors.ENDC)
+    if not args.preview:
+        runcmd(cmd, timeout=3600)
 
 # step 6 fmap filling
-
-
+print(bcolors.BOLD_NODE + "[Node] .json Filling up..." + bcolors.ENDC)
+if args.subject:
+    cmd = "fmapjson.py {} --subject ".format(args.output_dir)
+    cmd = [cmd + _ + ' ' for _ in args.subject][-1]
+else:
+    cmd = "fmapjson.py {}".format(args.output_dir)
+print("[news] command： {}".format(cmd))
+if not args.preview:
+    runcmd(cmd)
